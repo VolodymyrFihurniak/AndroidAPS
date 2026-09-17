@@ -1,1 +1,2 @@
 Trigger AAPS CI fullRelease for branch 3.4.2.6+aisf3.2.1 after log export path fix.
+Retry: synchronize event.
