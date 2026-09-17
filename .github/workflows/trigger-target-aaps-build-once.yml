@@ -1,7 +1,7 @@
 name: Trigger target AAPS build once
 
 on:
-  issues:
+  pull_request:
     types: [opened]
 
 permissions:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   dispatch:
-    if: github.event.issue.title == '[one-shot] build 3.4.2.6+aisf3.2.1 fullRelease'
+    if: github.event.pull_request.title == '[one-shot] build 3.4.2.6+aisf3.2.1 fullRelease'
     runs-on: ubuntu-latest
     steps:
       - name: Dispatch AAPS CI fullRelease on target branch
