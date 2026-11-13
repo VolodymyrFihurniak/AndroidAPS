@@ -76,7 +76,7 @@ class DetermineBasalSMBTest : TestBaseWithProfile() {
         resistance_lowers_target = false,
         adv_target_adjustments = false,
         exercise_mode = false,
-        half_basal_exercise_target = 160,
+        half_basal_exercise_target = 160.0,
         maxCOB = 120,
         skip_neutral_temps = false,
         remainingCarbsCap = 90,

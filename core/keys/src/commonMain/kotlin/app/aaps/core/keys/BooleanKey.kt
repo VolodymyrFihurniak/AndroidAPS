@@ -285,6 +285,36 @@ enum class BooleanKey(
     SiteRotationManagePump("site_rotation_manage_pump", defaultValue = false, title = KeysStrings.pref_title_site_rotation_manage_pump, sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)),
     SiteRotationManageCgm("site_rotation_manage_cgm", defaultValue = false, title = KeysStrings.pref_title_site_rotation_manage_cgm, sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)),
 
+
+    // autoISF: activity monitor based on the steps of the phone
+    ActivityMonitorDetection(
+        "activity_detection",
+        false,
+        KeysStrings.activity_monitor_title,
+        KeysStrings.activity_monitor_summary,
+        defaultedBySM = true,
+        sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
+    ),
+    ActivityMonitorOvernight(
+        "ignore_inactivity_overnight",
+        true,
+        KeysStrings.ignore_inactivity_overnight_title,
+        KeysStrings.ignore_inactivity_overnight_summary,
+        defaultedBySM = true,
+        dependency = ActivityMonitorDetection,
+        sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
+    ),
+    ActivityMonitorShowStepsFromSmartphone(
+        "steps_graph_from_smartphone",
+        true,
+        KeysStrings.steps_graph_from_smartphone_title,
+        KeysStrings.steps_graph_from_smartphone_summary,
+        defaultedBySM = true,
+        sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
+    ),
+    // autoISF: Libre calibration. Switched on by the user, switched off by the app again.
+    FslCalibrationTrigger("calibration_stops_SMB", false, KeysStrings.calibration_stops_smb_title, KeysStrings.calibration_stops_smb_summary, defaultedBySM = true),
+    FslCalibrationEnd("calibration_end", false, KeysStrings.calibration_enable_smb_title, KeysStrings.calibration_enable_smb_summary, defaultedBySM = true),
     ;
 
 }

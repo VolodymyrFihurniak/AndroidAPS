@@ -183,6 +183,24 @@ data class DevSlopeGraphData(
 )
 
 /**
+ * autoISF graph data: the factors of each AutoISF run (1.0 = no change) and the effective IOB threshold (U)
+ */
+data class AutoIsfGraphData(
+    val acceIsf: List<GraphDataPoint>,
+    val bgIsf: List<GraphDataPoint>,
+    val ppIsf: List<GraphDataPoint>,
+    val duraIsf: List<GraphDataPoint>,
+    val finalIsf: List<GraphDataPoint>,
+    val iobTh: List<GraphDataPoint>
+) {
+
+    companion object {
+
+        val EMPTY = AutoIsfGraphData(emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), emptyList())
+    }
+}
+
+/**
  * Variable sensitivity graph data: sensitivity line from APS results
  */
 data class VarSensGraphData(

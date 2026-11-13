@@ -142,6 +142,7 @@ class PeriodicMaintenance(
 
         /** One day per daily pass, plus room for a pass that runs late. */
         val MAX_CUTOFF_STEP = 2.days
-        const val KEEP_LOG_FILES = 30
+        // autoISF build: logback.xml rolls the log every hour, so 30 days are 720 files
+        const val KEEP_LOG_FILES = 30 * 24
     }
 }

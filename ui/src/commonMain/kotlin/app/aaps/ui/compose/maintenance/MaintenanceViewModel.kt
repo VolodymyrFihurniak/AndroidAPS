@@ -1,5 +1,7 @@
 package app.aaps.ui.compose.maintenance
 
+import app.aaps.core.keys.interfaces.Preferences
+import app.aaps.core.keys.IntKey
 import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -81,8 +83,12 @@ class MaintenanceViewModel(
     private val overviewData: OverviewData,
     private val overviewDataCache: OverviewDataCache,
     private val nsClient: NsClient,
-    private val dateUtil: DateUtil
+    private val dateUtil: DateUtil,
+    private val preferences: Preferences
 ) : ViewModel() {
+
+    /** autoISF: how many days the manual cleanup keeps. A short time helps with a 1 minute CGM. */
+    val cleanupKeepDays: Int get() = preferences.get(IntKey.MaintenanceCleanupDays)
 
     private val _events = MutableSharedFlow<MaintenanceEvent>()
     val events: SharedFlow<MaintenanceEvent> = _events
@@ -233,7 +239,7 @@ class MaintenanceViewModel(
     fun cleanupDatabases() {
         maintenanceAction("cleaning up databases") {
             val result = withContext(aapsIoDispatcher) {
-                persistenceLayer.cleanupDatabase(dateUtil.now() - T.days(93).msecs(), deleteTrackedChanges = true)
+                persistenceLayer.cleanupDatabase(dateUtil.now() - T.days(cleanupKeepDays.toLong()).msecs(), deleteTrackedChanges = true)
             }
             if (result.isNotEmpty()) {
                 _events.emit(MaintenanceEvent.CleanupResult(result))

@@ -160,6 +160,7 @@ fun SecondaryGraphCompose(
     val deviationsData = if (SeriesType.DEVIATIONS in seriesTypes) viewModel.deviationsGraphFlow.collectAsStateWithLifecycle().value else null
     val ratioData = if (SeriesType.SENSITIVITY in seriesTypes) viewModel.ratioGraphFlow.collectAsStateWithLifecycle().value else null
     val varSensData = if (SeriesType.VAR_SENSITIVITY in seriesTypes) viewModel.varSensGraphFlow.collectAsStateWithLifecycle().value else null
+    val autoIsfData = if (SeriesType.AUTOISF in seriesTypes || SeriesType.IOB_TH in seriesTypes) viewModel.autoIsfGraphFlow.collectAsStateWithLifecycle().value else null
     val devSlopeData = if (SeriesType.DEV_SLOPE in seriesTypes) viewModel.devSlopeGraphFlow.collectAsStateWithLifecycle().value else null
     val hrData = if (SeriesType.HEART_RATE in seriesTypes) viewModel.heartRateGraphFlow.collectAsStateWithLifecycle().value else null
     val stepsData = if (SeriesType.STEPS in seriesTypes) viewModel.stepsGraphFlow.collectAsStateWithLifecycle().value else null
@@ -217,6 +218,22 @@ fun SecondaryGraphCompose(
                 }
             }
         }
+    }
+
+    // autoISF factors: one line per factor, each with its own color
+    val processedAutoIsf = remember(autoIsfData, stableTimeRange) {
+        if (!hasRealTimeRange || autoIsfData == null) return@remember emptyList()
+        buildList {
+            add(AutoIsfFactor.ACCE to processPoints(autoIsfData.acceIsf, minTimestamp, minX, maxX))
+            add(AutoIsfFactor.BG to processPoints(autoIsfData.bgIsf, minTimestamp, minX, maxX))
+            add(AutoIsfFactor.PP to processPoints(autoIsfData.ppIsf, minTimestamp, minX, maxX))
+            add(AutoIsfFactor.DURA to processPoints(autoIsfData.duraIsf, minTimestamp, minX, maxX))
+            add(AutoIsfFactor.FINAL to processPoints(autoIsfData.finalIsf, minTimestamp, minX, maxX))
+        }
+    }
+    val processedIobTh = remember(autoIsfData, stableTimeRange) {
+        if (!hasRealTimeRange || autoIsfData == null) return@remember emptyList()
+        processPoints(autoIsfData.iobTh, minTimestamp, minX, maxX)
     }
 
     // DevSlope min line — separate from simple series for distinct color
@@ -299,7 +316,8 @@ fun SecondaryGraphCompose(
 
     // What each series draws: its line and its markers, the same on either axis
     val seriesSpecs = remember(
-        seriesTypes, processedDeviationLines, processedSteps, processedIob, processedIobTreatments, processedCob, processedCarbs, processedSimpleSeries, processedDevSlopeMin
+        seriesTypes, processedDeviationLines, processedSteps, processedIob, processedIobTreatments, processedCob, processedCarbs, processedSimpleSeries, processedDevSlopeMin,
+        processedAutoIsf, processedIobTh
     ) {
         seriesTypes.associateWith { type ->
             buildList {
@@ -309,6 +327,10 @@ fun SecondaryGraphCompose(
                     }
 
                     SeriesType.STEPS      -> addPoints(processedSteps, SeriesSlot.StepsColumns)
+
+                    SeriesType.AUTOISF    -> processedAutoIsf.forEach { (factor, points) -> addPoints(points, SeriesSlot.AutoIsfLine(factor)) }
+
+                    SeriesType.IOB_TH     -> addPoints(processedIobTh, SeriesSlot.SimpleLine(SeriesType.IOB_TH))
 
                     SeriesType.IOB        -> {
                         addPoints(processedIob, SeriesSlot.IobLine)
@@ -677,6 +699,7 @@ private fun lineFor(slot: SeriesSlot, colors: SeriesColors, iobStyles: IobLineSt
     SeriesSlot.DevSlopeMin      -> createDevSlopeMinLine()
     SeriesSlot.ActivityOverlay  -> createSeriesLine(SeriesType.ACTIVITY, colors)
     is SeriesSlot.SimpleLine    -> createSeriesLine(slot.type, colors)
+    is SeriesSlot.AutoIsfLine   -> createAutoIsfLine(colors.autoIsf(slot.factor))
 }
 
 // =========================================================================
@@ -709,7 +732,11 @@ internal sealed class SeriesSlot {
     data class SimpleLine(val type: SeriesType) : SeriesSlot()
     data object DevSlopeMin : SeriesSlot()
     data object ActivityOverlay : SeriesSlot()
+    data class AutoIsfLine(val factor: AutoIsfFactor) : SeriesSlot()
 }
+
+/** autoISF: the factors drawn in the AutoISF graph */
+internal enum class AutoIsfFactor { ACCE, BG, PP, DURA, FINAL }
 
 // =========================================================================
 // Data processing helpers
@@ -880,8 +907,23 @@ data class SeriesColors(
     val devSlope: Color,
     val heartRate: Color,
     val steps: Color,
-    val activity: Color
+    val activity: Color,
+    // autoISF
+    val acceIsf: Color = Color(0xFF0066FF),
+    val bgIsf: Color = Color(0xFFFF0000),
+    val ppIsf: Color = Color(0xFF00BB00),
+    val duraIsf: Color = Color(0xFFFF8800),
+    val finalIsf: Color = Color(0xFF00FFFF),
+    val iobTh: Color = Color(0xFFBBFFFF)
 ) {
+
+    internal fun autoIsf(factor: AutoIsfFactor): Color = when (factor) {
+        AutoIsfFactor.ACCE  -> acceIsf
+        AutoIsfFactor.BG    -> bgIsf
+        AutoIsfFactor.PP    -> ppIsf
+        AutoIsfFactor.DURA  -> duraIsf
+        AutoIsfFactor.FINAL -> finalIsf
+    }
 
     fun colorFor(type: SeriesType): Color = when (type) {
         SeriesType.IOB             -> iob
@@ -896,6 +938,8 @@ data class SeriesColors(
         SeriesType.STEPS           -> steps
         SeriesType.ACTIVITY        -> activity
         SeriesType.PREDICTIONS     -> activity // unused — PREDICTIONS is a BG overlay flag, not a secondary series
+        SeriesType.AUTOISF         -> finalIsf // each factor has its own color, see autoIsf()
+        SeriesType.IOB_TH          -> iobTh
     }
 }
 
@@ -921,6 +965,13 @@ fun rememberSeriesColors(): SeriesColors {
     }
 }
 
+/** autoISF: one factor of the AutoISF graph — a line in its own color, no fill */
+private fun createAutoIsfLine(color: Color): LineCartesianLayer.Line =
+    LineCartesianLayer.Line(
+        fill = LineCartesianLayer.LineFill.single(Fill(color)),
+        areaFill = null
+    )
+
 /** DevSlope min line — magenta, no fill (matches @color/devSlopeNeg #FF00FF) */
 private fun createDevSlopeMinLine(): LineCartesianLayer.Line {
     return LineCartesianLayer.Line(
@@ -942,7 +993,7 @@ fun createSeriesLine(type: SeriesType, colors: SeriesColors): LineCartesianLayer
             interpolator = Square
         )
         // Line only, no fill
-        SeriesType.DEV_SLOPE, SeriesType.SENSITIVITY, SeriesType.VAR_SENSITIVITY -> LineCartesianLayer.Line(
+        SeriesType.DEV_SLOPE, SeriesType.SENSITIVITY, SeriesType.VAR_SENSITIVITY, SeriesType.IOB_TH -> LineCartesianLayer.Line(
             fill = LineCartesianLayer.LineFill.single(Fill(color)),
             areaFill = null
         )

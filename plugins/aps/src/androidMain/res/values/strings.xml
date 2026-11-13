@@ -114,4 +114,10 @@
     <string name="autoISF_settings_title">AutoISF settings</string>
     <string name="smb_delivery_settings_title">SMB delivery settings</string>
 
+    <!-- autoISF 3.2 -->
+    <string name="activity_monitor_title">Activity modifies sensitivity</string>
+    <string name="libre_special_settings_title">Libre special settings</string>
+    <string name="autoisf_overview" comment="AutoISF factors of the last loop run. %1$.0f=final factor in percent, %2$.2f..%5$.2f=acce, bg, pp and dura factor. Example: AutoISF: 125% (acce 1.10, bg 1.25, pp 1.00, dura 1.00)">AutoISF: %1$.0f%% (acce %2$.2f, bg %3$.2f, pp %4$.2f, dura %5$.2f)</string>
+    <string name="permission_activity_title">Physical activity</string>
+    <string name="need_step_count_permission">AutoISF needs the physical activity permission to read the steps that the phone counts.</string>
 </resources>

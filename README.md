@@ -1,19 +1,94 @@
-# AAPS
-* Check the wiki: https://wiki.aaps.app
-* Want to contribute? Please read [CONTRIBUTING.md](CONTRIBUTING.md) first — note that AI-generated pull requests are not welcome.
-*  Everyone who’s been looping with AAPS needs to fill out the form after 3 days of looping  https://docs.google.com/forms/d/14KcMjlINPMJHVt28MDRupa4sz4DDIooI4SrW0P3HSN8/viewform?c=0&w=1
+# AAPS 4.0.0 with autoISF 3.2.1 (release candidate)
+* For documentation about AAPS without autoISF, check the wiki: https://wiki.aaps.app
+* Everyone who’s been looping with AAPS needs to fill out the form after 3 days of looping
+  https://docs.google.com/forms/d/14KcMjlINPMJHVt28MDRupa4sz4DDIooI4SrW0P3HSN8/viewform?c=0&w=1
 
-[![Support Server](https://img.shields.io/discord/629952586895851530.svg?label=Discord&logo=Discord&colorB=7289da&style=for-the-badge)](https://discord.gg/4fQUWHZ4Mw)
+> **Status: release candidate, not tested on a phone yet.** This branch moves autoISF 3.2.1 from
+> AAPS 3.4.2.6 to AAPS 4.0.0. AAPS 4.0 is a big rewrite (Kotlin Multiplatform, Compose UI, Metro
+> instead of Dagger), so most of the autoISF code was ported by hand, not just merged.
+> Run it in open loop first and compare the results with your current autoISF 3.2.x build.
 
-[![CircleCI](https://circleci.com/gh/nightscout/AndroidAPS/tree/master.svg?style=svg)](https://circleci.com/gh/nightscout/AndroidAPS/tree/master)
-[![Crowdin](https://d322cqt584bo4o.cloudfront.net/androidaps/localized.svg)](https://translations.aaps.app/project/androidaps)
-[![Documentation Status](https://readthedocs.org/projects/androidaps/badge/?version=latest)](https://wiki.aaps.app/en/latest/?badge=latest)
-[![codecov](https://codecov.io/gh/nightscout/AndroidAPS/branch/master/graph/badge.svg?token=EmklfIV6bH)](https://codecov.io/gh/nightscout/AndroidAPS)
+## What is autoISF?
+AutoISF adds more power to the algorithm used in AAPS by adjusting the insulin sensitivity
+based on different scenarios (e.g. high BG, accelerating/decelerating BG, BG plateau).
+autoISF has many different settings to fine-tune these adjustments.
+However, it is important to start with well-tested basal rate and settings for insulin sensitivity
+and carb ratios.
 
-DEV: 
-[![CircleCI](https://circleci.com/gh/nightscout/AndroidAPS/tree/dev.svg?style=svg)](https://circleci.com/gh/nightscout/AndroidAPS/tree/dev)
-[![codecov](https://codecov.io/gh/nightscout/AndroidAPS/branch/dev/graph/badge.svg?token=EmklfIV6bH)](https://codecov.io/gh/nightscout/AndroidAPS/tree/dev)
+## Where to find documentation about autoISF
+* Please visit ga-zelle’s repository [GitHub - ga-zelle/autoISF](https://github.com/ga-zelle/autoISF/tree/A3.4.2.6_ai3.2.1).
+* This repo contains a [ReadMe document](https://github.com/ga-zelle/autoISF/blob/A3.4.2.6_ai3.2.1/README.md) with a description of the latest changes to AutoISF
+* The [**Quick Guide (bzw. Kurzanleitung)**](https://github.com/ga-zelle/autoISF/blob/A3.4.2.6_ai3.2.1/autoISF3.2.0_Quick_Guide.pdf) provides an overview of autoISF and its features
 
-<img src="https://cdn.iconscout.com/icon/free/png-256/bitcoin-384-920569.png" srcset="https://cdn.iconscout.com/icon/free/png-512/bitcoin-384-920569.png 2x" alt="Bitcoin Icon" width="100">
+## What this branch contains
+* [AAPS 4.0.0](https://github.com/nightscout/AndroidAPS/releases/tag/4.0.0) from the official
+  [Nightscout AAPS](https://github.com/nightscout/AndroidAPS) repo, with its new design and features.
+* autoISF 3.2.1 from [3.4.2.6+aisf3.2.1](https://github.com/T-o-b-i-a-s/AndroidAPS/tree/3.4.2.6+aisf3.2.1),
+  merged into it. The git history of both lines is kept (a merge commit), so later updates of
+  AAPS and of autoISF can be merged again.
 
-3KawK8aQe48478s6fxJ8Ms6VTWkwjgr9f2
+### autoISF features in this build
+* AutoISF algorithm 3.2.1: acce_ISF, bg_ISF, pp_ISF, dura_ISF, iobTH, SMB delivery ratio,
+  "even/odd target" SMB control. The plugin can be selected without dev mode.
+* Activity monitor: the steps and the movement of the phone change the sensitivity
+  (settings: *OpenAPS AutoISF → Activity modifies sensitivity*). It also works with OpenAPS SMB.
+  The app asks for the "Physical activity" permission when the activity monitor is switched on.
+* Exercise mode (high temp target raises sensitivity) and the half basal exercise target
+  (now in the units of the user) for AutoISF and SMB.
+* Libre special settings: calibration offset/slope and smoothing of 1 minute values from xDrip+,
+  a 20 minute stop of SMB after a new calibration, and a shorter database cleanup.
+* The AutoISF key values of every loop run are stored in the database (table `autoIsfValues`) and
+  can be shown in the overview: add the series *AutoISF factors* (acce, bg, pp, dura, final) or
+  *IOB threshold* to a graph below the BG graph. The sensitivity dialog shows the factors of the
+  last run.
+* Automation: actions *Enable/Disable glucose ISF weights*, *Set bgAccel weight*, *Set iobTH*,
+  *Set automation state*; triggers *iobTH percent*, *BgAccel weight*, *Check automation state*.
+* Automation States plugin: named states like `Sleeping` with their possible values. AutoISF
+  reads `Sleeping` to stop the inactivity detection.
+* Logs are rolled every hour into `Documents/aapsLogs` and kept for 30 days.
+
+### Not ported yet (work in progress)
+* The BG parabola line on the BG graph.
+* The activity/exercise mode icon in the overview and the widget.
+* The "Algorithm" status of the master in AAPSClient.
+
+### Changes compared to autoISF 3.2.1 on AAPS 3.4
+* The UKF smoothing plugin of AAPS 4.0 is used. It comes from the same source as the one in aisf.
+* The database version is 37 (AAPS 4.0 = 36, plus the autoISF table). A database of an
+  aisf 3.2.x build (version 32) is upgraded: the migration adds what AAPS 4.0 added in its own
+  version 32, so no data is lost.
+* Automations, automation states and settings of aisf 3.2.x are read with the same names.
+
+## Updating from autoISF 3.2.x (AAPS 3.4)
+1. Export your settings in the old build (Maintenance → Export settings).
+2. Read the [AAPS 4.0 release notes](https://github.com/nightscout/AndroidAPS/releases/tag/4.0.0)
+   first. AAPS 4.0 itself has many changes (new UI, insulin management, ...).
+3. Install this build over the old one (same signing key). Do **not** uninstall the old app.
+4. Check the AutoISF settings and the activity monitor settings, then start in open loop.
+
+# Building
+## How to build this branch within the Browser (Github Actions)
+1. Sign in to Github, or [create a new Github Account](https://github.com/signup) if you do not
+   have one yet
+2. Create a fork of this repo in your own account by pressing the "Fork" button.
+3. If you have never used the browser build before, follow the [preparation steps](https://wiki.aaps.app/en/latest/SettingUpAaps/BrowserBuild.html#preparation-steps)
+   to create secrets within your forked repository. This is a one time step.
+4. Start the browser build using the Github Action
+   [aaps-ci](https://wiki.aaps.app/en/latest/SettingUpAaps/BrowserBuild.html#aaps-ci-github-actions-to-build-the-aaps-apk).
+   When the description asks you to select the branch, select this branch `4.0.0+aisf3.2.1-rc`.
+   The action builds the branch you select, there is no version to choose.
+5. After the build is completed, you can download the APK from your Google Drive that was used when
+   setting up the Github repository secrets in step 3
+
+## How to build this branch in Android Studio
+1. Get the latest version of Android Studio (AAPS 4.0 needs JDK 21 and Android SDK 37)
+2. Use "Get from VCS" with the url of this repository, without a branch name.
+3. Switch to the branch `4.0.0+aisf3.2.1-rc` (Remote branches → `origin/4.0.0+aisf3.2.1-rc` → Checkout).
+4. Build the APK with Build -> Generate signed Bundle / APK
+5. In case of any error messages during the build, try a "Clean build" first
+   (Build -> Clean) and then start the APK build again.
+
+General remark:
+If you have not used AAPS 4.0 before, please first build and run the regular AAPS 4.0.0 from
+https://github.com/nightscout/AndroidAPS and check that it works fine. Only then upgrade to the
+version including autoISF.

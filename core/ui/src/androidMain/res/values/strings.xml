@@ -703,6 +703,10 @@
     <string name="uel_exit_aaps">EXIT AAPS</string>
     <string name="uel_plugin_enabled">PLUGIN ENABLED</string>
     <string name="uel_plugin_disabled">PLUGIN DISABLED</string>
+    <string name="uel_autoisf_enabled">AUTOISF ENABLED</string>
+    <string name="uel_autoisf_disabled">AUTOISF DISABLED</string>
+    <string name="uel_iobth_set">IOBTH SET</string>
+    <string name="uel_acce_weight_set">ACCE WEIGHT SET</string>
     <string name="ue_string">String</string>
     <string name="ue_source">Source</string>
     <string name="ue_utc_offset">UTC Offset</string>
@@ -1072,7 +1076,7 @@
     </plurals>
 
     <!--    Maintenance-->
-    <string name="cleanup_db_confirm">Do you want to cleanup the database?\nIt will remove tracked changes and historic data older than 3 months.</string>
+    <string name="cleanup_db_confirm_days" comment="%1$d=days of history that are kept, example: 93">Do you want to cleanup the database?\nIt will remove tracked changes and historic data older than %1$d days.</string>
     <string name="cleanup_db_confirm_sync">Do you want to cleanup the database?\nIt will remove tracked changes and historic data older than 3 months.\nDoing it will speedup full synchronization dramatically.</string>
     <string name="cleared_entries">Cleared entries</string>
     <string name="reset_db_confirm">Do you really want to reset the databases?</string>
@@ -1230,6 +1234,10 @@
     <string name="graph_series_heart_rate">Heart Rate</string>
     <string name="graph_series_steps">Steps</string>
     <string name="graph_series_activity" comment="Insulin activity: how fast insulin is working now. Not physical exercise.">Activity</string>
+    <string name="graph_series_autoisf">AutoISF factors (acce, bg, pp, dura, final)</string>
+    <string name="graph_series_iob_threshold">IOB threshold (autoISF)</string>
+    <string name="autoisf_shortname">AISF</string>
+    <string name="iob_threshold_shortname">IOB TH</string>
     <string name="graph_series_predictions">Predictions</string>
 
 

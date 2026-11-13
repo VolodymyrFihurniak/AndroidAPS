@@ -1,5 +1,11 @@
 package app.aaps.plugins.automation.compose.triggers
 
+import androidx.compose.material3.MaterialTheme
+import app.aaps.plugins.automation.elements.InputWeight
+import app.aaps.plugins.automation.elements.InputIobTH
+import app.aaps.plugins.automation.triggers.TriggerAutomationState
+import app.aaps.plugins.automation.triggers.TriggerBgAcceWeight
+import app.aaps.plugins.automation.triggers.TriggerIobTH
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -95,6 +101,9 @@ fun TriggerEditor(
             is TriggerTempTarget         -> TriggerTempTargetEditor(trigger, onChange)
             is TriggerTempTargetValue    -> TriggerTempTargetValueEditor(trigger, onChange, tick)
             is TriggerStepsCount         -> TriggerStepsCountEditor(trigger, onChange, tick)
+            is TriggerIobTH              -> TriggerIobTHEditor(trigger, onChange, tick)
+            is TriggerBgAcceWeight       -> TriggerBgAcceWeightEditor(trigger, onChange, tick)
+            is TriggerAutomationState    -> TriggerAutomationStateEditor(trigger, onChange, tick)
             is TriggerTime               -> TriggerTimeEditor(trigger, onChange)
             is TriggerRecurringTime      -> TriggerRecurringTimeEditor(trigger, onChange)
             is TriggerTimeRange          -> TriggerTimeRangeEditor(trigger, onChange)
@@ -205,6 +214,79 @@ fun TriggerIobEditor(t: TriggerIob, onChange: () -> Unit, tick: Int = 0) {
             compact = true
         )
     }
+}
+
+// autoISF
+@Composable
+fun TriggerIobTHEditor(t: TriggerIobTH, onChange: () -> Unit, tick: Int = 0) {
+    @Suppress("UNUSED_EXPRESSION") tick
+    CompareRow(
+        comparator = t.comparator.value,
+        onComparatorChange = { t.comparator.value = it; onChange() },
+        label = ""
+    ) {
+        NumberInputRow(
+            labelRef = null,
+            value = t.iobTHpercent.value.toDouble(),
+            onValueChange = { t.iobTHpercent.value = it.toInt(); onChange() },
+            valueRange = InputIobTH.MIN.toDouble()..InputIobTH.MAX.toDouble(),
+            step = 5.0,
+            unitLabel = CoreUiStrings.units_percent,
+            compact = true
+        )
+    }
+}
+
+// autoISF
+@Composable
+fun TriggerBgAcceWeightEditor(t: TriggerBgAcceWeight, onChange: () -> Unit, tick: Int = 0) {
+    @Suppress("UNUSED_EXPRESSION") tick
+    CompareRow(
+        comparator = t.comparator.value,
+        onComparatorChange = { t.comparator.value = it; onChange() },
+        label = ""
+    ) {
+        NumberInputRow(
+            labelRef = null,
+            value = t.acceWeight.value,
+            onValueChange = { t.acceWeight.value = it; onChange() },
+            valueRange = InputWeight.MIN..InputWeight.MAX,
+            step = 0.05,
+            decimalPlaces = 2,
+            compact = true
+        )
+    }
+}
+
+// autoISF: the states and their values come from the automation state service
+@Composable
+fun TriggerAutomationStateEditor(t: TriggerAutomationState, onChange: () -> Unit, tick: Int = 0) {
+    @Suppress("UNUSED_EXPRESSION") tick
+    val stateNames = t.automationStateService.getAllStates().map { it.first }
+    if (stateNames.isEmpty()) {
+        Text(
+            text = stringResource(AutomationStrings.no_automation_states),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        return
+    }
+    AutomationDropdown(
+        value = t.stateName.value,
+        options = stateNames,
+        onValueChange = {
+            if (it != t.stateName.value) t.stateValue.value = ""
+            t.stateName.value = it
+            onChange()
+        },
+        label = stringResource(AutomationStrings.state_name_label)
+    )
+    AutomationDropdown(
+        value = t.stateValue.value,
+        options = t.automationStateService.getStateValues(t.stateName.value),
+        onValueChange = { t.stateValue.value = it; onChange() },
+        label = stringResource(AutomationStrings.state_value_label)
+    )
 }
 
 @Composable

@@ -1,5 +1,6 @@
 package app.aaps.workflow
 
+import app.aaps.core.interfaces.overview.graph.AutoIsfGraphData
 import app.aaps.core.data.aps.SMBDefaults
 import app.aaps.core.data.configuration.Constants
 import app.aaps.core.data.model.CA
@@ -848,6 +849,19 @@ class PrepareGraphDataRunner(
         data.cache.updateRatioGraph(RatioGraphData(ratio = ratioListCompose))
         data.cache.updateDevSlopeGraph(DevSlopeGraphData(dsMax = dsMaxListCompose, dsMin = dsMinListCompose))
         data.cache.updateVarSensGraph(VarSensGraphData(varSens = varSensListCompose))
+
+        // autoISF: the key values of each AutoISF run, stored by OpenAPSAutoISFPlugin
+        val autoIsfValues = persistenceLayer.getAutoIsfValuesFromTimeToTime(fromTime, endTime)
+        data.cache.updateAutoIsfGraph(
+            AutoIsfGraphData(
+                acceIsf = autoIsfValues.map { GraphDataPoint(it.timestamp, it.acceIsf) },
+                bgIsf = autoIsfValues.map { GraphDataPoint(it.timestamp, it.bgIsf) },
+                ppIsf = autoIsfValues.map { GraphDataPoint(it.timestamp, it.ppIsf) },
+                duraIsf = autoIsfValues.map { GraphDataPoint(it.timestamp, it.duraIsf) },
+                finalIsf = autoIsfValues.map { GraphDataPoint(it.timestamp, it.finalIsf) },
+                iobTh = autoIsfValues.map { GraphDataPoint(it.timestamp, it.iobThEffective) }
+            )
+        )
 
         data.signals.emitProgress(CalculationWorkflow.ProgressData.PREPARE_IOB_AUTOSENS_DATA, 100)
     }

@@ -4,6 +4,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 import app.aaps.database.entities.TABLE_APS_RESULTS
+import app.aaps.database.entities.TABLE_AUTOISF_VALUES
 import app.aaps.database.entities.TABLE_BOLUSES
 import app.aaps.database.entities.TABLE_CALIBRATION_ENTRIES
 import app.aaps.database.entities.TABLE_EFFECTIVE_PROFILE_SWITCHES
@@ -175,6 +176,31 @@ private val migration31to32 = object : Migration(31, 32) {
 }
 
 /**
+ * autoISF: the column names of [table], empty when the table does not exist.
+ */
+private fun columnsOf(connection: SQLiteConnection, table: String): List<String> =
+    connection.prepare("PRAGMA table_info(`$table`)").use { statement ->
+        buildList {
+            while (statement.step()) add(statement.getText(1))
+        }
+    }
+
+/**
+ * autoISF: a database that comes from aisf 3.2.x (AAPS 3.4 based) has version 32, but its version 32 is
+ * the autoIsfValues table, not the `carbInsulin` column of [migration31to32]. Room starts such a database
+ * at [migration32to33] and would never add the column, so the schema check after the upgrade would fail.
+ * This adds the column when it is missing, in the same way as [migration31to32]. The TDD rows are cached
+ * data and are calculated again.
+ */
+private fun ensureTddCarbInsulin(connection: SQLiteConnection) {
+    val columns = columnsOf(connection, TABLE_TOTAL_DAILY_DOSES)
+    if (columns.isNotEmpty() && "carbInsulin" !in columns) {
+        connection.execSQL("DELETE FROM $TABLE_TOTAL_DAILY_DOSES")
+        connection.execSQL("ALTER TABLE `$TABLE_TOTAL_DAILY_DOSES` ADD COLUMN `carbInsulin` REAL NOT NULL DEFAULT 0")
+    }
+}
+
+/**
  * Insulin configuration columns: `peak` becomes `insulinPeakTime` and `concentration` is added.
  *
  * The three old columns are CARRIED ACROSS, not replaced by the sentinel. v3 already stored the insulin
@@ -213,6 +239,8 @@ private val migration32to33 = object : Migration(32, 33) {
             "1.0"
 
     override fun migrate(connection: SQLiteConnection) {
+        // autoISF: a database from aisf 3.2.x has version 32 without the column of migration31to32
+        ensureTddCarbInsulin(connection)
         // Migration of boluses table (v3 never stamped a bolus, so these always take the sentinel)
         connection.execSQL("CREATE TABLE IF NOT EXISTS new_boluses (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `version` INTEGER NOT NULL, `dateCreated` INTEGER NOT NULL, `isValid` INTEGER NOT NULL, `referenceId` INTEGER, `timestamp` INTEGER NOT NULL, `utcOffset` INTEGER NOT NULL, `amount` REAL NOT NULL, `type` TEXT NOT NULL, `notes` TEXT, `isBasalInsulin` INTEGER NOT NULL, `nightscoutSystemId` TEXT, `nightscoutId` TEXT, `pumpType` TEXT, `pumpSerial` TEXT, `temporaryId` INTEGER, `pumpId` INTEGER, `startId` INTEGER, `endId` INTEGER, `insulinLabel` TEXT NOT NULL, `insulinEndTime` INTEGER NOT NULL, `insulinPeakTime` INTEGER NOT NULL, `concentration` REAL NOT NULL, FOREIGN KEY(`referenceId`) REFERENCES `boluses`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )")
         connection.execSQL(
@@ -378,6 +406,28 @@ private val migration35to36 = object : Migration(35, 36) {
     }
 }
 
+/**
+ * autoISF: the table with the AutoISF key values for the graphs.
+ *
+ * `IF NOT EXISTS`, because a database from aisf 3.2.x has this table already (its version 32). That old
+ * table also has an index on `id`, which the entity does not declare any more, so it is dropped here
+ * to pass the schema check of Room.
+ */
+private val migration36to37 = object : Migration(36, 37) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `$TABLE_AUTOISF_VALUES` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, " +
+                "`acceIsf` REAL NOT NULL, `bgIsf` REAL NOT NULL, `ppIsf` REAL NOT NULL, `driftIsf` REAL NOT NULL, `duraIsf` REAL NOT NULL, " +
+                "`finalIsf` REAL NOT NULL, `iobThEffective` REAL NOT NULL, `utcOffset` INTEGER NOT NULL, `version` INTEGER NOT NULL, " +
+                "`dateCreated` INTEGER NOT NULL, `isValid` INTEGER NOT NULL, `referenceId` INTEGER, `nightscoutSystemId` TEXT, " +
+                "`nightscoutId` TEXT, `pumpType` TEXT, `pumpSerial` TEXT, `temporaryId` INTEGER, `pumpId` INTEGER, `startId` INTEGER, `endId` INTEGER)"
+        )
+        connection.execSQL("DROP INDEX IF EXISTS `index_autoIsfValues_id`")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_autoIsfValues_timestamp` ON `$TABLE_AUTOISF_VALUES` (`timestamp`)")
+        dropCustomIndexes(connection)
+    }
+}
+
 /** Every migration, in order. Passed to the Room builder by each platform. */
 internal val databaseMigrations: Array<Migration> = arrayOf(
     migration22to23,
@@ -394,4 +444,5 @@ internal val databaseMigrations: Array<Migration> = arrayOf(
     migration33to34,
     migration34to35,
     migration35to36,
+    migration36to37,
 )

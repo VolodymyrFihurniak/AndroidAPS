@@ -348,17 +348,6 @@ enum class IntKey(
         unitType = UnitType.GRAMS,
         sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
     ),
-    ApsAutoIsfHalfBasalExerciseTarget(
-        key = "half_basal_exercise_target",
-        defaultValue = 160,
-        min = 120,
-        max = 200,
-        title = KeysStrings.pref_title_half_basal_exercise_target,
-        summary = KeysStrings.half_basal_exercise_target_summary,
-        defaultedBySM = true,
-        unitType = UnitType.MGDL,
-        sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
-    ),
     ApsAutoIsfIobThPercent(
         key = "iob_threshold_percent",
         defaultValue = 100,
@@ -447,6 +436,41 @@ enum class IntKey(
             2 to KeysStrings.site_rotation_profile_child
         ),
         sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
+    ),
+
+    // autoISF: activity monitor, sleeping hours without inactivity detection
+    ActivityMonitorIdleStart(
+        key = "inactivity_idle_start",
+        defaultValue = 22,
+        min = 0,
+        max = 23,
+        title = KeysStrings.inactivity_idle_start_title,
+        summary = KeysStrings.inactivity_idle_start_summary,
+        defaultedBySM = true,
+        dependency = BooleanKey.ActivityMonitorOvernight,
+        sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
+    ),
+    ActivityMonitorIdleEnd(
+        key = "inactivity_idle_end",
+        defaultValue = 6,
+        min = 0,
+        max = 23,
+        title = KeysStrings.inactivity_idle_end_title,
+        summary = KeysStrings.inactivity_idle_end_summary,
+        defaultedBySM = true,
+        dependency = BooleanKey.ActivityMonitorOvernight,
+        sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
+    ),
+    // autoISF: how many days the database cleanup keeps (AAPS default is 93)
+    MaintenanceCleanupDays(
+        key = "maintenance_cleanup_days",
+        defaultValue = 93,
+        min = 7,
+        max = 93,
+        title = KeysStrings.MaintenanceCleanupDays_title,
+        summary = KeysStrings.MaintenanceCleanupDays_summary,
+        defaultedBySM = true,
+        unitType = UnitType.DAYS
     ),
     ;
 

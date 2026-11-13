@@ -45,4 +45,8 @@ enum class BooleanNonKey(
     // with a key on each connection, which is also how a phone paired from a QR code says hello at all. Belongs to the
     // pairing.
     NsClientControlSecretReplaced("nsclient_control_secret_replaced", false, exportable = false),
+
+    // autoISF: what the activity monitor found in the last loop run. State, not a setting → not exportable.
+    ActivityMonitorStepsActive("steps_activity_detected", false, exportable = false),
+    ActivityMonitorStepsInactive("steps_inactivity_detected", false, exportable = false),
 }

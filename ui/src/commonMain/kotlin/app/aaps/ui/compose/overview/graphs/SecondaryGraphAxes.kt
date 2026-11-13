@@ -25,13 +25,15 @@ internal sealed interface AxisRule {
 internal fun axisRuleOf(type: SeriesType): AxisRule = when (type) {
     SeriesType.SENSITIVITY                            -> AxisRule.Pivot(100.0, SENS_MIN_DEVIATION)
     SeriesType.DEV_SLOPE                              -> AxisRule.Pivot(0.0)
+    SeriesType.AUTOISF                                -> AxisRule.Pivot(1.0)
     SeriesType.VAR_SENSITIVITY, SeriesType.HEART_RATE -> AxisRule.Free
     else                                              -> AxisRule.ZeroFloor
 }
 
 /** The series that are measured in the same unit, and so are drawn against one axis. */
 private val SHARED_UNITS = listOf(
-    setOf(SeriesType.IOB, SeriesType.ABS_IOB),
+    // autoISF: the IOB threshold is in units of insulin too, as in aisf it shares the IOB axis
+    setOf(SeriesType.IOB, SeriesType.ABS_IOB, SeriesType.IOB_TH),
     setOf(SeriesType.BGI, SeriesType.DEVIATIONS)
 )
 

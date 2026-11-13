@@ -13,6 +13,9 @@ import app.aaps.core.interfaces.aps.Predictions
 import app.aaps.core.interfaces.aps.RT
 import app.aaps.core.interfaces.aps.SmbIntervalGate
 import app.aaps.core.interfaces.profile.ProfileUtil
+import app.aaps.core.keys.BooleanNonKey
+import app.aaps.core.keys.DoubleNonKey
+import app.aaps.core.keys.interfaces.Preferences
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
@@ -28,7 +31,8 @@ import kotlin.math.roundToLong
 @SingleIn(AppScope::class)
 @Inject
 class DetermineBasalAutoISF(
-    private val profileUtil: ProfileUtil
+    private val profileUtil: ProfileUtil,
+    private val preferences: Preferences
 ) {
 
     private var consoleError = mutableListOf<String>()
@@ -210,13 +214,15 @@ class DetermineBasalAutoISF(
     fun determine_basal(
         glucose_status: GlucoseStatus, currenttemp: CurrentTemp, iob_data_array: Array<IobTotal>, profile: OapsProfileAutoIsf, autosens_data: AutosensResult, meal_data: MealData,
         microBolusAllowed: Boolean, currentTime: Long, flatBGsDetected: Boolean, autoIsfMode: Boolean, loop_wanted_smb: String, profile_percentage: Int, smb_ratio: Double,
-        smb_max_range_extension: Double, iob_threshold_percent: Int, auto_isf_consoleError: MutableList<String>, auto_isf_consoleLog: MutableList<String>
+        smb_max_range_extension: Double, iob_threshold_percent: Int, activity_consoleLog: String, auto_isf_consoleError: MutableList<String>, auto_isf_consoleLog: MutableList<String>
     ): RT {
         consoleError = mutableListOf()
+        consoleError.add(activity_consoleLog)
         consoleLog = mutableListOf()
         var rT = RT(
             algorithm = APSResult.Algorithm.AUTO_ISF,
             runningDynamicIsf = autoIsfMode,
+            runningAutoIsf = true,
             timestamp = currentTime,
             consoleLog = consoleLog,
             consoleError = consoleError
@@ -277,39 +283,43 @@ class DetermineBasalAutoISF(
         var min_bg = profile.min_bg
         var max_bg = profile.max_bg
 
+        // autoISF 3.2: the activity monitor of OpenAPSAutoISFPlugin has run already in this loop run
+        val activityRatio = preferences.get(DoubleNonKey.ActivityMonitorRatio)
+        val stepActivityDetected = preferences.get(BooleanNonKey.ActivityMonitorStepsActive)
+        val stepInactivityDetected = preferences.get(BooleanNonKey.ActivityMonitorStepsInactive)
         var sensitivityRatio = 1.0
-        // var origin_sens = ""
-        var exercise_ratio = 1.0
-        val high_temptarget_raises_sensitivity = profile.exercise_mode || profile.high_temptarget_raises_sensitivity
         val normalTarget = Constants.NORMAL_TARGET_MGDL // evaluate high/low temptarget against normal target, not scheduled target (which might change)
+        val exerciseModeActive = (profile.exercise_mode || profile.high_temptarget_raises_sensitivity) && profile.temptargetSet && Constants.isAboveNormalTarget(target_bg)
+        val resistanceModeActive = profile.low_temptarget_lowers_sensitivity && profile.temptargetSet && Constants.isBelowNormalTarget(target_bg)
         // when temptarget is 160 mg/dL, run 50% basal (120 = 75%; 140 = 60%),  80 mg/dL with low_temptarget_lowers_sensitivity would give 1.5x basal, but is limited to autosens_max (1.2x by default)
+        // half_basal_exercise_target is in mg/dL
         val halfBasalTarget = profile.half_basal_exercise_target
 
-        if (high_temptarget_raises_sensitivity && profile.temptargetSet && Constants.isAboveNormalTarget(target_bg)
-            || profile.low_temptarget_lowers_sensitivity && profile.temptargetSet && Constants.isBelowNormalTarget(target_bg)
-        ) {
+        if (exerciseModeActive || resistanceModeActive) {
             // w/ target 100, temp target 110 = .89, 120 = 0.8, 140 = 0.67, 160 = .57, and 200 = .44
             // e.g.: Sensitivity ratio set to 0.8 based on temp target of 120; Adjusting basal from 1.65 to 1.35; ISF from 58.9 to 73.6
             //sensitivityRatio = 2/(2+(target_bg-normalTarget)/40);
-            val c = (halfBasalTarget - normalTarget).toDouble()
+            val resistanceMax = min(1.5, profile.autosens_max)  // additional safety limit
+            val c = halfBasalTarget - normalTarget
             if (c * (c + target_bg - normalTarget) <= 0.0) {
-                sensitivityRatio = profile.autosens_max
+                sensitivityRatio = resistanceMax
             } else {
                 sensitivityRatio = c / (c + target_bg - normalTarget)
                 // limit sensitivityRatio to profile.autosens_max (1.2x by default)
-                sensitivityRatio = min(sensitivityRatio, profile.autosens_max)
+                sensitivityRatio = min(sensitivityRatio, resistanceMax)
                 sensitivityRatio = round(sensitivityRatio, 2)
-                exercise_ratio = sensitivityRatio
-                // origin_sens = "from TT modifier"
-                consoleError.add("Sensitivity ratio set to $sensitivityRatio based on temp target of $target_bg; ")
             }
+            consoleError.add("Sensitivity ratio set to $sensitivityRatio based on temp target of $target_bg; ")
+        } else if (stepActivityDetected || stepInactivityDetected) {
+            sensitivityRatio = activityRatio
         } else {
+            consoleError.add("Sensitivity ratio unchanged: 1.0")
             sensitivityRatio = autosens_data.ratio
             consoleError.add("Autosens ratio: $sensitivityRatio; ")
         }
         var iobTH_reduction_ratio = 1.0
         if (iob_threshold_percent != 100) {
-            iobTH_reduction_ratio = profile_percentage / 100.0 * exercise_ratio     // later: * activityRatio;
+            iobTH_reduction_ratio = profile_percentage / 100.0 * sensitivityRatio
         }
         basal = profile.current_basal * sensitivityRatio
         basal = round_basal(basal)
@@ -463,6 +473,7 @@ class DetermineBasalAutoISF(
         rT = RT(
             algorithm = APSResult.Algorithm.AUTO_ISF,
             runningDynamicIsf = autoIsfMode,
+            runningAutoIsf = true,
             timestamp = currentTime,
             bg = bg,
             tick = tick,

@@ -1,5 +1,6 @@
 package app.aaps.ui.compose.maintenance
 
+import app.aaps.core.keys.interfaces.Preferences
 import app.aaps.core.interfaces.db.PersistenceLayer
 import app.aaps.core.interfaces.iob.IobCobCalculator
 import app.aaps.core.interfaces.logging.AAPSLogger
@@ -64,6 +65,7 @@ internal class MaintenanceViewModelTest {
     @Mock private lateinit var overviewDataCache: OverviewDataCache
     @Mock private lateinit var nsClient: NsClient
     @Mock private lateinit var dateUtil: DateUtil
+    @Mock private lateinit var preferences: Preferences
 
     private lateinit var sut: MaintenanceViewModel
     private lateinit var testDispatcher: TestDispatcher
@@ -79,7 +81,7 @@ internal class MaintenanceViewModelTest {
         sut = MaintenanceViewModel(
             aapsLogger, generatedTextResolver(), l, maintenance, importExportPrefs, fileListProvider, cloudDirectoryManager,
             activePlugin, persistenceLayer, fabricPrivacy, uel, dataSyncSelectorXdrip, pumpSync,
-            iobCobCalculator, overviewData, overviewDataCache, nsClient, dateUtil
+            iobCobCalculator, overviewData, overviewDataCache, nsClient, dateUtil, preferences
         )
     }
 

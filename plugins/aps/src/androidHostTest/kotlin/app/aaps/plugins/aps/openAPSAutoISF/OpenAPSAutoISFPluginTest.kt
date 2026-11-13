@@ -3,6 +3,8 @@ package app.aaps.plugins.aps.openAPSAutoISF
 import app.aaps.core.data.aps.SMBDefaults
 import app.aaps.core.interfaces.aps.GlucoseStatusAutoIsf
 import app.aaps.core.interfaces.aps.OapsProfileAutoIsf
+import app.aaps.core.interfaces.aps.PhoneActivitySensor
+import app.aaps.core.interfaces.automation.AutomationStateInterface
 import app.aaps.core.interfaces.bgQualityCheck.BgQualityCheck
 import app.aaps.core.interfaces.constraints.ConstraintsChecker
 import app.aaps.core.interfaces.db.PersistenceLayer
@@ -10,6 +12,7 @@ import app.aaps.core.interfaces.iob.GlucoseStatusProvider
 import app.aaps.core.interfaces.plugin.EnforcedState
 import app.aaps.core.keys.BooleanKey
 import app.aaps.core.keys.DoubleKey
+import app.aaps.core.keys.DoubleNonKey
 import app.aaps.core.keys.IntKey
 import app.aaps.core.keys.UnitDoubleKey
 import app.aaps.shared.tests.TestBaseWithProfile
@@ -17,6 +20,7 @@ import com.google.common.truth.Truth.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mock
+import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
 
 class OpenAPSAutoISFPluginTest : TestBaseWithProfile() {
@@ -26,6 +30,8 @@ class OpenAPSAutoISFPluginTest : TestBaseWithProfile() {
     @Mock lateinit var glucoseStatusProvider: GlucoseStatusProvider
     @Mock lateinit var determineBasalSMB: DetermineBasalAutoISF
     @Mock lateinit var bgQualityCheck: BgQualityCheck
+    @Mock lateinit var phoneActivitySensor: PhoneActivitySensor
+    @Mock lateinit var automationStateService: AutomationStateInterface
     private lateinit var openAPSAutoISFPlugin: OpenAPSAutoISFPlugin
 
     @BeforeEach fun prepare() {
@@ -33,21 +39,61 @@ class OpenAPSAutoISFPluginTest : TestBaseWithProfile() {
             aapsLogger, rxBus, constraintChecker, rh, profileFunction, profileUtil, config, activePlugin,
             iobCobCalculator, hardLimits, preferences, dateUtil, processedTbrEbData, persistenceLayer, glucoseStatusProvider,
             bgQualityCheck, notificationManager, determineBasalSMB,
-            GlucoseStatusCalculatorAutoIsf(aapsLogger, iobCobCalculator, dateUtil, decimalFormatter, deltaCalculator), { apsResultProvider() }, ch
+            GlucoseStatusCalculatorAutoIsf(aapsLogger, iobCobCalculator, dateUtil, decimalFormatter, deltaCalculator, preferences), { apsResultProvider() }, ch,
+            phoneActivitySensor, automationStateService
         )
     }
 
     @Test
-    fun `an engineering dev build leaves the choice to the user`() {
+    fun `an engineering build leaves the choice to the user, also when it is not a dev build`() {
         whenever(config.isEngineeringMode()).thenReturn(true)
-        whenever(config.isDev()).thenReturn(true)
+        whenever(config.isDev()).thenReturn(false)
         assertThat(openAPSAutoISFPlugin.enforcedState()).isNull()
     }
 
     @Test
-    fun `any other build forces it off`() {
+    fun `a build without engineering mode forces it off`() {
         whenever(config.isEngineeringMode()).thenReturn(false)
         assertThat(openAPSAutoISFPlugin.enforcedState()).isEqualTo(EnforcedState.Disabled)
+    }
+
+    @Test
+    fun activityMonitor() = kotlinx.coroutines.runBlocking {
+        val nowMillis = now
+        whenever(preferences.get(DoubleKey.ActivityScaleFactor)).thenReturn(1.0)
+        whenever(preferences.get(DoubleKey.InactivityScaleFactor)).thenReturn(1.0)
+        whenever(preferences.get(BooleanKey.ActivityMonitorOvernight)).thenReturn(true)
+        whenever(preferences.get(IntKey.ActivityMonitorIdleStart)).thenReturn(22)
+        whenever(preferences.get(IntKey.ActivityMonitorIdleEnd)).thenReturn(6)
+        whenever(preferences.get(BooleanKey.ActivityMonitorShowStepsFromSmartphone)).thenReturn(false)
+        whenever(automationStateService.getStateValues(any())).thenReturn(emptyList())
+        whenever(phoneActivitySensor.startTime).thenReturn(nowMillis - 2 * 60 * 60 * 1000L)
+        whenever(phoneActivitySensor.phoneMoved()).thenReturn(true)
+
+        whenever(preferences.get(BooleanKey.ActivityMonitorDetection)).thenReturn(false)
+        assertThat(openAPSAutoISFPlugin.activityMonitor(false, 99.0, 90.0, 12, nowMillis)).isEqualTo(1.0) // not selected in preferences
+
+        whenever(preferences.get(BooleanKey.ActivityMonitorDetection)).thenReturn(true)
+        assertThat(openAPSAutoISFPlugin.activityMonitor(true, 99.0, 90.0, 12, nowMillis)).isEqualTo(1.0) // temp target
+        assertThat(openAPSAutoISFPlugin.activityMonitor(false, 99.0, 90.0, 2, nowMillis)).isEqualTo(1.0) // sleeping hours, no steps
+        assertThat(openAPSAutoISFPlugin.activityMonitor(false, 80.0, 90.0, 12, nowMillis)).isEqualTo(1.0) // bg < target, no steps
+        assertThat(openAPSAutoISFPlugin.activityMonitor(false, 99.0, 90.0, 12, nowMillis)).isEqualTo(1.2) // inactivity
+
+        whenever(phoneActivitySensor.recentSteps60Min()).thenReturn(150)
+        assertThat(openAPSAutoISFPlugin.activityMonitor(false, 99.0, 90.0, 12, nowMillis)).isWithin(0.0001).of(1.1) // partial inactivity
+
+        whenever(phoneActivitySensor.recentSteps5Min()).thenReturn(250)
+        assertThat(openAPSAutoISFPlugin.activityMonitor(false, 99.0, 90.0, 12, nowMillis)).isWithin(0.0001).of(0.85) // partial activity
+
+        whenever(phoneActivitySensor.recentSteps5Min()).thenReturn(400)
+        assertThat(openAPSAutoISFPlugin.activityMonitor(false, 99.0, 90.0, 12, nowMillis)).isWithin(0.0001).of(0.7) // activity
+        assertThat(openAPSAutoISFPlugin.activityMonitor(false, 99.0, 90.0, 2, nowMillis)).isEqualTo(1.0) // sleeping hours: not more than 200 steps in 60 minutes
+
+        whenever(phoneActivitySensor.recentSteps60Min()).thenReturn(900)
+        assertThat(openAPSAutoISFPlugin.activityMonitor(false, 99.0, 90.0, 2, nowMillis)).isWithin(0.0001).of(0.7) // activity at night
+
+        whenever(phoneActivitySensor.phoneMoved()).thenReturn(false)
+        assertThat(openAPSAutoISFPlugin.activityMonitor(false, 99.0, 90.0, 12, nowMillis)).isEqualTo(1.0) // phone not carried
     }
 
     @Suppress("KotlinConstantConditions")
@@ -56,19 +102,21 @@ class OpenAPSAutoISFPluginTest : TestBaseWithProfile() {
         val autoIsfMin = 0.7
         val autoIsfMax = 1.2
         var sens = 1.1  // from Autosens
-        val originSens = ""
-        var ttSet = false
-        var exerciseMode = false
-        val targetBg = 120.0
-        assertThat(openAPSAutoISFPlugin.withinISFlimits(1.7, autoIsfMin, autoIsfMax, sens, originSens, ttSet, exerciseMode, targetBg)).isEqualTo(1.2) // upper limit
-        assertThat(openAPSAutoISFPlugin.withinISFlimits(0.5, autoIsfMin, autoIsfMax, sens, originSens, ttSet, exerciseMode, targetBg)).isEqualTo(0.7) // lower limit
+        var exerciseModeActive = false
+        val resistanceModeActive = false
+        var stepActivityDetected = false
+        val stepInactivityDetected = false
+        assertThat(openAPSAutoISFPlugin.withinISFlimits(1.7, autoIsfMin, autoIsfMax, sens, exerciseModeActive, resistanceModeActive, stepActivityDetected, stepInactivityDetected)).isEqualTo(1.2) // upper limit
+        assertThat(openAPSAutoISFPlugin.withinISFlimits(0.5, autoIsfMin, autoIsfMax, sens, exerciseModeActive, resistanceModeActive, stepActivityDetected, stepInactivityDetected)).isEqualTo(0.7) // lower limit
         sens = 1.5  // from Autosens
-        assertThat(openAPSAutoISFPlugin.withinISFlimits(1.7, autoIsfMin, autoIsfMax, sens, originSens, ttSet, exerciseMode, targetBg)).isEqualTo(1.5) // autosens 1.5 wins
+        assertThat(openAPSAutoISFPlugin.withinISFlimits(1.7, autoIsfMin, autoIsfMax, sens, exerciseModeActive, resistanceModeActive, stepActivityDetected, stepInactivityDetected)).isEqualTo(1.5) // autosens 1.5 wins
         sens = 0.5  // from Autosens
-        assertThat(openAPSAutoISFPlugin.withinISFlimits(0.5, autoIsfMin, autoIsfMax, sens, originSens, ttSet, exerciseMode, targetBg)).isEqualTo(0.5) // autosens 0.5 wins
-        exerciseMode = true
-        ttSet = true
-        assertThat(openAPSAutoISFPlugin.withinISFlimits(0.5, autoIsfMin, autoIsfMax, sens, originSens, ttSet, exerciseMode, targetBg)).isEqualTo(0.35) // exercise mode
+        assertThat(openAPSAutoISFPlugin.withinISFlimits(0.5, autoIsfMin, autoIsfMax, sens, exerciseModeActive, resistanceModeActive, stepActivityDetected, stepInactivityDetected)).isEqualTo(0.5) // autosens 0.5 wins
+        exerciseModeActive = true
+        assertThat(openAPSAutoISFPlugin.withinISFlimits(0.5, autoIsfMin, autoIsfMax, sens, exerciseModeActive, resistanceModeActive, stepActivityDetected, stepInactivityDetected)).isEqualTo(0.35) // exercise mode
+        exerciseModeActive = false
+        stepActivityDetected = true
+        assertThat(openAPSAutoISFPlugin.withinISFlimits(0.5, autoIsfMin, autoIsfMax, sens, exerciseModeActive, resistanceModeActive, stepActivityDetected, stepInactivityDetected)).isEqualTo(0.35) // activity mode
     }
 
     @Test
@@ -122,7 +170,7 @@ class OpenAPSAutoISFPluginTest : TestBaseWithProfile() {
             resistance_lowers_target = preferences.get(BooleanKey.ApsResistanceLowersTarget),
             adv_target_adjustments = SMBDefaults.adv_target_adjustments,
             exercise_mode = SMBDefaults.exercise_mode,
-            half_basal_exercise_target = preferences.get(IntKey.ApsAutoIsfHalfBasalExerciseTarget),
+            half_basal_exercise_target = preferences.get(UnitDoubleKey.ApsAutoIsfHalfBasalExerciseTarget),
             maxCOB = SMBDefaults.maxCOB,
             skip_neutral_temps = false,
             remainingCarbsCap = SMBDefaults.remainingCarbsCap,
@@ -143,7 +191,7 @@ class OpenAPSAutoISFPluginTest : TestBaseWithProfile() {
             autosens_max = preferences.get(DoubleKey.AutosensMax),
             out_units = "mg/dl",
             variable_sens = 111.1,
-            autoISF_version = "3.0",
+            autoISF_version = "3.2.1",
             enable_autoISF = true,
             autoISF_max = 1.5,
             autoISF_min = 0.7,
@@ -209,7 +257,7 @@ class OpenAPSAutoISFPluginTest : TestBaseWithProfile() {
             resistance_lowers_target = preferences.get(BooleanKey.ApsResistanceLowersTarget),
             adv_target_adjustments = SMBDefaults.adv_target_adjustments,
             exercise_mode = SMBDefaults.exercise_mode,
-            half_basal_exercise_target = preferences.get(IntKey.ApsAutoIsfHalfBasalExerciseTarget),
+            half_basal_exercise_target = preferences.get(UnitDoubleKey.ApsAutoIsfHalfBasalExerciseTarget),
             maxCOB = SMBDefaults.maxCOB,
             skip_neutral_temps = false,
             remainingCarbsCap = SMBDefaults.remainingCarbsCap,
@@ -230,7 +278,7 @@ class OpenAPSAutoISFPluginTest : TestBaseWithProfile() {
             autosens_max = preferences.get(DoubleKey.AutosensMax),
             out_units = "mg/dl",
             variable_sens = 47.11,
-            autoISF_version = "3.0",
+            autoISF_version = "3.2.1",
             enable_autoISF = false,
             autoISF_max = 1.5,
             autoISF_min = 0.7,
@@ -255,7 +303,7 @@ class OpenAPSAutoISFPluginTest : TestBaseWithProfile() {
         whenever(glucoseStatus.corrSqu).thenReturn(0.4711)
         assertThat(openAPSAutoISFPlugin.autoISF(profile)).isEqualTo(47.11)                             // bad parabola
         whenever(preferences.get(BooleanKey.ApsAutoIsfHighTtRaisesSens)).thenReturn(true)
-        whenever(preferences.get(IntKey.ApsAutoIsfHalfBasalExerciseTarget)).thenReturn(160)
+        whenever(preferences.get(UnitDoubleKey.ApsAutoIsfHalfBasalExerciseTarget)).thenReturn(160.0)
         assertThat(openAPSAutoISFPlugin.autoISF(profile)).isEqualTo(47.11 * 2.0)                       // exercise mode w/o AutoISF
         whenever(glucoseStatus.corrSqu).thenReturn(0.95)
         whenever(glucoseStatus.glucose).thenReturn(90.0)

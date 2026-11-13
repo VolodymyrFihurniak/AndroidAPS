@@ -32,6 +32,17 @@ enum class UnitDoubleKey(
         defaultedBySM = true,
         dependency = BooleanKey.ApsUseDynamicSensitivity,
         sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
+    ),
+    // autoISF: in the units of the user (it was an IntKey in mg/dL before, the stored value is read the same way)
+    ApsAutoIsfHalfBasalExerciseTarget(
+        key = "half_basal_exercise_target",
+        defaultValue = 160.0,
+        minMgdl = 120,
+        maxMgdl = 200,
+        title = KeysStrings.pref_title_half_basal_exercise_target,
+        summary = KeysStrings.half_basal_exercise_target_summary,
+        defaultedBySM = true,
+        sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
     )
     ;
 

@@ -92,6 +92,10 @@ interface OverviewDataCache {
     val varSensGraphFlow: StateFlow<VarSensGraphData>
     fun updateVarSensGraph(data: VarSensGraphData)
 
+    // autoISF graph: factors of each AutoISF run and the effective IOB threshold
+    val autoIsfGraphFlow: StateFlow<AutoIsfGraphData>
+    fun updateAutoIsfGraph(data: AutoIsfGraphData)
+
     // Heart rate graph: BPM readings from smartwatch
     val heartRateGraphFlow: StateFlow<HeartRateGraphData>
     fun updateHeartRateGraph(data: HeartRateGraphData)

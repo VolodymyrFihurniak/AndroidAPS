@@ -190,7 +190,7 @@ class ReplayApsResultsTest : AapsInstrumentedTest() {
             resistance_lowers_target = determineBasalResult.profile.getBoolean("resistance_lowers_target"),
             adv_target_adjustments = determineBasalResult.profile.getBoolean("adv_target_adjustments"),
             exercise_mode = determineBasalResult.profile.getBoolean("exercise_mode"),
-            half_basal_exercise_target = determineBasalResult.profile.getInt("half_basal_exercise_target"),
+            half_basal_exercise_target = determineBasalResult.profile.getDouble("half_basal_exercise_target"),
             maxCOB = determineBasalResult.profile.getInt("maxCOB"),
             skip_neutral_temps = determineBasalResult.profile.getBoolean("skip_neutral_temps"),
             remainingCarbsCap = determineBasalResult.profile.getInt("remainingCarbsCap"),
@@ -354,7 +354,7 @@ class ReplayApsResultsTest : AapsInstrumentedTest() {
             resistance_lowers_target = determineBasalResult.profile.getBoolean("resistance_lowers_target"),
             adv_target_adjustments = determineBasalResult.profile.getBoolean("adv_target_adjustments"),
             exercise_mode = determineBasalResult.profile.getBoolean("exercise_mode"),
-            half_basal_exercise_target = determineBasalResult.profile.getInt("half_basal_exercise_target"),
+            half_basal_exercise_target = determineBasalResult.profile.getDouble("half_basal_exercise_target"),
             maxCOB = determineBasalResult.profile.getInt("maxCOB"),
             skip_neutral_temps = determineBasalResult.profile.getBoolean("skip_neutral_temps"),
             remainingCarbsCap = determineBasalResult.profile.getInt("remainingCarbsCap"),
@@ -512,7 +512,7 @@ class ReplayApsResultsTest : AapsInstrumentedTest() {
             resistance_lowers_target = false,
             adv_target_adjustments = false,
             exercise_mode = false,
-            half_basal_exercise_target = 0,
+            half_basal_exercise_target = 0.0,
             maxCOB = 0,
             skip_neutral_temps = determineBasalResult.profile.getBoolean("skip_neutral_temps"),
             remainingCarbsCap = 0,
@@ -678,7 +678,7 @@ class ReplayApsResultsTest : AapsInstrumentedTest() {
             resistance_lowers_target = determineBasalResult.profile.getBoolean("resistance_lowers_target"),
             adv_target_adjustments = determineBasalResult.profile.getBoolean("adv_target_adjustments"),
             exercise_mode = determineBasalResult.profile.getBoolean("exercise_mode"),
-            half_basal_exercise_target = determineBasalResult.profile.getInt("half_basal_exercise_target"),
+            half_basal_exercise_target = determineBasalResult.profile.getDouble("half_basal_exercise_target"),
             maxCOB = determineBasalResult.profile.getInt("maxCOB"),
             skip_neutral_temps = determineBasalResult.profile.getBoolean("skip_neutral_temps"),
             remainingCarbsCap = determineBasalResult.profile.getInt("remainingCarbsCap"),
@@ -743,6 +743,7 @@ class ReplayApsResultsTest : AapsInstrumentedTest() {
             smb_ratio = profile.smb_delivery_ratio, // 0.5,
             loop_wanted_smb = "dummy",
             auto_isf_consoleLog = mutableListOf<String>("end AutoISF"),
+            activity_consoleLog = "Activity Monitor skipped",
             auto_isf_consoleError = mutableListOf<String>("start AutoISF")
         )
         val endKt = System.currentTimeMillis()

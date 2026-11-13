@@ -867,6 +867,8 @@ private fun seriesShortNameId(type: SeriesType): TextRef = when (type) {
     SeriesType.STEPS           -> CoreUiStrings.steps_shortname
     SeriesType.ACTIVITY        -> CoreUiStrings.activity_shortname
     SeriesType.PREDICTIONS     -> CoreUiStrings.predictions_shortname
+    SeriesType.AUTOISF         -> CoreUiStrings.autoisf_shortname
+    SeriesType.IOB_TH          -> CoreUiStrings.iob_threshold_shortname
 }
 
 /** String resource ID for the full name of a series type, for the graph settings where there is room (#5336) */
@@ -883,6 +885,8 @@ private fun seriesNameId(type: SeriesType): TextRef = when (type) {
     SeriesType.STEPS           -> CoreUiStrings.graph_series_steps
     SeriesType.ACTIVITY        -> CoreUiStrings.graph_series_activity
     SeriesType.PREDICTIONS     -> CoreUiStrings.graph_series_predictions
+    SeriesType.AUTOISF         -> CoreUiStrings.graph_series_autoisf
+    SeriesType.IOB_TH          -> CoreUiStrings.graph_series_iob_threshold
 }
 
 // =========================================================================

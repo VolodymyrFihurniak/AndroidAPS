@@ -1,5 +1,6 @@
 package app.aaps.plugins.automation.triggers
 
+import org.mockito.kotlin.mock
 import app.aaps.core.data.pump.defs.PumpDescription
 import app.aaps.core.interfaces.aps.AutosensDataStore
 import app.aaps.core.interfaces.db.PersistenceLayer
@@ -59,7 +60,7 @@ open class TriggerTestBase : TestBaseWithProfile() {
     }
 
     val triggerFactory: TriggerFactory by lazy {
-        TriggerFactory(triggerDeps, { btConnectionSource }, sceneApi, receiverStatusStore)
+        TriggerFactory(triggerDeps, { btConnectionSource }, sceneApi, receiverStatusStore, mock())
     }
 
 }

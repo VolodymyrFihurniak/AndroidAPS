@@ -25,7 +25,11 @@ enum class SeriesType {
     HEART_RATE,
     STEPS,
     ACTIVITY,
-    PREDICTIONS
+    PREDICTIONS,
+
+    // autoISF: the factors of each run (acce, bg, pp, dura, final) and the effective IOB threshold
+    AUTOISF,
+    IOB_TH
 }
 
 /**

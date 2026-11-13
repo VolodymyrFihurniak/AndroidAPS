@@ -1,0 +1,36 @@
+package app.aaps.database.entities
+
+import androidx.room.Embedded
+import androidx.room.Entity
+import androidx.room.Index
+import androidx.room.PrimaryKey
+import app.aaps.database.entities.embedments.InterfaceIDs
+import app.aaps.database.entities.interfaces.DBEntryWithTime
+import app.aaps.database.entities.interfaces.TraceableDBEntry
+
+/** AutoISF key values of one loop run, kept for the AutoISF graphs. */
+@Entity(
+    tableName = TABLE_AUTOISF_VALUES,
+    indices = [Index("timestamp")]
+)
+data class AutoIsfValues(
+    @PrimaryKey(autoGenerate = true)
+    override var id: Long = 0,
+    /** Milliseconds since the epoch. Time of the loop run that calculated the values. */
+    override var timestamp: Long,
+    var acceIsf: Double,
+    var bgIsf: Double,
+    var ppIsf: Double,
+    /** Place holder, not calculated yet. */
+    var driftIsf: Double,
+    var duraIsf: Double,
+    var finalIsf: Double,
+    var iobThEffective: Double,
+    override var utcOffset: Long = defaultUtcOffset(timestamp),
+    override var version: Int = 0,
+    override var dateCreated: Long = -1,
+    override var isValid: Boolean = true,
+    override var referenceId: Long? = null,
+    @Embedded
+    override var interfaceIDs_backing: InterfaceIDs? = null,
+) : TraceableDBEntry, DBEntryWithTime

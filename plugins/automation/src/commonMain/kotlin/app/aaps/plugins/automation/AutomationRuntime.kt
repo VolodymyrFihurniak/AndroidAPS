@@ -50,6 +50,7 @@ import app.aaps.plugins.automation.events.EventLocationChange
 import app.aaps.plugins.automation.triggers.Trigger
 import app.aaps.plugins.automation.triggers.TriggerAutosensValue
 import app.aaps.plugins.automation.triggers.TriggerBg
+import app.aaps.plugins.automation.triggers.TriggerBgAcceWeight
 import app.aaps.plugins.automation.triggers.TriggerBolusAgo
 import app.aaps.plugins.automation.triggers.TriggerCOB
 import app.aaps.plugins.automation.triggers.TriggerCannulaAge
@@ -60,6 +61,7 @@ import app.aaps.plugins.automation.triggers.TriggerFactory
 import app.aaps.plugins.automation.triggers.TriggerHeartRate
 import app.aaps.plugins.automation.triggers.TriggerInsulinAge
 import app.aaps.plugins.automation.triggers.TriggerIob
+import app.aaps.plugins.automation.triggers.TriggerIobTH
 import app.aaps.plugins.automation.triggers.TriggerLocation
 import app.aaps.plugins.automation.triggers.TriggerPodChange
 import app.aaps.plugins.automation.triggers.TriggerProfilePercent
@@ -725,6 +727,7 @@ class AutomationRuntime(
             actionFactory.actionAlarm(),
             actionFactory.actionSettingsExport(),
             actionFactory.actionCarePortalEvent(),
+            actionFactory.actionSetAutomationState(),
             actionFactory.actionProfileSwitchPercent(),
             actionFactory.actionProfileSwitch(),
             actionFactory.actionSendSMS(),
@@ -737,6 +740,13 @@ class AutomationRuntime(
         // Autotune is only offered in engineering builds, as before.
         if (config.isEngineeringMode() && config.isDev())
             actions.add(actionFactory.actionRunAutotune())
+        // autoISF: the build has engineering mode always on (see ConfigImpl), the dev part is not needed
+        if (config.isEngineeringMode()) {
+            actions.add(actionFactory.actionAutoisfEnable())
+            actions.add(actionFactory.actionAutoisfDisable())
+            actions.add(actionFactory.actionSetAcceWeight())
+            actions.add(actionFactory.actionSetIobTH())
+        }
 
         return actions.toList()
     }
@@ -752,6 +762,7 @@ class AutomationRuntime(
             TriggerIob(triggerDeps),
             TriggerCOB(triggerDeps),
             TriggerProfilePercent(triggerDeps),
+            triggerFactory.triggerAutomationState(),
             TriggerTempTarget(triggerDeps),
             TriggerTempTargetValue(triggerDeps),
             triggerFactory.triggerWifiSsid(),
@@ -766,6 +777,11 @@ class AutomationRuntime(
             TriggerReservoirLevel(triggerDeps),
             TriggerStepsCount(triggerDeps)
         )
+        // autoISF
+        if (config.isEngineeringMode()) {
+            triggers.add(TriggerBgAcceWeight(triggerDeps))
+            triggers.add(TriggerIobTH(triggerDeps))
+        }
 
         val pump = activePlugin.activePump
 

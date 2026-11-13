@@ -36,6 +36,11 @@ import app.aaps.plugins.automation.compose.elements.InputStringEditor
 import app.aaps.plugins.automation.compose.elements.InputWeekDayEditor
 import app.aaps.plugins.automation.compose.elements.LabelWithElementRow
 import app.aaps.plugins.automation.elements.InputPercent
+import app.aaps.plugins.automation.elements.InputWeight
+import app.aaps.plugins.automation.elements.InputIobTH
+import app.aaps.plugins.automation.actions.ActionSetAutomationState
+import app.aaps.plugins.automation.actions.ActionSetIobTH
+import app.aaps.plugins.automation.actions.ActionSetAcceWeight
 
 @Composable
 fun ActionEditor(
@@ -76,6 +81,9 @@ fun ActionEditor(
             is ActionRunScene             -> ActionRunSceneEditor(action, sceneOptions, tick, onChange)
             is ActionEnableScene          -> ActionEnableSceneEditor(action, sceneOptions, tick, onChange)
             is ActionDisableScene         -> ActionDisableSceneEditor(action, sceneOptions, tick, onChange)
+            is ActionSetAcceWeight        -> ActionSetAcceWeightEditor(action, tick, onChange)
+            is ActionSetIobTH             -> ActionSetIobTHEditor(action, tick, onChange)
+            is ActionSetAutomationState   -> ActionSetAutomationStateEditor(action, tick, onChange)
             else                          -> Text(action::class.simpleName.orEmpty())
         }
     }
@@ -324,5 +332,64 @@ fun ActionDisableSceneEditor(a: ActionDisableScene, sceneOptions: List<Scene>, t
         selectedId = a.scene.value,
         sceneOptions = sceneOptions,
         onPicked = { a.scene.value = it; onChange() }
+    )
+}
+
+// autoISF
+@Composable
+fun ActionSetAcceWeightEditor(a: ActionSetAcceWeight, tick: Int = 0, onChange: () -> Unit) {
+    @Suppress("UNUSED_EXPRESSION") tick
+    NumberInputRow(
+        labelRef = AutomationStrings.autoisf_acce_weight,
+        value = a.newWeight.value,
+        onValueChange = { a.newWeight.value = it; onChange() },
+        valueRange = InputWeight.MIN..InputWeight.MAX,
+        step = 0.05,
+        decimalPlaces = 2
+    )
+}
+
+// autoISF
+@Composable
+fun ActionSetIobTHEditor(a: ActionSetIobTH, tick: Int = 0, onChange: () -> Unit) {
+    @Suppress("UNUSED_EXPRESSION") tick
+    NumberInputRow(
+        labelRef = AutomationStrings.autoisf_iobTH_percent,
+        value = a.newIobTH.value.toDouble(),
+        onValueChange = { a.newIobTH.value = it.toInt(); onChange() },
+        valueRange = InputIobTH.MIN.toDouble()..InputIobTH.MAX.toDouble(),
+        step = 5.0,
+        unitLabel = CoreUiStrings.units_percent
+    )
+}
+
+// autoISF: the states and their values come from the automation state service
+@Composable
+fun ActionSetAutomationStateEditor(a: ActionSetAutomationState, tick: Int = 0, onChange: () -> Unit) {
+    @Suppress("UNUSED_EXPRESSION") tick
+    val stateNames = a.automationStateService.getAllStates().map { it.first }
+    if (stateNames.isEmpty()) {
+        Text(
+            text = stringResource(AutomationStrings.no_automation_states),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        return
+    }
+    AutomationDropdown(
+        value = a.stateName.value,
+        options = stateNames,
+        onValueChange = {
+            if (it != a.stateName.value) a.stateValue.value = ""
+            a.stateName.value = it
+            onChange()
+        },
+        label = stringResource(AutomationStrings.state_name_label)
+    )
+    AutomationDropdown(
+        value = a.stateValue.value,
+        options = a.automationStateService.getStateValues(a.stateName.value),
+        onValueChange = { a.stateValue.value = it; onChange() },
+        label = stringResource(AutomationStrings.state_value_label)
     )
 }

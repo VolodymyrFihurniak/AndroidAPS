@@ -309,7 +309,7 @@ enum class DoubleKey(
     ),
     ApsAutoIsfSmbDeliveryRatio(
         key = "openapsama_smb_delivery_ratio",
-        defaultValue = 0.5,
+        defaultValue = 0.2, // autoISF: lower default, it fits 1 minute CGM
         min = 0.1,
         max = 1.0,
         title = KeysStrings.pref_title_smb_delivery_ratio,
@@ -352,6 +352,63 @@ enum class DoubleKey(
         sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
     ),
 
+
+    // autoISF: Libre calibration and smoothing of the raw values from xDrip+ / Juggluco
+    FslCalOffset(
+        key = "fslCal_Offset",
+        defaultValue = 0.0,
+        min = -50.0,
+        max = 50.0,
+        title = KeysStrings.fslCal_Offset_title,
+        summary = KeysStrings.fslCal_Offset_summary,
+        defaultedBySM = true,
+        unitType = UnitType.DOUBLE
+    ),
+    FslCalSlope(
+        key = "fslCal_Slope",
+        defaultValue = 1.0,
+        min = 0.5,
+        max = 1.5,
+        title = KeysStrings.fslCal_Slope_title,
+        summary = KeysStrings.fslCal_Slope_summary,
+        defaultedBySM = true,
+        unitType = UnitType.DOUBLE_3
+    ),
+    FslSmoothAlpha(
+        key = "fsl_exp1_factor",
+        defaultValue = 1.0,
+        min = 0.1,
+        max = 1.0,
+        title = KeysStrings.fsl_exp1_factor_title,
+        summary = KeysStrings.fsl_exp1_factor_summary,
+        defaultedBySM = true,
+        unitType = UnitType.DOUBLE_2
+    ),
+    // autoISF: activity monitor
+    ActivityScaleFactor(
+        key = "activity_scale_factor",
+        defaultValue = 1.0,
+        min = 0.0,
+        max = 1.5,
+        title = KeysStrings.activity_scale_factor_title,
+        summary = KeysStrings.activity_scale_factor_summary,
+        defaultedBySM = true,
+        dependency = BooleanKey.ActivityMonitorDetection,
+        unitType = UnitType.DOUBLE_2,
+        sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
+    ),
+    InactivityScaleFactor(
+        key = "inactivity_scale_factor",
+        defaultValue = 1.0,
+        min = 0.0,
+        max = 1.5,
+        title = KeysStrings.inactivity_scale_factor_title,
+        summary = KeysStrings.inactivity_scale_factor_summary,
+        defaultedBySM = true,
+        dependency = BooleanKey.ActivityMonitorDetection,
+        unitType = UnitType.DOUBLE_2,
+        sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
+    ),
     ;
 
 }

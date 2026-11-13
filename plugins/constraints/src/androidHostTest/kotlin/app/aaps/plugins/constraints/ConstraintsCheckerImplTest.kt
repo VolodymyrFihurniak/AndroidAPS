@@ -142,7 +142,7 @@ class ConstraintsCheckerImplTest : TestBaseWithProfile() {
                 aapsLogger, rxBus, constraintChecker, text, profileFunction, profileUtil, config, activePlugin, iobCobCalculator,
                 hardLimits, preferences, dateUtil, processedTbrEbData, persistenceLayer, smbGlucoseStatusProvider, tddCalculator, bgQualityCheck,
                 notificationManager, determineBasalSMB, profiler, GlucoseStatusCalculatorSMB(aapsLogger, iobCobCalculator, dateUtil, decimalFormatter, deltaCalculator), { apsResultProvider() }, ch,
-                fabricPrivacy
+                fabricPrivacy, mock()
             )
         openAPSAMAPlugin =
             OpenAPSAMAPlugin(

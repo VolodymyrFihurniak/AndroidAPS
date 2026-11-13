@@ -13,6 +13,7 @@ import app.aaps.core.interfaces.aps.AutosensResult
 import app.aaps.core.interfaces.aps.CurrentTemp
 import app.aaps.core.interfaces.aps.GlucoseStatus
 import app.aaps.core.interfaces.aps.OapsProfile
+import app.aaps.core.interfaces.aps.PhoneActivitySensor
 import app.aaps.core.interfaces.bgQualityCheck.BgQualityCheck
 import app.aaps.core.interfaces.concurrent.AapsLock
 import app.aaps.core.interfaces.concurrent.withLock
@@ -51,6 +52,7 @@ import app.aaps.core.keys.DoubleKey
 import app.aaps.core.keys.IntKey
 import app.aaps.core.keys.UnitDoubleKey
 import app.aaps.core.keys.interfaces.Preferences
+import app.aaps.core.interfaces.plugin.PermissionGroup
 import app.aaps.core.keys.interfaces.TextRef.Companion.withArgs
 import app.aaps.core.objects.constraints.ConstraintObject
 import app.aaps.core.objects.extensions.convertedToAbsolute
@@ -72,8 +74,11 @@ import dev.zacsweers.metro.SingleIn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlin.math.floor
 import kotlin.math.ln
+import kotlin.time.Instant
 
 @SingleIn(AppScope::class)
 @Inject
@@ -101,7 +106,8 @@ open class OpenAPSSMBPlugin(
     private val glucoseStatusCalculatorSMB: GlucoseStatusCalculatorSMB,
     private val apsResultProvider: () -> APSResult,
     private val ch: ConcentrationHelper,
-    private val fabricPrivacy: FabricPrivacy
+    private val fabricPrivacy: FabricPrivacy,
+    private val phoneActivitySensor: PhoneActivitySensor
 ) : PluginBaseWithPreferences(
     PluginDescription()
         .mainType(PluginType.APS)
@@ -129,6 +135,15 @@ open class OpenAPSSMBPlugin(
     override var lastAPSResult: APSResult? = null
     override fun usingDynamicIsf(): Boolean = preferences.get(BooleanKey.ApsUseDynamicSensitivity)
     override fun offersDynamicSensitivity(): Boolean = true
+
+    // autoISF build: the activity monitor uses the steps of the phone
+    override suspend fun onStart() {
+        super.onStart()
+        phoneActivitySensor.start()
+    }
+
+    override fun requiredPermissions(): List<PermissionGroup> =
+        if (config.APS && preferences.get(BooleanKey.ActivityMonitorDetection)) phoneActivitySensor.permissionGroups() else emptyList()
 
     override fun getIsfMgdl(profile: Profile, caller: String): Double? {
         val start = dateUtil.now()
@@ -366,8 +381,13 @@ open class OpenAPSSMBPlugin(
             } else autosensResult.sensResult = "autosens disabled"
         }
 
-        val iobArray = iobCobCalculator.calculateIobArrayForSMB(autosensResult, SMBDefaults.exercise_mode, SMBDefaults.half_basal_exercise_target, isTempTarget)
+        // autoISF build: exercise mode (high temp target raises sensitivity) is available for SMB too
+        val exerciseMode = preferences.get(BooleanKey.ApsAutoIsfHighTtRaisesSens)
+        val mgdlHalfBasalExerciseTarget = profileUtil.convertToMgdlDetect(preferences.get(UnitDoubleKey.ApsAutoIsfHalfBasalExerciseTarget))
+        val iobArray = iobCobCalculator.calculateIobArrayForSMB(autosensResult, exerciseMode, mgdlHalfBasalExerciseTarget, isTempTarget)
         val mealData = iobCobCalculator.getMealDataWithWaitingForCalculationFinish()
+        val nowMillis = dateUtil.now()
+        val minutesSinceSensorStart = if (phoneActivitySensor.startTime > 0) (nowMillis - phoneActivitySensor.startTime) / 60000 else 0L
 
         val oapsProfile = OapsProfile(
             dia = 0.0, // not used
@@ -384,13 +404,23 @@ open class OpenAPSSMBPlugin(
             max_daily_safety_multiplier = preferences.get(DoubleKey.ApsMaxDailyMultiplier),
             current_basal_safety_multiplier = preferences.get(DoubleKey.ApsMaxCurrentBasalMultiplier),
             lgsThreshold = profileUtil.convertToMgdlDetect(preferences.get(UnitDoubleKey.ApsLgsThreshold)).toInt(),
-            high_temptarget_raises_sensitivity = false,
+            high_temptarget_raises_sensitivity = exerciseMode,
             low_temptarget_lowers_sensitivity = false,
             sensitivity_raises_target = preferences.get(BooleanKey.ApsSensitivityRaisesTarget),
             resistance_lowers_target = preferences.get(BooleanKey.ApsResistanceLowersTarget),
             adv_target_adjustments = SMBDefaults.adv_target_adjustments,
-            exercise_mode = SMBDefaults.exercise_mode,
-            half_basal_exercise_target = SMBDefaults.half_basal_exercise_target,
+            exercise_mode = exerciseMode,
+            half_basal_exercise_target = mgdlHalfBasalExerciseTarget,
+            // activity monitor
+            activity_detection = preferences.get(BooleanKey.ActivityMonitorDetection),
+            recent_steps_5_minutes = phoneActivitySensor.recentSteps5Min(),
+            recent_steps_10_minutes = phoneActivitySensor.recentSteps10Min(),
+            recent_steps_15_minutes = phoneActivitySensor.recentSteps15Min(),
+            recent_steps_30_minutes = phoneActivitySensor.recentSteps30Min(),
+            recent_steps_60_minutes = phoneActivitySensor.recentSteps60Min(),
+            phone_moved = phoneActivitySensor.phoneMoved(),
+            time_since_start = minutesSinceSensorStart,
+            now = Instant.fromEpochMilliseconds(nowMillis).toLocalDateTime(TimeZone.currentSystemDefault()).hour,
             maxCOB = SMBDefaults.maxCOB,
             skip_neutral_temps = pump.setNeutralTempAtFullHour(),
             remainingCarbsCap = SMBDefaults.remainingCarbsCap,
@@ -561,6 +591,13 @@ open class OpenAPSSMBPlugin(
             BooleanKey.ApsDynIsfAdjustSensitivity,
             BooleanKey.ApsSensitivityRaisesTarget,
             BooleanKey.ApsResistanceLowersTarget,
+            BooleanKey.ApsAutoIsfHighTtRaisesSens,
+            UnitDoubleKey.ApsAutoIsfHalfBasalExerciseTarget,
+            PreferenceSubScreenDef(
+                key = "activity_modifies_sensitivity",
+                title = ApsStrings.activity_monitor_title,
+                items = listOf(BooleanKey.ActivityMonitorDetection)
+            ),
             BooleanKey.ApsUseSmb,
             BooleanKey.ApsUseSmbWithHighTt,
             BooleanKey.ApsUseSmbAlways,

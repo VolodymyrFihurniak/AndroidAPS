@@ -83,7 +83,7 @@ class SafetyPluginTest : TestBaseWithProfile() {
                 aapsLogger, rxBus, constraintChecker, text, profileFunction, profileUtil, config, activePlugin, iobCobCalculator,
                 hardLimits, preferences, dateUtil, processedTbrEbData, persistenceLayer, glucoseStatusProvider, tddCalculator, bgQualityCheck,
                 notificationManager, determineBasalSMB, profiler, GlucoseStatusCalculatorSMB(aapsLogger, iobCobCalculator, dateUtil, decimalFormatter, deltaCalculator), { apsResultProvider() }, ch,
-                fabricPrivacy
+                fabricPrivacy, mock()
             )
         openAPSAMAPlugin =
             OpenAPSAMAPlugin(

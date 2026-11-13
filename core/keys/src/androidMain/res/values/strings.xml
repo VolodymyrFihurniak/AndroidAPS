@@ -428,4 +428,34 @@
 
     <!--    Appearance preferences-->
 
+    <!-- autoISF: activity monitor -->
+    <string name="activity_monitor_title">Activity modifies sensitivity</string>
+    <string name="activity_monitor_summary">Activity is detected from the steps that the phone counts. It does not replace a temp target for sport, it is a small extra help.</string>
+    <string name="ignore_inactivity_overnight_title">Disable inactivity detection during sleep</string>
+    <string name="ignore_inactivity_overnight_summary">No inactivity adaptation during the sleeping hours. Default is on.\nIf it is off, leave the phone beside the bed during short breaks, so the monitor stays off.</string>
+    <string name="steps_graph_from_smartphone_title">Steps graph from the phone sensor</string>
+    <string name="steps_graph_from_smartphone_summary">Default: on. When it is off, the steps of the watch are shown.</string>
+    <string name="activity_scale_factor_title">Scale factor for activity</string>
+    <string name="activity_scale_factor_summary">Default: 1.0\nWhen activity is found, its normal effect of 15%% or 30%% is made bigger or smaller by this factor.\n0.0 switches the effect of activity off.</string>
+    <string name="inactivity_scale_factor_title">Scale factor for inactivity</string>
+    <string name="inactivity_scale_factor_summary">Default: 1.0\nWhen inactivity is found, its normal effect of 10%% or 20%% is made bigger or smaller by this factor.\n0.0 switches the effect of inactivity off.</string>
+    <string name="inactivity_idle_start_title">Start hour of sleep</string>
+    <string name="inactivity_idle_start_summary">Hour (0 - 23) when inactivity detection is switched off for the night. Default: 22</string>
+    <string name="inactivity_idle_end_title">End hour of sleep</string>
+    <string name="inactivity_idle_end_summary">Hour (0 - 23) when inactivity detection is switched on again. Default: 6</string>
+
+    <!-- autoISF: Libre calibration and smoothing -->
+    <string name="calibration_stops_smb_title">Stop SMB and AutoISF weights for 20 minutes after a new calibration</string>
+    <string name="calibration_stops_smb_summary">Switch this on once before you change the calibration settings</string>
+    <string name="calibration_enable_smb_title">Allow SMB and AutoISF weights again now</string>
+    <string name="calibration_enable_smb_summary">Switch this on when the stop is not needed any more, because the change of the calibration was smooth</string>
+    <string name="fslCal_Offset_title">Offset of the Libre calibration</string>
+    <string name="fslCal_Offset_summary">OFFSET in the formula, as in xDrip+:\nLibre calibrated = OFFSET + slope × Libre raw</string>
+    <string name="fslCal_Slope_title">Slope of the Libre calibration</string>
+    <string name="fslCal_Slope_summary">SLOPE in the formula, as in xDrip+:\nLibre calibrated = offset + SLOPE × Libre raw</string>
+    <string name="fsl_exp1_factor_title">Libre smoothing factor</string>
+    <string name="fsl_exp1_factor_summary">Exponential smoothing of the 1 minute Libre values, when xDrip+ does not smooth them.\n0.1: strong smoothing\n1.0: no smoothing</string>
+    <string name="MaintenanceCleanupDays_title">Days to keep at database cleanup</string>
+    <string name="MaintenanceCleanupDays_summary">With a 1 minute CGM (Libre) a shorter time, like 15 days, makes the app faster.\nAAPS default: 93 days</string>
+
 </resources>

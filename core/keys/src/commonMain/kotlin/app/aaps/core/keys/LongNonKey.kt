@@ -44,5 +44,9 @@ enum class LongNonKey(
     NsClientControlColdSignedAt("nsclient_control_cold_signed_at", 0L, exportable = false),
     NsClientControlHotSignedAt("nsclient_control_hot_signed_at", 0L, exportable = false),
     LastVacuumRun("last_vacuum_run", 0L),
+    // autoISF: time of the last raw Libre value and start of the last Libre calibration.
+    // State of this phone, not a setting → not exportable.
+    FslSmoothLastTimeRaw("fsl_last_time_raw", -1L, exportable = false),
+    FslCalibrationStart("fsl_cal_start_time", -1L, exportable = false),
 }
 

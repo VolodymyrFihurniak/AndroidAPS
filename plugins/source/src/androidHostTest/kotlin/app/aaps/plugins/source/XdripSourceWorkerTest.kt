@@ -37,7 +37,7 @@ class XdripSourceWorkerTest : TestBaseWithProfile() {
     @BeforeEach
     fun setupMock() {
         whenever(workerParameters.inputData).thenReturn(workDataOf())
-        worker = XdripSourcePlugin.XdripSourceWorker(context, workerParameters, aapsLogger, fabricPrivacy, xdripSourcePlugin, persistenceLayer, preferences, dateUtil, dataInbox)
+        worker = XdripSourcePlugin.XdripSourceWorker(context, workerParameters, aapsLogger, fabricPrivacy, xdripSourcePlugin, persistenceLayer, preferences, dateUtil, dataInbox, profileUtil)
     }
 
     @Test
