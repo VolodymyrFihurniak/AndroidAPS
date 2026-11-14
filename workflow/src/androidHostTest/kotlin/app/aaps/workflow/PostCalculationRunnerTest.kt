@@ -40,7 +40,7 @@ class PostCalculationRunnerTest : TestBaseWithProfile() {
     private fun runner() =
         PostCalculationRunner(
             aapsLogger, workflowChainData, iobCobCalculator, loop,
-            widgetUpdater, config, processedDeviceStatusData, profileUtil, preferences, sceneExpiryCheck
+            widgetUpdater, config, processedDeviceStatusData, profileUtil, preferences, sceneExpiryCheck, activePlugin
         )
 
     // Nothing in these tests stops a run part way.

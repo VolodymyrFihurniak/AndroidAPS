@@ -205,11 +205,11 @@ private val PREDICTION_SPOKEN_ORDER = listOf(
 )
 
 /** Series types available as BG graph overlays */
-private val BG_OVERLAY_SERIES = listOf(SeriesType.ACTIVITY, SeriesType.PREDICTIONS)
+private val BG_OVERLAY_SERIES = listOf(SeriesType.ACTIVITY, SeriesType.PREDICTIONS, SeriesType.BG_PARABOLA)
 
 /** Series types available for user-configurable secondary graphs (IOB + UI-only overlays excluded) */
 private val CONFIGURABLE_SERIES = SeriesType.entries.filter {
-    it != SeriesType.IOB && it != SeriesType.PREDICTIONS
+    it != SeriesType.IOB && it != SeriesType.PREDICTIONS && it != SeriesType.BG_PARABOLA
 }
 
 @OptIn(FlowPreview::class)
@@ -869,6 +869,7 @@ private fun seriesShortNameId(type: SeriesType): TextRef = when (type) {
     SeriesType.PREDICTIONS     -> CoreUiStrings.predictions_shortname
     SeriesType.AUTOISF         -> CoreUiStrings.autoisf_shortname
     SeriesType.IOB_TH          -> CoreUiStrings.iob_threshold_shortname
+    SeriesType.BG_PARABOLA     -> CoreUiStrings.bg_parabola_shortname
 }
 
 /** String resource ID for the full name of a series type, for the graph settings where there is room (#5336) */
@@ -887,6 +888,7 @@ private fun seriesNameId(type: SeriesType): TextRef = when (type) {
     SeriesType.PREDICTIONS     -> CoreUiStrings.graph_series_predictions
     SeriesType.AUTOISF         -> CoreUiStrings.graph_series_autoisf
     SeriesType.IOB_TH          -> CoreUiStrings.graph_series_iob_threshold
+    SeriesType.BG_PARABOLA     -> CoreUiStrings.graph_series_bg_parabola
 }
 
 // =========================================================================

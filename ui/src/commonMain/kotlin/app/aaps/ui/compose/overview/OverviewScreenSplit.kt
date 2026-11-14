@@ -87,6 +87,7 @@ fun OverviewScreenSplit(
     val sensitivityUiState by chipsViewModel.sensitivityUiState.collectAsStateWithLifecycle()
     val iobUiState by chipsViewModel.iobUiState.collectAsStateWithLifecycle()
     val cobUiState by chipsViewModel.cobUiState.collectAsStateWithLifecycle()
+    val exerciseModeUiState by chipsViewModel.exerciseModeUiState.collectAsStateWithLifecycle()
     val statusState by statusViewModel.uiState.collectAsStateWithLifecycle()
 
     var statusExpanded by rememberSaveable { mutableStateOf(true) }
@@ -170,7 +171,9 @@ fun OverviewScreenSplit(
                             onNavigate = onNavigate,
                             onTbrChipClick = onTbrChipClick,
                             onIobChipClick = onIobChipClick,
-                            commandsAllowed = commandsAllowed
+                            commandsAllowed = commandsAllowed,
+                            exerciseModeUiState = exerciseModeUiState,
+                            onExerciseModeClick = chipsViewModel::toggleExerciseMode
                         )
                     }
                 }

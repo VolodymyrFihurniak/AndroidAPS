@@ -4,16 +4,20 @@ import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.aaps.core.interfaces.InterfacesStrings
+import app.aaps.core.interfaces.aps.APSResult
 import app.aaps.core.interfaces.aps.Loop
 import app.aaps.core.interfaces.configuration.Config
 import app.aaps.core.interfaces.db.PersistenceLayer
 import app.aaps.core.interfaces.iob.IobCobCalculator
 import app.aaps.core.interfaces.overview.SensitivityOverview
 import app.aaps.core.interfaces.overview.graph.OverviewDataCache
+import app.aaps.core.interfaces.plugin.ActivePlugin
 import app.aaps.core.interfaces.resources.TextResolver
 import app.aaps.core.interfaces.rx.bus.RxBus
 import app.aaps.core.interfaces.rx.events.EventShowDialog
 import app.aaps.core.interfaces.utils.DecimalFormatter
+import app.aaps.core.keys.BooleanKey
+import app.aaps.core.keys.interfaces.Preferences
 import app.aaps.core.objects.extensions.round
 import app.aaps.core.ui.CoreUiStrings
 import app.aaps.core.ui.extensions.displayText
@@ -24,6 +28,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
@@ -40,7 +45,9 @@ class ChipsViewModel(
     private val sensitivityOverview: SensitivityOverview,
     private val rh: TextResolver,
     private val decimalFormatter: DecimalFormatter,
-    private val rxBus: RxBus
+    private val rxBus: RxBus,
+    private val preferences: Preferences,
+    private val activePlugin: ActivePlugin
 ) : ViewModel() {
 
     @AssistedFactory
@@ -107,6 +114,29 @@ class ChipsViewModel(
         initialValue = SensitivityUiState()
     )
 
+    // autoISF: the exercise mode button. The preference is read when the flow is collected, not when
+    // the view model is built. The ticker re-checks the active APS now and then: a plugin switch is
+    // rare and does not change the preference.
+    val exerciseModeUiState: StateFlow<ExerciseModeUiState> = combine(
+        iobCobTicker,
+        flow { emitAll(preferences.observe(BooleanKey.ApsAutoIsfHighTtRaisesSens)) }
+    ) { _, enabled ->
+        ExerciseModeUiState(visible = activeApsUsesExerciseMode(), enabled = enabled)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = ExerciseModeUiState()
+    )
+
+    /** Only the master runs an APS. Of the algorithms, only AutoISF and SMB read the exercise mode. */
+    private fun activeApsUsesExerciseMode(): Boolean =
+        config.APS && activePlugin.activeAPS?.algorithm?.let { it in EXERCISE_MODE_ALGORITHMS } == true
+
+    /** autoISF: switches exercise mode, as the button of aisf did */
+    fun toggleExerciseMode() {
+        preferences.put(BooleanKey.ApsAutoIsfHighTtRaisesSens, !preferences.get(BooleanKey.ApsAutoIsfHighTtRaisesSens))
+    }
+
     private suspend fun buildSensitivityUiState(): SensitivityUiState {
         // Worked out in one place for the chip, its dialog and the watch - see SensitivityOverview
         val data = sensitivityOverview.build()
@@ -141,5 +171,10 @@ class ChipsViewModel(
                 )
             )
         }
+    }
+
+    private companion object {
+
+        val EXERCISE_MODE_ALGORITHMS = setOf(APSResult.Algorithm.AUTO_ISF, APSResult.Algorithm.SMB)
     }
 }

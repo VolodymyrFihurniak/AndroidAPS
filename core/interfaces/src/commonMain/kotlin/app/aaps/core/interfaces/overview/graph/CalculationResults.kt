@@ -201,6 +201,23 @@ data class AutoIsfGraphData(
 }
 
 /**
+ * autoISF: the parabola that AutoISF fitted to the last BG values, in the units of the user.
+ *
+ * [fitted] covers the BG values the fit was made from (up to now), [extrapolation] goes on from now
+ * into the next 20 minutes. Both are empty when AutoISF did not run or found no fit.
+ */
+data class BgParabolaData(
+    val fitted: List<GraphDataPoint>,
+    val extrapolation: List<GraphDataPoint>
+) {
+
+    companion object {
+
+        val EMPTY = BgParabolaData(emptyList(), emptyList())
+    }
+}
+
+/**
  * Variable sensitivity graph data: sensitivity line from APS results
  */
 data class VarSensGraphData(

@@ -1,6 +1,7 @@
 package app.aaps.ui.compose.overview
 
 import app.aaps.core.interfaces.overview.graph.AutoIsfGraphData
+import app.aaps.core.interfaces.overview.graph.BgParabolaData
 import app.aaps.core.data.configuration.Constants
 import app.aaps.core.data.iob.InMemoryGlucoseValue
 import app.aaps.core.data.model.BS
@@ -274,6 +275,8 @@ class OverviewDataCacheImpl(
 
     private val _autoIsfGraphFlow = MutableStateFlow(AutoIsfGraphData.EMPTY)
     override val autoIsfGraphFlow: StateFlow<AutoIsfGraphData> = _autoIsfGraphFlow.asStateFlow()
+    private val _bgParabolaFlow = MutableStateFlow(BgParabolaData.EMPTY)
+    override val bgParabolaFlow: StateFlow<BgParabolaData> = _bgParabolaFlow.asStateFlow()
     private val _heartRateGraphFlow = MutableStateFlow(HeartRateGraphData(emptyList()))
     override val heartRateGraphFlow: StateFlow<HeartRateGraphData> = _heartRateGraphFlow.asStateFlow()
     private val _stepsGraphFlow = MutableStateFlow(StepsGraphData(emptyList()))
@@ -846,6 +849,10 @@ class OverviewDataCacheImpl(
         _autoIsfGraphFlow.value = data
     }
 
+    override fun updateBgParabola(data: BgParabolaData) {
+        _bgParabolaFlow.value = data
+    }
+
     override fun updateVarSensGraph(data: VarSensGraphData) {
         _varSensGraphFlow.value = data
     }
@@ -1286,6 +1293,7 @@ class OverviewDataCacheImpl(
         _devSlopeGraphFlow.value = DevSlopeGraphData(emptyList(), emptyList())
         _varSensGraphFlow.value = VarSensGraphData(emptyList())
         _autoIsfGraphFlow.value = AutoIsfGraphData.EMPTY
+        _bgParabolaFlow.value = BgParabolaData.EMPTY
         _heartRateGraphFlow.value = HeartRateGraphData(emptyList())
         _stepsGraphFlow.value = StepsGraphData(emptyList())
         _treatmentGraphFlow.value = TreatmentGraphData(emptyList(), emptyList(), emptyList(), emptyList(), emptyList())

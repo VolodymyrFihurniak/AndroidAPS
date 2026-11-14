@@ -19,6 +19,8 @@ import app.aaps.core.ui.compose.navigation.NavigationRequest
 import app.aaps.core.ui.compose.stringResource
 import app.aaps.ui.compose.main.TempTargetChipState
 import app.aaps.ui.compose.overview.chips.CobUiState
+import app.aaps.ui.compose.overview.chips.ExerciseModeChip
+import app.aaps.ui.compose.overview.chips.ExerciseModeUiState
 import app.aaps.ui.compose.overview.chips.IobCobChipsRow
 import app.aaps.ui.compose.overview.chips.IobUiState
 import app.aaps.ui.compose.overview.chips.ProfileChip
@@ -54,6 +56,9 @@ fun OverviewChipsColumn(
     // The command chips (running mode / profile / temp target) open mutating screens — their click is disabled on an
     // unpaired client (same MASTER_OR_PAIRED_CLIENT gate as nav/Manage), while the chip stays visible as status.
     commandsAllowed: Boolean = true,
+    // autoISF: the exercise mode button, next to the temp basal chip
+    exerciseModeUiState: ExerciseModeUiState = ExerciseModeUiState(),
+    onExerciseModeClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -79,7 +84,9 @@ fun OverviewChipsColumn(
             tbrState = tbrState,
             onNavigate = onNavigate,
             onTbrChipClick = onTbrChipClick,
-            commandsAllowed = commandsAllowed
+            commandsAllowed = commandsAllowed,
+            exerciseModeUiState = exerciseModeUiState,
+            onExerciseModeClick = onExerciseModeClick
         )
         IobCobChipsRow(
             iobUiState = iobUiState,
@@ -113,7 +120,9 @@ private fun NarrowChips(
     tbrState: TbrState,
     onNavigate: (NavigationRequest) -> Unit,
     onTbrChipClick: () -> Unit,
-    commandsAllowed: Boolean
+    commandsAllowed: Boolean,
+    exerciseModeUiState: ExerciseModeUiState,
+    onExerciseModeClick: () -> Unit
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically
@@ -162,6 +171,13 @@ private fun NarrowChips(
             state = tbrState,
             onClick = onTbrChipClick
         )
+        if (exerciseModeUiState.visible) {
+            ExerciseModeChip(
+                enabled = exerciseModeUiState.enabled,
+                onClick = onExerciseModeClick,
+                clickable = commandsAllowed
+            )
+        }
     }
 }
 

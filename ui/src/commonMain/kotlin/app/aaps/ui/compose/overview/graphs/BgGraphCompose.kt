@@ -28,8 +28,10 @@ import app.aaps.core.graph.vico.Square
 import app.aaps.core.interfaces.overview.graph.ActivityGraphData
 import app.aaps.core.interfaces.overview.graph.BasalGraphData
 import app.aaps.core.interfaces.overview.graph.BgDataPoint
+import app.aaps.core.interfaces.overview.graph.BgParabolaData
 import app.aaps.core.interfaces.overview.graph.BgType
 import app.aaps.core.interfaces.overview.graph.EpsGraphPoint
+import app.aaps.core.interfaces.overview.graph.GraphDataPoint
 import app.aaps.core.interfaces.overview.graph.SeriesType
 import app.aaps.core.interfaces.overview.graph.TargetLineData
 import app.aaps.core.interfaces.overview.graph.TreatmentGraphData
@@ -139,7 +141,8 @@ private class MutableYRangeProvider(
  *
  * Layer 0 (start axis): BG readings — regular (outlined circles) + bucketed (filled, range-colored)
  * Layer 1 (end axis, hidden): Basal — profile (dashed step) + actual delivered (solid step + area fill)
- * Layer 5 (start axis): treatment markers — a manual bolus above the reading pointing down at it,
+ * Layer 5 (start axis): autoISF BG parabola — the fitted part solid, the extrapolation dashed
+ * Layer 6 (start axis): treatment markers — a manual bolus above the reading pointing down at it,
  * carbs below it pointing up, and a measured value (calibration, BG check) sits on its own value. See
  * [treatmentMarkers] for the placement rules.
  *
@@ -185,6 +188,15 @@ fun BgGraphCompose(
     val epsPoints by viewModel.epsGraphFlow.collectAsStateWithLifecycle()
     val showActivity = SeriesType.ACTIVITY in bgOverlays
     val activityData by viewModel.activityGraphFlow.collectAsStateWithLifecycle()
+    // autoISF: the BG parabola. Its extrapolation into the future is a prediction, so as in aisf it
+    // is shown only while the predictions are shown too.
+    val showParabola = SeriesType.BG_PARABOLA in bgOverlays
+    val rawParabola by viewModel.bgParabolaFlow.collectAsStateWithLifecycle()
+    val bgParabola = when {
+        !showParabola   -> BgParabolaData.EMPTY
+        showPredictions -> rawParabola
+        else            -> rawParabola.copy(extrapolation = emptyList())
+    }
     val chartConfig by viewModel.chartConfigFlow.collectAsStateWithLifecycle()
 
     // Use derived time range or fall back to default (last GRAPH_TIME_RANGE_HOURS hours)
@@ -205,6 +217,7 @@ fun BgGraphCompose(
     val basalColor = AapsTheme.elementColors.tempBasal
     val targetLineColor = AapsTheme.elementColors.tempTarget
     val activityColor = AapsTheme.elementColors.activity
+    val parabolaColor = AapsTheme.generalColors.bgParabola
     val insulinColor = AapsTheme.elementColors.insulin
     val carbsColor = AapsTheme.elementColors.carbs
     val bgCheckColor = AapsTheme.elementColors.bgCheck
@@ -240,7 +253,7 @@ fun BgGraphCompose(
     // it as a repeat, and the lines stayed like that. Same as in SecondaryGraphCompose.
     val modelInput = BgModelInput(
         bgReadings, bucketedData, predictions, basalData, targetData, epsPoints, activityData, showActivity, chartConfig,
-        minTimestamp, maxX, visibleTimeRange, treatmentData, predictionHeadroom
+        minTimestamp, maxX, visibleTimeRange, treatmentData, predictionHeadroom, bgParabola
     )
     val latestModelInput by rememberUpdatedState(modelInput)
     LaunchedEffect(modelProducer) {
@@ -415,7 +428,31 @@ fun BgGraphCompose(
     }
 
     // =========================================================================
-    // Treatment marker lines (layer 5) — order must match block 6 in submitBgModel
+    // autoISF: BG parabola lines (layer 5) — solid fitted part + dashed extrapolation
+    // =========================================================================
+
+    val parabolaLines = remember(parabolaColor) {
+        listOf(
+            LineCartesianLayer.Line(
+                fill = LineCartesianLayer.LineFill.single(Fill(parabolaColor)),
+                stroke = LineCartesianLayer.LineStroke.Continuous(thickness = 2.dp),
+                areaFill = null
+            ),
+            LineCartesianLayer.Line(
+                fill = LineCartesianLayer.LineFill.single(Fill(parabolaColor)),
+                stroke = LineCartesianLayer.LineStroke.Dashed(
+                    thickness = 2.dp,
+                    cap = StrokeCap.Round,
+                    dashLength = 4.dp,
+                    gapLength = 4.dp
+                ),
+                areaFill = null
+            )
+        )
+    }
+
+    // =========================================================================
+    // Treatment marker lines (layer 6) — order must match block 7 in submitBgModel
     // =========================================================================
 
     val bgCheckPainter = rememberVectorPainter(IcBgCheck)
@@ -518,7 +555,13 @@ fun BgGraphCompose(
                 rangeProvider = startAxisRangeProvider,
                 verticalAxisPosition = Axis.Position.Vertical.Start
             ),
-            // Layer 5: Treatment markers (start axis — drawn last, see block 6)
+            // Layer 5: autoISF BG parabola (start axis — in BG units, see block 6)
+            rememberLineCartesianLayer(
+                lineProvider = LineCartesianLayer.LineProvider.series(parabolaLines),
+                rangeProvider = startAxisRangeProvider,
+                verticalAxisPosition = Axis.Position.Vertical.Start
+            ),
+            // Layer 6: Treatment markers (start axis — drawn last, see block 7)
             rememberLineCartesianLayer(
                 lineProvider = LineCartesianLayer.LineProvider.series(treatmentLines),
                 rangeProvider = startAxisRangeProvider,
@@ -570,7 +613,9 @@ private data class BgModelInput(
     val visibleTimeRange: Pair<Long, Long>?,
     val treatmentData: TreatmentGraphData,
     /** How far a prediction may widen the top of the axis above the real data, in the units of the graph */
-    val predictionHeadroom: Double
+    val predictionHeadroom: Double,
+    /** autoISF: the BG parabola, empty when it is not shown */
+    val bgParabola: BgParabolaData
 )
 
 /**
@@ -792,7 +837,24 @@ private suspend fun submitBgModel(
             }
         }
 
-        // Block 6 → Treatment markers (layer 5, start axis — drawn at the glucose value of the
+        // Block 6 → autoISF BG parabola (layer 5, start axis — already in the units of the graph).
+        // Always both series, fitted part first, a dummy where one is empty, so the two lines above
+        // keep their meaning. The parabola does not widen the axis: it follows the readings it was
+        // fitted to, and a steep extrapolation is cut at the edge rather than squeezing the BG curve.
+        lineModel {
+            fun parabolaSeries(points: List<GraphDataPoint>) {
+                if (points.size < 2) {
+                    series(x = listOf(0.0, 1.0), y = listOf(0.0, 0.0))
+                } else {
+                    val pts = points.map { timestampToX(it.timestamp, minTimestamp) to it.value }
+                    series(x = pts.map { it.first }, y = pts.map { it.second })
+                }
+            }
+            parabolaSeries(input.bgParabola.fitted)
+            parabolaSeries(input.bgParabola.extrapolation)
+        }
+
+        // Block 7 → Treatment markers (layer 6, start axis — drawn at the glucose value of the
         // moment they happened, see TreatmentMarkers.kt). Insulin points down at the reading from
         // above and carbs point up at it from below, so a meal entered with its bolus is one marker
         // with both tips on the curve; a measured value sits on its own value.

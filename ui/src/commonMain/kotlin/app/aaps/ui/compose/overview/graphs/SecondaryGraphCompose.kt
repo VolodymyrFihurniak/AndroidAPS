@@ -938,6 +938,7 @@ data class SeriesColors(
         SeriesType.STEPS           -> steps
         SeriesType.ACTIVITY        -> activity
         SeriesType.PREDICTIONS     -> activity // unused — PREDICTIONS is a BG overlay flag, not a secondary series
+        SeriesType.BG_PARABOLA     -> activity // unused — BG_PARABOLA is a BG overlay flag, not a secondary series
         SeriesType.AUTOISF         -> finalIsf // each factor has its own color, see autoIsf()
         SeriesType.IOB_TH          -> iobTh
     }

@@ -96,6 +96,10 @@ interface OverviewDataCache {
     val autoIsfGraphFlow: StateFlow<AutoIsfGraphData>
     fun updateAutoIsfGraph(data: AutoIsfGraphData)
 
+    // autoISF: the BG parabola of the last AutoISF run, drawn on the BG graph
+    val bgParabolaFlow: StateFlow<BgParabolaData>
+    fun updateBgParabola(data: BgParabolaData)
+
     // Heart rate graph: BPM readings from smartwatch
     val heartRateGraphFlow: StateFlow<HeartRateGraphData>
     fun updateHeartRateGraph(data: HeartRateGraphData)

@@ -3,13 +3,16 @@ package app.aaps.workflow
 import app.aaps.core.data.configuration.Constants
 import app.aaps.core.data.model.SourceSensor
 import app.aaps.core.data.time.T
+import app.aaps.core.interfaces.aps.GlucoseStatusAutoIsf
 import app.aaps.core.interfaces.aps.Loop
 import app.aaps.core.interfaces.configuration.Config
 import app.aaps.core.interfaces.iob.IobCobCalculator
 import app.aaps.core.interfaces.logging.AAPSLogger
 import app.aaps.core.interfaces.logging.LTag
 import app.aaps.core.interfaces.nsclient.ProcessedDeviceStatusData
+import app.aaps.core.interfaces.plugin.ActivePlugin
 import app.aaps.core.interfaces.overview.graph.BgDataPoint
+import app.aaps.core.interfaces.overview.graph.BgParabolaData
 import app.aaps.core.interfaces.overview.graph.BgRange
 import app.aaps.core.interfaces.overview.graph.BgType
 import app.aaps.core.interfaces.profile.ProfileUtil
@@ -49,7 +52,8 @@ class PostCalculationRunner(
     private val processedDeviceStatusData: ProcessedDeviceStatusData,
     private val profileUtil: ProfileUtil,
     private val preferences: Preferences,
-    private val sceneExpiryCheck: SceneExpiryCheck
+    private val sceneExpiryCheck: SceneExpiryCheck,
+    private val activePlugin: ActivePlugin
 ) : CalculationPhase {
 
     /** Runs the phase that follows the prepare pass. [isStopped] is asked between steps. */
@@ -65,6 +69,8 @@ class PostCalculationRunner(
         }
 
         preparePredictions(data)
+        if (isStopped()) return WorkOutcome.Stopped
+        prepareBgParabola(data)
         if (isStopped()) return WorkOutcome.Stopped
 
         data.signals.emitProgress(CalculationWorkflow.ProgressData.DRAW_FINAL, 100)
@@ -183,4 +189,22 @@ class PostCalculationRunner(
         }
     }
 
+    /**
+     * autoISF: the BG parabola for the BG graph, from the glucose status of the AutoISF plugin.
+     *
+     * Only on the master, and only while AutoISF is the active APS: the other algorithms make no
+     * fit. A failure here only costs the curve, so it is logged and the chain goes on.
+     */
+    private fun prepareBgParabola(data: PostCalculationData) {
+        val parabola = try {
+            val glucoseStatus = if (config.APS) activePlugin.activeAPS?.getGlucoseStatusData(allowOldData = false) as? GlucoseStatusAutoIsf else null
+            glucoseStatus?.let { status -> bgParabolaData(status) { mgdl -> profileUtil.fromMgdlToUnits(mgdl) } } ?: BgParabolaData.EMPTY
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            aapsLogger.error(LTag.WORKER, "Preparing the BG parabola failed", e)
+            BgParabolaData.EMPTY
+        }
+        data.cache.updateBgParabola(parabola)
+    }
 }

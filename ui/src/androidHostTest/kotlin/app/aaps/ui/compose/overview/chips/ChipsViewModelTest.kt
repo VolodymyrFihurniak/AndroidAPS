@@ -8,9 +8,12 @@ import app.aaps.core.interfaces.overview.SensitivityOverview
 import app.aaps.core.interfaces.overview.graph.CobGraphData
 import app.aaps.core.interfaces.overview.graph.IobGraphData
 import app.aaps.core.interfaces.overview.graph.OverviewDataCache
+import app.aaps.core.interfaces.plugin.ActivePlugin
 import app.aaps.core.interfaces.resources.ResourceHelper
 import app.aaps.core.interfaces.rx.bus.RxBus
 import app.aaps.core.interfaces.utils.DecimalFormatter
+import app.aaps.core.keys.BooleanKey
+import app.aaps.core.keys.interfaces.Preferences
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -23,6 +26,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -37,6 +41,8 @@ internal class ChipsViewModelTest {
     @Mock private lateinit var rh: ResourceHelper
     @Mock private lateinit var decimalFormatter: DecimalFormatter
     @Mock private lateinit var rxBus: RxBus
+    @Mock private lateinit var preferences: Preferences
+    @Mock private lateinit var activePlugin: ActivePlugin
 
     private lateinit var sut: ChipsViewModel
 
@@ -49,7 +55,7 @@ internal class ChipsViewModelTest {
         whenever(cache.iobGraphFlow).thenReturn(MutableStateFlow(IobGraphData(emptyList(), emptyList())))
         whenever(cache.cobGraphFlow).thenReturn(MutableStateFlow(CobGraphData(emptyList(), emptyList())))
         whenever(cache.predictionsFlow).thenReturn(MutableStateFlow(emptyList()))
-        sut =ChipsViewModel(cache, iobCobCalculator, loop, config, persistenceLayer, sensitivityOverview, rh, decimalFormatter, rxBus)
+        sut = ChipsViewModel(cache, iobCobCalculator, loop, config, persistenceLayer, sensitivityOverview, rh, decimalFormatter, rxBus, preferences, activePlugin)
     }
 
     @AfterEach
@@ -64,5 +70,24 @@ internal class ChipsViewModelTest {
         assertThat(sut.sensitivityUiState.value.ratio).isEqualTo(1.0)
         assertThat(sut.sensitivityUiState.value.isEnabled).isTrue()
         assertThat(sut.sensitivityUiState.value.hasData).isFalse()
+        assertThat(sut.exerciseModeUiState.value.visible).isFalse()
+    }
+
+    @Test
+    fun `exercise mode button switches the mode on`() {
+        whenever(preferences.get(BooleanKey.ApsAutoIsfHighTtRaisesSens)).thenReturn(false)
+
+        sut.toggleExerciseMode()
+
+        verify(preferences).put(BooleanKey.ApsAutoIsfHighTtRaisesSens, true)
+    }
+
+    @Test
+    fun `exercise mode button switches the mode off`() {
+        whenever(preferences.get(BooleanKey.ApsAutoIsfHighTtRaisesSens)).thenReturn(true)
+
+        sut.toggleExerciseMode()
+
+        verify(preferences).put(BooleanKey.ApsAutoIsfHighTtRaisesSens, false)
     }
 }

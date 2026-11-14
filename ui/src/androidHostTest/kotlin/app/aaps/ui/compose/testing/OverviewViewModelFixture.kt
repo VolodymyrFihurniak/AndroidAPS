@@ -39,6 +39,7 @@ import app.aaps.core.interfaces.source.BgSource
 import app.aaps.core.interfaces.stats.TddCalculator
 import app.aaps.core.interfaces.sync.NsClient
 import app.aaps.core.interfaces.utils.DecimalFormatter
+import app.aaps.core.keys.BooleanKey
 import app.aaps.core.keys.UnitDoubleKey
 import app.aaps.core.keys.interfaces.ClientRole
 import app.aaps.core.keys.interfaces.VisibilityContext
@@ -148,6 +149,8 @@ internal class OverviewViewModelFixture(private val screen: AapsScreenFixture) {
         whenever(screen.preferences.get(UnitDoubleKey.OverviewLowMark)).thenReturn(72.0)
         whenever(screen.preferences.observe(UnitDoubleKey.OverviewHighMark)).thenReturn(MutableStateFlow(180.0))
         whenever(screen.preferences.observe(UnitDoubleKey.OverviewLowMark)).thenReturn(MutableStateFlow(72.0))
+        // autoISF: the exercise mode button of the overview chips
+        whenever(screen.preferences.observe(BooleanKey.ApsAutoIsfHighTtRaisesSens)).thenReturn(MutableStateFlow(false))
         whenever(graphConfigRepository.graphConfigFlow).thenReturn(MutableStateFlow(GraphConfig()))
 
         // ----- ChipsViewModel: the three chip flows evaluate as soon as a composable collects them,
@@ -191,7 +194,7 @@ internal class OverviewViewModelFixture(private val screen: AapsScreenFixture) {
     }
 
     val chipsViewModel: ChipsViewModel by lazy {
-        ChipsViewModel(cache, iobCobCalculator, loop, screen.config, persistenceLayer, sensitivityOverview, rh, decimalFormatter, rxBus)
+        ChipsViewModel(cache, iobCobCalculator, loop, screen.config, persistenceLayer, sensitivityOverview, rh, decimalFormatter, rxBus, screen.preferences, activePlugin)
     }
 
     val statusViewModel: StatusViewModel by lazy {

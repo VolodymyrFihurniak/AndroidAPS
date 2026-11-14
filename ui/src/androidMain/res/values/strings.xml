@@ -382,4 +382,8 @@
     <string name="cal_precheck_mark_sensor_change">Mark sensor change</string>
     <string name="graph_therapy_event_bg_with_note" comment="Shown when the user taps a BG check in the overview graph. %1$s = glucose with its unit, %2$s = the note the user wrote. Example: 6.1 mmol/L, before lunch">%1$s, %2$s</string>
 
+    <!-- autoISF: exercise mode button in the overview -->
+    <string name="exercise_mode" comment="Name of the overview button that switches the autoISF exercise mode. In this mode a high temp target raises the insulin sensitivity.">Exercise mode</string>
+    <string name="exercise_mode_on" comment="Spoken state of the exercise mode button when the mode is on">On</string>
+    <string name="exercise_mode_off" comment="Spoken state of the exercise mode button when the mode is off">Off</string>
 </resources>

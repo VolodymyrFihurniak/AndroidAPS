@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.Color
  * @property aCobPrediction Color for absorbed COB predictions (lighter orange)
  * @property uamPrediction Color for UAM (unannounced meals) predictions (yellow)
  * @property ztPrediction Color for zero-temp predictions (cyan)
+ * @property bgParabola Color for the autoISF BG parabola on the BG graph (magenta, as in aisf)
  * @property graphGrid Color for the grid lines on the overview graphs, translucent so a band drawn under them shows through
  */
 data class GeneralColors(
@@ -80,6 +81,7 @@ data class GeneralColors(
     val aCobPrediction: Color,
     val uamPrediction: Color,
     val ztPrediction: Color,
+    val bgParabola: Color,
     val graphGrid: Color,
     // Loop mode colors
     val loopClosed: Color,
@@ -142,6 +144,7 @@ val LightGeneralColors = GeneralColors(
     aCobPrediction = Color(0x80FB8C00),      // lighter orange for absorbed COB (50% alpha)
     uamPrediction = Color(0xFFC9BD60),       // yellow-ish for UAM predictions (matches uamColor attr)
     ztPrediction = Color(0xFF00D2D2),        // cyan for zero-temp predictions (matches ztColor attr)
+    bgParabola = Color(0xFFFF00FF),          // magenta for the autoISF BG parabola (bgParabolaColor of aisf)
     graphGrid = Color(0x80CAC4D0),           // Material outlineVariant at 50%
     // Loop mode colors
     loopClosed = Color(0xFF00C03E),          // green for closed loop
@@ -200,6 +203,7 @@ val DarkGeneralColors = GeneralColors(
     aCobPrediction = Color(0x80FFB74D),      // lighter orange for absorbed COB (50% alpha, dark mode)
     uamPrediction = Color(0xFFE6D39A),       // lighter yellow for UAM predictions (dark mode)
     ztPrediction = Color(0xFF4DD4D4),        // lighter cyan for zero-temp predictions (dark mode)
+    bgParabola = Color(0xFFFF00FF),          // magenta for the autoISF BG parabola (same in both modes, as in aisf)
     graphGrid = Color(0x40938F99),           // Material outline at 25%: outlineVariant at 50% was barely visible on the dark surface
     // Loop mode colors (same in both modes)
     loopClosed = Color(0xFF00C03E),          // green for closed loop

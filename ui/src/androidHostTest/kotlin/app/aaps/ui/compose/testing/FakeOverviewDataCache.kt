@@ -1,6 +1,7 @@
 package app.aaps.ui.compose.testing
 
 import app.aaps.core.interfaces.overview.graph.AutoIsfGraphData
+import app.aaps.core.interfaces.overview.graph.BgParabolaData
 import app.aaps.core.interfaces.overview.graph.AapsClientStatusData
 import app.aaps.core.interfaces.overview.graph.AbsIobGraphData
 import app.aaps.core.interfaces.overview.graph.ActivityGraphData
@@ -61,6 +62,7 @@ class FakeOverviewDataCache : OverviewDataCache {
     override val devSlopeGraphFlow = MutableStateFlow(DevSlopeGraphData(emptyList(), emptyList()))
     override val varSensGraphFlow = MutableStateFlow(VarSensGraphData(emptyList()))
     override val autoIsfGraphFlow = MutableStateFlow(AutoIsfGraphData.EMPTY)
+    override val bgParabolaFlow = MutableStateFlow(BgParabolaData.EMPTY)
     override val heartRateGraphFlow = MutableStateFlow(HeartRateGraphData(emptyList()))
     override val stepsGraphFlow = MutableStateFlow(StepsGraphData(emptyList()))
 
@@ -93,6 +95,7 @@ class FakeOverviewDataCache : OverviewDataCache {
     override fun updateDevSlopeGraph(data: DevSlopeGraphData) { devSlopeGraphFlow.value = data }
     override fun updateVarSensGraph(data: VarSensGraphData) { varSensGraphFlow.value = data }
     override fun updateAutoIsfGraph(data: AutoIsfGraphData) { autoIsfGraphFlow.value = data }
+    override fun updateBgParabola(data: BgParabolaData) { bgParabolaFlow.value = data }
     override fun updateHeartRateGraph(data: HeartRateGraphData) { heartRateGraphFlow.value = data }
     override fun updateStepsGraph(data: StepsGraphData) { stepsGraphFlow.value = data }
 

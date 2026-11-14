@@ -1238,6 +1238,8 @@
     <string name="graph_series_iob_threshold">IOB threshold (autoISF)</string>
     <string name="autoisf_shortname">AISF</string>
     <string name="iob_threshold_shortname">IOB TH</string>
+    <string name="graph_series_bg_parabola">BG parabola (autoISF)</string>
+    <string name="bg_parabola_shortname" comment="Short label for the BG parabola of autoISF on the BG graph">PARAB</string>
     <string name="graph_series_predictions">Predictions</string>
 
 

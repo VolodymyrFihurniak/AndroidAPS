@@ -22,6 +22,17 @@ data class CobUiState(
     val cobValue: Double = 0.0
 )
 
+/**
+ * autoISF: the exercise mode button ("high temp target raises sensitivity").
+ *
+ * [visible] only while the active APS uses the mode (AutoISF, and SMB with the aisf changes).
+ */
+@Immutable
+data class ExerciseModeUiState(
+    val visible: Boolean = false,
+    val enabled: Boolean = false
+)
+
 @Immutable
 data class SensitivityUiState(
     val asText: String = "",

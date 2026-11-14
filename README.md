@@ -41,6 +41,11 @@ and carb ratios.
   can be shown in the overview: add the series *AutoISF factors* (acce, bg, pp, dura, final) or
   *IOB threshold* to a graph below the BG graph. The sensitivity dialog shows the factors of the
   last run.
+* BG parabola on the BG graph (option *BG parabola (autoISF)* in the BG graph settings, on by
+  default): the fitted part is a solid line, the next 20 minutes are dashed and shown only together
+  with the predictions.
+* Exercise mode button in the overview, next to the temp basal chip: it shows and switches
+  *High temp target raises sensitivity*. It is shown while AutoISF or SMB is the active APS.
 * Automation: actions *Enable/Disable glucose ISF weights*, *Set bgAccel weight*, *Set iobTH*,
   *Set automation state*; triggers *iobTH percent*, *BgAccel weight*, *Check automation state*.
 * Automation States plugin: named states like `Sleeping` with their possible values. AutoISF
@@ -48,8 +53,7 @@ and carb ratios.
 * Logs are rolled every hour into `Documents/aapsLogs` and kept for 30 days.
 
 ### Not ported yet (work in progress)
-* The BG parabola line on the BG graph.
-* The activity/exercise mode icon in the overview and the widget.
+* The exercise mode icon in the widget.
 * The "Algorithm" status of the master in AAPSClient.
 
 ### Changes compared to autoISF 3.2.1 on AAPS 3.4
@@ -58,6 +62,8 @@ and carb ratios.
   aisf 3.2.x build (version 32) is upgraded: the migration adds what AAPS 4.0 added in its own
   version 32, so no data is lost.
 * Automations, automation states and settings of aisf 3.2.x are read with the same names.
+* The steps count trigger uses the newest steps of the last 5 minutes, from the watch or from the
+  phone. This is the newer fix of ga-zelle for AAPS 4.0, not the 1 minute window of aisf 3.2.1.
 
 ## Updating from autoISF 3.2.x (AAPS 3.4)
 1. Export your settings in the old build (Maintenance → Export settings).
