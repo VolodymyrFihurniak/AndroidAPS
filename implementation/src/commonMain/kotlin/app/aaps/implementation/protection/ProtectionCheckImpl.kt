@@ -109,15 +109,19 @@ class ProtectionCheckImpl(
 
     override fun isLocked(protection: ProtectionCheck.Protection): Boolean {
         if (protection == ProtectionCheck.Protection.NONE) return false
-        if (preferences.get(StringKey.ProtectionMasterPassword).isEmpty()) return false
         if (activeSession(protection) != null) return false
         return isProtectionConfigured(protection)
     }
 
+    /**
+     * autoISF build: every level is protected on its own, as in AAPS 3.4.
+     *
+     * AAPS 4.0 switched every protection off while no master password was set, and the bolus protection off
+     * while the settings had none. Both happened without a word, so a bolus PIN that was set did nothing.
+     * Only a level that uses the master password needs it now, and the master level itself.
+     */
     private fun isProtectionConfigured(protection: ProtectionCheck.Protection): Boolean {
-        if (protection == ProtectionCheck.Protection.MASTER) return true // Master is always "configured" (needs master password)
-        // Hierarchy enforcement: BOLUS requires SETTINGS to be configured
-        if (protection == ProtectionCheck.Protection.BOLUS && !isLevelConfigured(ProtectionCheck.Protection.PREFERENCES)) return false
+        if (protection == ProtectionCheck.Protection.MASTER) return preferences.get(StringKey.ProtectionMasterPassword).isNotEmpty()
         return isLevelConfigured(protection)
     }
 
@@ -127,7 +131,7 @@ class ProtectionCheckImpl(
         return when (protectionTypeFor(typeKey)) {
             ProtectionType.NONE            -> false
             ProtectionType.BIOMETRIC       -> true
-            ProtectionType.MASTER_PASSWORD -> true
+            ProtectionType.MASTER_PASSWORD -> preferences.get(StringKey.ProtectionMasterPassword).isNotEmpty()
             ProtectionType.CUSTOM_PASSWORD -> preferences.get(passwordKeys[protection]!!).isNotEmpty()
             ProtectionType.CUSTOM_PIN      -> preferences.get(pinKeys[protection]!!).isNotEmpty()
         }
@@ -161,13 +165,6 @@ class ProtectionCheckImpl(
             return
         }
 
-        // No master password = no protection at all
-        if (preferences.get(StringKey.ProtectionMasterPassword).isEmpty()) {
-            onGranted(ProtectionCheck.Protection.MASTER)
-            onResult(AuthorizationResult(ProtectionCheck.Protection.MASTER, ProtectionResult.GRANTED))
-            return
-        }
-
         // Check active session
         activeSession(minimumLevel)?.let { level ->
             onGranted(level)
@@ -176,10 +173,11 @@ class ProtectionCheckImpl(
         }
 
         // If requested minimum level has no protection, pass immediately
-        // Auto-grant the highest consecutive unprotected level
+        // Auto-grant the highest consecutive unprotected level.
+        // autoISF build: without a session. A level that needs no credential must not open a protected level
+        // below it: unprotected settings would otherwise let the next bolus pass without its PIN.
         if (!isProtectionConfigured(minimumLevel)) {
             val grantLevel = findHighestUnprotectedLevel(minimumLevel)
-            onGranted(grantLevel)
             onResult(AuthorizationResult(grantLevel, ProtectionResult.GRANTED))
             return
         }
@@ -258,13 +256,6 @@ class ProtectionCheckImpl(
             return
         }
 
-        // No master password = no protection at all
-        if (preferences.get(StringKey.ProtectionMasterPassword).isEmpty()) {
-            onGranted(ProtectionCheck.Protection.MASTER)
-            onResult(ProtectionResult.GRANTED)
-            return
-        }
-
         // Check active session
         if (activeSession(protection) != null) {
             onResult(ProtectionResult.GRANTED)
@@ -277,12 +268,13 @@ class ProtectionCheckImpl(
             onResult(ProtectionResult.GRANTED)
             return
         }
-        val type = protectionTypeFor(typeKey)
-        if (type == ProtectionType.NONE) {
-            onGranted(protection)
+        // autoISF build: a level without protection (NONE, an empty PIN or password, the master password while
+        // none is set) passes, as in AAPS 3.4. Without a session, see requestAuthorization.
+        if (!isProtectionConfigured(protection)) {
             onResult(ProtectionResult.GRANTED)
             return
         }
+        val type = protectionTypeFor(typeKey)
 
         // Cancel any pending request before emitting a new one
         _pendingRequest.value?.let { pending ->

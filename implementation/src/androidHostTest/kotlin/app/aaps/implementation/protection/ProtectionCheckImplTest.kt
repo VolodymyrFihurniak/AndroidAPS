@@ -89,13 +89,65 @@ class ProtectionCheckImplTest : TestBase() {
         assertThat(sut.isLocked(ProtectionCheck.Protection.BOLUS)).isTrue()
     }
 
+    // autoISF build: every level on its own, as in AAPS 3.4 (AAPS 4.0 needed SETTINGS for BOLUS)
     @Test
-    fun `isLocked BOLUS returns false when SETTINGS is NONE despite BOLUS being set`() {
+    fun `isLocked BOLUS returns true when SETTINGS is NONE`() {
         `when`(preferences.get(StringKey.ProtectionMasterPassword)).thenReturn("secret")
-        `when`(preferences.get(IntKey.ProtectionTypeSettings)).thenReturn(0) // NONE — hierarchy enforcement
+        `when`(preferences.get(IntKey.ProtectionTypeSettings)).thenReturn(0) // NONE
+        `when`(preferences.get(IntKey.ProtectionTypeBolus)).thenReturn(2) // MASTER_PASSWORD
+        `when`(preferences.get(IntKey.ProtectionTimeout)).thenReturn(0)
+        assertThat(sut.isLocked(ProtectionCheck.Protection.BOLUS)).isTrue()
+    }
+
+    // autoISF build: a bolus PIN works without a master password and without settings protection (AAPS 3.4)
+    @Test
+    fun `bolus PIN is asked without master password and without settings protection`() {
+        `when`(preferences.get(StringKey.ProtectionMasterPassword)).thenReturn("")
+        `when`(preferences.get(IntKey.ProtectionTypeSettings)).thenReturn(0) // NONE
+        `when`(preferences.get(IntKey.ProtectionTypeBolus)).thenReturn(4) // CUSTOM_PIN
+        `when`(preferences.get(StringKey.ProtectionBolusPin)).thenReturn("hmac:salt:hash")
+        `when`(preferences.get(IntKey.ProtectionTimeout)).thenReturn(0)
+        `when`(dateUtil.now()).thenReturn(1000_000L)
+
+        assertThat(sut.isLocked(ProtectionCheck.Protection.BOLUS)).isTrue()
+
+        var result: AuthorizationResult? = null
+        sut.requestAuthorization(ProtectionCheck.Protection.BOLUS) { result = it }
+        assertThat(result).isNull()
+        assertThat(sut.pendingAuthRequest.value?.availableMethods?.map { it.level }).containsExactly(ProtectionCheck.Protection.BOLUS)
+
+        var legacy: ProtectionResult? = null
+        sut.requestProtection(ProtectionCheck.Protection.BOLUS) { legacy = it }
+        assertThat(legacy).isNull()
+        assertThat(sut.pendingRequest.value?.protection).isEqualTo(ProtectionCheck.Protection.BOLUS)
+    }
+
+    @Test
+    fun `unprotected settings do not let the next bolus pass without its PIN`() {
+        `when`(preferences.get(StringKey.ProtectionMasterPassword)).thenReturn("")
+        `when`(preferences.get(IntKey.ProtectionTypeSettings)).thenReturn(0) // NONE
+        `when`(preferences.get(IntKey.ProtectionTypeBolus)).thenReturn(4) // CUSTOM_PIN
+        `when`(preferences.get(StringKey.ProtectionBolusPin)).thenReturn("hmac:salt:hash")
+        `when`(preferences.get(IntKey.ProtectionTimeout)).thenReturn(60)
+        `when`(dateUtil.now()).thenReturn(1000_000L)
+
+        var granted: AuthorizationResult? = null
+        sut.requestAuthorization(ProtectionCheck.Protection.PREFERENCES) { granted = it }
+        var legacy: ProtectionResult? = null
+        sut.requestProtection(ProtectionCheck.Protection.PREFERENCES) { legacy = it }
+
+        assertThat(granted?.outcome).isEqualTo(ProtectionResult.GRANTED)
+        assertThat(legacy).isEqualTo(ProtectionResult.GRANTED)
+        assertThat(sut.isLocked(ProtectionCheck.Protection.BOLUS)).isTrue()
+    }
+
+    @Test
+    fun `a level using the master password is not protected while no master password is set`() {
+        `when`(preferences.get(StringKey.ProtectionMasterPassword)).thenReturn("")
         `when`(preferences.get(IntKey.ProtectionTypeBolus)).thenReturn(2) // MASTER_PASSWORD
         `when`(preferences.get(IntKey.ProtectionTimeout)).thenReturn(0)
         assertThat(sut.isLocked(ProtectionCheck.Protection.BOLUS)).isFalse()
+        assertThat(sut.isLocked(ProtectionCheck.Protection.MASTER)).isFalse()
     }
 
     // --- Hierarchical session ---
@@ -215,10 +267,21 @@ class ProtectionCheckImplTest : TestBase() {
     // --- requestAuthorization ---
 
     @Test
-    fun `requestAuthorization grants MASTER immediately when no master password`() {
+    fun `requestAuthorization grants immediately when nothing is protected and no master password`() {
         `when`(preferences.get(StringKey.ProtectionMasterPassword)).thenReturn("")
         var result: AuthorizationResult? = null
         sut.requestAuthorization(ProtectionCheck.Protection.BOLUS) { result = it }
+        assertThat(result?.outcome).isEqualTo(ProtectionResult.GRANTED)
+        // autoISF build: the highest unprotected level, no longer MASTER (which opened every protected level)
+        assertThat(result?.grantedLevel).isEqualTo(ProtectionCheck.Protection.PREFERENCES)
+        assertThat(sut.pendingAuthRequest.value).isNull()
+    }
+
+    @Test
+    fun `requestAuthorization grants MASTER immediately when no master password`() {
+        `when`(preferences.get(StringKey.ProtectionMasterPassword)).thenReturn("")
+        var result: AuthorizationResult? = null
+        sut.requestAuthorization(ProtectionCheck.Protection.MASTER) { result = it }
         assertThat(result?.outcome).isEqualTo(ProtectionResult.GRANTED)
         assertThat(result?.grantedLevel).isEqualTo(ProtectionCheck.Protection.MASTER)
         assertThat(sut.pendingAuthRequest.value).isNull()
