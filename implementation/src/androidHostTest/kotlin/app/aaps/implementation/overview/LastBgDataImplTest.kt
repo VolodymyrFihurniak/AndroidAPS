@@ -39,24 +39,23 @@ class LastBgDataImplTest : TestBaseWithProfile() {
 
     @Test
     fun lastBg() = runTest {
-        val bucketedData: MutableList<InMemoryGlucoseValue> = mutableListOf()
-        bucketedData.add(InMemoryGlucoseValue(time, 70.0, sourceSensor = SourceSensor.UNKNOWN))
+        val newestBucket = InMemoryGlucoseValue(time, 70.0, sourceSensor = SourceSensor.UNKNOWN)
         // no data
-        whenever(autosensDataStore.bucketedData).thenReturn(null)
+        whenever(autosensDataStore.lastBg()).thenReturn(null)
         whenever(persistenceLayer.getLastGlucoseValue()).thenReturn(null)
         assertThat(sut.lastBg()).isNull()
         assertThat(sut.isLow()).isFalse()
         assertThat(sut.isHigh()).isFalse()
 
         // no bucketed but in db
-        whenever(autosensDataStore.bucketedData).thenReturn(null)
+        whenever(autosensDataStore.lastBg()).thenReturn(null)
         whenever(persistenceLayer.getLastGlucoseValue()).thenReturn(glucoseValue)
         assertThat(sut.lastBg()?.value).isEqualTo(200.0)
         assertThat(sut.isLow()).isFalse()
         assertThat(sut.isHigh()).isTrue()
 
-        // in bucketed
-        whenever(autosensDataStore.bucketedData).thenReturn(bucketedData)
+        // in bucketed (AutosensDataStore.lastBg: with 1 minute data the newest reading)
+        whenever(autosensDataStore.lastBg()).thenReturn(newestBucket)
         whenever(persistenceLayer.getLastGlucoseValue()).thenReturn(glucoseValue)
         assertThat(sut.lastBg()?.value).isEqualTo(70.0)
         assertThat(sut.isLow()).isTrue()
@@ -66,7 +65,7 @@ class LastBgDataImplTest : TestBaseWithProfile() {
     @Test
     fun isActualBg() = runTest {
         // no bucketed but in db
-        whenever(autosensDataStore.bucketedData).thenReturn(null)
+        whenever(autosensDataStore.lastBg()).thenReturn(null)
         whenever(persistenceLayer.getLastGlucoseValue()).thenReturn(glucoseValue)
         whenever(dateUtil.now()).thenReturn(time + T.mins(1).msecs())
         assertThat(sut.isActualBg()).isTrue()
@@ -74,7 +73,7 @@ class LastBgDataImplTest : TestBaseWithProfile() {
         assertThat(sut.isActualBg()).isFalse()
 
         // no data
-        whenever(autosensDataStore.bucketedData).thenReturn(null)
+        whenever(autosensDataStore.lastBg()).thenReturn(null)
         whenever(persistenceLayer.getLastGlucoseValue()).thenReturn(null)
         assertThat(sut.isActualBg()).isFalse()
     }

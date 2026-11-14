@@ -8,7 +8,6 @@ import app.aaps.core.data.model.SourceSensor
 import app.aaps.core.data.model.TrendArrow
 import app.aaps.core.data.time.T
 import app.aaps.core.interfaces.aps.AutosensData
-import app.aaps.core.interfaces.aps.actualLoopBg
 import app.aaps.core.interfaces.aps.loopBucketedDataCopy
 import app.aaps.implementation.iob.AutosensDataObject
 import app.aaps.plugins.main.iob.iobCobCalculator.data.AutosensDataStoreObject
@@ -2166,20 +2165,41 @@ class AutosensDataStoreTest : TestBaseWithProfile() {
     }
 
     @Test
-    fun actualLoopBgIsTheNewestFreshReading() {
+    fun lastBgIsTheNewestReadingWithOneMinuteData() {
         val realNow = Clock.System.now().toEpochMilliseconds()
         val ads = AutosensDataStoreObject()
         ads.bucketedData = mutableListOf(InMemoryGlucoseValue(timestamp = realNow - T.mins(3).msecs(), value = 120.0))
 
+        // The overview, the widget, the wizard and the loop (actualBg) all show every reading, as in AAPS 3.x
         ads.newestLoopReading = InMemoryGlucoseValue(timestamp = realNow - T.mins(1).msecs(), value = 124.0)
-        assertThat(ads.actualLoopBg()?.value).isEqualTo(124.0)
+        assertThat(ads.lastBg()?.value).isEqualTo(124.0)
+        assertThat(ads.actualBg()?.value).isEqualTo(124.0)
 
         // Not newer than the bucket: the bucket
         ads.newestLoopReading = InMemoryGlucoseValue(timestamp = realNow - T.mins(4).msecs(), value = 124.0)
-        assertThat(ads.actualLoopBg()?.value).isEqualTo(120.0)
+        assertThat(ads.lastBg()?.value).isEqualTo(120.0)
+        assertThat(ads.actualBg()?.value).isEqualTo(120.0)
 
-        // 5 minute data: the bucket, as actualBg
+        // 5 minute data: the bucket
         ads.newestLoopReading = null
-        assertThat(ads.actualLoopBg()?.value).isEqualTo(120.0)
+        assertThat(ads.lastBg()?.value).isEqualTo(120.0)
+        assertThat(ads.actualBg()?.value).isEqualTo(120.0)
+
+        // No buckets: nothing, as before
+        ads.bucketedData = null
+        ads.newestLoopReading = InMemoryGlucoseValue(timestamp = realNow - T.mins(1).msecs(), value = 124.0)
+        assertThat(ads.lastBg()).isNull()
+    }
+
+    @Test
+    fun actualBgOfAnOldNewestReadingIsNull() {
+        val realNow = Clock.System.now().toEpochMilliseconds()
+        val ads = AutosensDataStoreObject()
+        ads.bucketedData = mutableListOf(InMemoryGlucoseValue(timestamp = realNow - T.mins(14).msecs(), value = 120.0))
+        ads.newestLoopReading = InMemoryGlucoseValue(timestamp = realNow - T.mins(10).msecs(), value = 124.0)
+
+        // Still the newest value to show, but too old to dose on
+        assertThat(ads.lastBg()?.value).isEqualTo(124.0)
+        assertThat(ads.actualBg()).isNull()
     }
 }

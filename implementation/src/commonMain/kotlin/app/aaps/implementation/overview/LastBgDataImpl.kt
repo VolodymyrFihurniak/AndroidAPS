@@ -33,7 +33,8 @@ class LastBgDataImpl(
 ) : LastBgData {
 
     override fun lastBg(): InMemoryGlucoseValue? =
-        iobCobCalculator.ads.bucketedData?.firstOrNull()
+        // autoISF: lastBg() is the newest reading with 1 minute data, see AutosensDataStore.lastBg
+        iobCobCalculator.ads.lastBg()
             ?: runBlocking { persistenceLayer.getLastGlucoseValue() }?.let { InMemoryGlucoseValue.fromGv(it) }
 
     override fun isLow(): Boolean =

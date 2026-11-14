@@ -122,7 +122,8 @@ class PostCalculationRunnerTest : TestBaseWithProfile() {
     }
 
     // autoISF: with 1 minute data the newest bucket stays on its 5 minute grid, but every new reading must
-    // run the loop, as in AAPS 3.x. The newest reading comes from AutosensDataStore.newestLoopReading.
+    // run the loop, as in AAPS 3.x. actualBg() is then the newest reading (AutosensDataStore.lastBg, tested
+    // in AutosensDataStoreTest), so a reading after the bucket the loop ran for runs it again.
     @Test
     fun `a newer 1 minute reading runs the loop although the bucket was used`() = runTest {
         val now = Clock.System.now().toEpochMilliseconds()
@@ -130,8 +131,7 @@ class PostCalculationRunnerTest : TestBaseWithProfile() {
         val bucket = InMemoryGlucoseValue(timestamp = now - 3 * 60_000L, value = 120.0)
         val reading = InMemoryGlucoseValue(timestamp = now - 60_000L, value = 124.0)
         whenever(iobCobCalculator.ads).thenReturn(ads)
-        whenever(ads.actualBg()).thenReturn(bucket)
-        whenever(ads.newestLoopReading).thenReturn(reading)
+        whenever(ads.actualBg()).thenReturn(reading)
         // The loop ran for the bucket already
         whenever(loop.lastBgTriggeredRun).thenReturn(bucket.timestamp)
         val data = dataWith(runLoopAndWidgetPhase = true)

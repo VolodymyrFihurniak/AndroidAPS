@@ -21,6 +21,14 @@ class TrendCalculatorImpl(
     override fun getTrendArrow(autosensDataStore: AutosensDataStore): TrendArrow? {
         val data = autosensDataStore.getBucketedDataTableCopy() ?: return null
         if (data.isEmpty()) return null
+        // autoISF: with 1 minute data the screen shows the newest reading (AutosensDataStore.lastBg), so the
+        // arrow follows it every minute, as in AAPS 3.x. It can be only 1 minute after the newest bucket, and
+        // a slope over so short a step is mostly noise, so it is compared with a bucket about 5 minutes older.
+        val newest = autosensDataStore.newestLoopReading
+        if (newest != null && newest.timestamp > data[0].timestamp) {
+            val previous = data.firstOrNull { newest.timestamp - it.timestamp >= MIN_TREND_STEP_MS } ?: data[0]
+            return direction(newest, previous)
+        }
         /* Change 4.0.0 - always calculate from bucketed data
         val glucoseValue = data[0]
         val trend = when {
@@ -39,9 +47,10 @@ class TrendCalculatorImpl(
 
         if (readings.size < 2)
             return TrendArrow.NONE
-        val current = readings[0]
-        val previous = readings[1]
+        return direction(readings[0], readings[1])
+    }
 
+    private fun direction(current: InMemoryGlucoseValue, previous: InMemoryGlucoseValue): TrendArrow {
         // Avoid division by 0
         val slope =
             if (current.timestamp == previous.timestamp) 0.0
@@ -59,5 +68,11 @@ class TrendCalculatorImpl(
             slopeByMinute <= 40   -> TrendArrow.DOUBLE_UP
             else                  -> TrendArrow.NONE
         }
+    }
+
+    private companion object {
+
+        // autoISF: 5 minutes less the 30 s of jitter the bucketing allows (IRREGULAR_DATA_SEC)
+        const val MIN_TREND_STEP_MS = 270_000L
     }
 }

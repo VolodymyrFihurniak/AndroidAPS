@@ -22,20 +22,22 @@ interface AutosensDataStore {
      * Libre from xDrip+) and the reading is newer than the newest bucket. Calibrated, and moved by the
      * same amount as the smoothing moved the newest bucket. Null for 5 minute data.
      *
-     * The bucket grid stays where it is (the autosens cache needs that, #5066), and the loop still gets
-     * every new reading, as it did in AAPS 3.x. See [loopBucketedDataCopy] and [actualLoopBg].
+     * The bucket grid stays where it is (the autosens cache needs that, #5066), and the loop and the
+     * screens still get every new reading, as they did in AAPS 3.x. See [loopBucketedDataCopy] and
+     * [lastBg].
      */
     var newestLoopReading: InMemoryGlucoseValue?
 
     /**
-     * Return last valid (>39) InMemoryGlucoseValue from bucketed data or null if db is empty
+     * Return last valid (>39) InMemoryGlucoseValue from bucketed data or null if db is empty.
+     * With 1 minute data: [newestLoopReading] when it is newer than the newest bucket.
      *
      * @return InMemoryGlucoseValue or null
      */
     fun lastBg(): InMemoryGlucoseValue?
 
     /**
-     * Provide last bucketed InMemoryGlucoseValue or null if none exists within the last 9 minutes
+     * Provide [lastBg] or null if it is not from the last 9 minutes
      *
      * @return InMemoryGlucoseValue or null
      */

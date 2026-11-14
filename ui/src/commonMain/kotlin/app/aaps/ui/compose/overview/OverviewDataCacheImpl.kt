@@ -603,8 +603,9 @@ class OverviewDataCacheImpl(
         staleBgTransitionJob?.cancel()
         staleBgTransitionJob = null
 
-        // Use bucketed (smoothed) data like legacy, with raw DB fallback
-        val lastBg = iobCobCalculator.ads.bucketedData?.firstOrNull()
+        // Use bucketed (smoothed) data like legacy, with raw DB fallback. autoISF: lastBg() is the newest
+        // reading with 1 minute data, so the value changes every minute, as in AAPS 3.x
+        val lastBg = iobCobCalculator.ads.lastBg()
         val lastGv = lastBg ?: persistenceLayer.getLastGlucoseValue()?.let { InMemoryGlucoseValue.fromGv(it) }
         if (lastGv == null) {
             _bgInfoFlow.value = null

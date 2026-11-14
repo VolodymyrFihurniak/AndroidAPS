@@ -154,16 +154,18 @@ class AutosensDataStoreObject : AutosensDataStore {
     }
 
     /**
-     * Return last valid (>39) InMemoryGlucoseValue from bucketed data or null if db is empty
+     * Return last valid (>39) InMemoryGlucoseValue from bucketed data or null if db is empty.
+     *
+     * autoISF: with 1 minute data this is [newestLoopReading] when it is newer than the newest bucket, so
+     * the overview, the widget and the bolus wizard show every reading, as in AAPS 3.x.
      *
      * @return InMemoryGlucoseValue or null
      */
     override fun lastBg(): InMemoryGlucoseValue? =
         dataLock.withLock {
-            bucketedData?.let { bucketedData ->
-                if (bucketedData.isNotEmpty()) bucketedData[0]
-                else null
-            }
+            val bucket = bucketedData?.firstOrNull()
+            val newest = newestLoopReading
+            if (bucket != null && newest != null && newest.timestamp > bucket.timestamp) newest else bucket
         }
 
     /**

@@ -311,6 +311,48 @@ class TrendCalculatorImplTest : TestBase() {
         assertThat(trendCalculator.getTrendArrow(autosensDataStore)).isEqualTo(TrendArrow.SINGLE_UP)
     }
 
+    // autoISF: with 1 minute data the newest reading is in front of the buckets (AutosensDataStore.newestLoopReading)
+
+    @Test
+    fun `the newest 1 minute reading moves the arrow before the next bucket`() {
+        // Buckets: flat at 100. The newest reading, 2 minutes after the newest bucket, is 15 higher.
+        val buckets = mutableListOf(
+            createGlucoseValue(100.0, 600_000L),
+            createGlucoseValue(100.0, 300_000L),
+            createGlucoseValue(100.0, 0L)
+        )
+        whenever(autosensDataStore.getBucketedDataTableCopy()).thenReturn(buckets)
+        whenever(autosensDataStore.newestLoopReading).thenReturn(createGlucoseValue(115.0, 720_000L))
+
+        // Compared with the bucket 7 minutes before it (the 2 minute step is too short): 15 / 7 = 2.1 per minute
+        assertThat(trendCalculator.getTrendArrow(autosensDataStore)).isEqualTo(TrendArrow.SINGLE_UP)
+    }
+
+    @Test
+    fun `a newest reading close to 5 minutes after the bucket is compared with that bucket`() {
+        val buckets = mutableListOf(
+            createGlucoseValue(100.0, 300_000L),
+            createGlucoseValue(130.0, 0L)
+        )
+        whenever(autosensDataStore.getBucketedDataTableCopy()).thenReturn(buckets)
+        // 4.5 minutes after the newest bucket, 12 lower: -2.7 per minute. The older bucket would give -4.4 per minute.
+        whenever(autosensDataStore.newestLoopReading).thenReturn(createGlucoseValue(88.0, 570_000L))
+
+        assertThat(trendCalculator.getTrendArrow(autosensDataStore)).isEqualTo(TrendArrow.SINGLE_DOWN)
+    }
+
+    @Test
+    fun `a newest reading that is not newer than the bucket is not used`() {
+        val buckets = mutableListOf(
+            createGlucoseValue(100.0, 300_000L),
+            createGlucoseValue(100.0, 0L)
+        )
+        whenever(autosensDataStore.getBucketedDataTableCopy()).thenReturn(buckets)
+        whenever(autosensDataStore.newestLoopReading).thenReturn(createGlucoseValue(200.0, 300_000L))
+
+        assertThat(trendCalculator.getTrendArrow(autosensDataStore)).isEqualTo(TrendArrow.FLAT)
+    }
+
     private fun createGlucoseValue(
         value: Double,
         timestamp: Long,

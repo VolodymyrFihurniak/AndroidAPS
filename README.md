@@ -38,8 +38,10 @@ and carb ratios.
 * Libre special settings: calibration offset/slope and smoothing of 1 minute values from xDrip+,
   a 20 minute stop of SMB after a new calibration, and a shorter database cleanup.
 * 1 minute data (Libre 2/3 from xDrip+): the loop runs for every reading and starts its glucose
-  status at the newest reading, as aisf did on AAPS 3.4. AAPS 4.0 alone runs it only every
-  5 minutes. The 5 minute grid of AAPS 4.0 stays for autosens and the graph. Nothing to switch on:
+  status at the newest reading, as aisf did on AAPS 3.4. The BG value and the trend arrow on the
+  main screen, the widget, the notification, the watch and the bolus wizard also change with every
+  reading. AAPS 4.0 alone does all of this only every 5 minutes. The 5 minute grid of AAPS 4.0
+  stays for autosens and the graph. Nothing to switch on:
   it works as soon as xDrip+ sends a value every minute ("Broadcast locally" in its Inter-app
   settings). How often SMBs are given is still limited by *SMB interval*.
 * The AutoISF key values of every loop run are stored in the database (table `autoIsfValues`) and
