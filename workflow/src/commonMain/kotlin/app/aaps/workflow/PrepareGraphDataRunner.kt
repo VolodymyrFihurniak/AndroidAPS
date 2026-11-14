@@ -182,13 +182,24 @@ class PrepareGraphDataRunner(
     }
 
     private suspend fun AutosensDataStore.smoothData() {
-        val workingCopy = dataLock.withLock {
-            bucketedData?.map { it.copy(smoothed = null, calibrated = null) }?.toMutableList()
-        } ?: return
+        val (workingCopy, newestReading) = dataLock.withLock {
+            val buckets = bucketedData?.map { it.copy(smoothed = null, calibrated = null) }?.toMutableList()
+            // autoISF: with 1 minute data, the reading newer than the newest bucket, for the loop
+            buckets to buckets?.let { newestReadingAfterBuckets(bgReadings, it, lastUsed5minCalculation) }
+        }
+        if (workingCopy == null) {
+            dataLock.withLock { newestLoopReading = null }
+            return
+        }
         val calibrated = activePlugin.activeCalibration.calibrate(workingCopy, CalibrationContext.NONE)
         val smoothed = activePlugin.activeSmoothing.smooth(calibrated)
+        val loopReading = newestReading?.let { reading ->
+            val calibratedReading = activePlugin.activeCalibration.calibrate(mutableListOf(reading), CalibrationContext.NONE).first()
+            withSmoothingOffsetOf(calibratedReading, smoothed.firstOrNull())
+        }
         dataLock.withLock {
             bucketedData = smoothed
+            newestLoopReading = loopReading
         }
     }
 

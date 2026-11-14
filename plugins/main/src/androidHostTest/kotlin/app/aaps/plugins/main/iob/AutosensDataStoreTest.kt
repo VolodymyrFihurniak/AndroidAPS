@@ -8,10 +8,13 @@ import app.aaps.core.data.model.SourceSensor
 import app.aaps.core.data.model.TrendArrow
 import app.aaps.core.data.time.T
 import app.aaps.core.interfaces.aps.AutosensData
+import app.aaps.core.interfaces.aps.actualLoopBg
+import app.aaps.core.interfaces.aps.loopBucketedDataCopy
 import app.aaps.implementation.iob.AutosensDataObject
 import app.aaps.plugins.main.iob.iobCobCalculator.data.AutosensDataStoreObject
 import app.aaps.shared.tests.TestBaseWithProfile
 import com.google.common.truth.Truth.assertThat
+import kotlin.time.Clock
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.whenever
@@ -2119,5 +2122,64 @@ class AutosensDataStoreTest : TestBaseWithProfile() {
         autosensDataStore.createBucketedData(aapsLogger, dateUtil)
 
         assertThat(autosensDataStore.bucketedData).isEmpty()
+    }
+
+    // autoISF: the loop gets every 1 minute reading, while the buckets stay on their grid (#5066)
+
+    @Test
+    fun cloneKeepsNewestLoopReading() {
+        val ads = AutosensDataStoreObject()
+        ads.newestLoopReading = InMemoryGlucoseValue(timestamp = now, value = 110.0)
+
+        val clone = ads.clone() as AutosensDataStoreObject
+
+        // Published with the buckets it belongs to, like referenceTime
+        assertThat(clone.newestLoopReading?.timestamp).isEqualTo(now)
+    }
+
+    @Test
+    fun loopDataStartsWithTheNewestReading() {
+        val ads = AutosensDataStoreObject()
+        ads.bucketedData = mutableListOf(
+            InMemoryGlucoseValue(timestamp = now, value = 120.0),
+            InMemoryGlucoseValue(timestamp = now - T.mins(5).msecs(), value = 115.0)
+        )
+        ads.newestLoopReading = InMemoryGlucoseValue(timestamp = now + T.mins(2).msecs(), value = 124.0)
+
+        val loopData = ads.loopBucketedDataCopy()
+
+        assertThat(loopData?.map { it.timestamp }).containsExactly(now + T.mins(2).msecs(), now, now - T.mins(5).msecs()).inOrder()
+        // The buckets themselves are not changed
+        assertThat(ads.bucketedData).hasSize(2)
+    }
+
+    @Test
+    fun loopDataWithoutANewerReadingIsTheBuckets() {
+        val ads = AutosensDataStoreObject()
+        ads.bucketedData = mutableListOf(InMemoryGlucoseValue(timestamp = now, value = 120.0))
+        ads.newestLoopReading = InMemoryGlucoseValue(timestamp = now, value = 124.0)
+
+        assertThat(ads.loopBucketedDataCopy()?.map { it.value }).containsExactly(120.0)
+
+        ads.newestLoopReading = null
+        assertThat(ads.loopBucketedDataCopy()?.map { it.value }).containsExactly(120.0)
+    }
+
+    @Test
+    fun actualLoopBgIsTheNewestFreshReading() {
+        val realNow = Clock.System.now().toEpochMilliseconds()
+        val ads = AutosensDataStoreObject()
+        ads.bucketedData = mutableListOf(InMemoryGlucoseValue(timestamp = realNow - T.mins(3).msecs(), value = 120.0))
+
+        ads.newestLoopReading = InMemoryGlucoseValue(timestamp = realNow - T.mins(1).msecs(), value = 124.0)
+        assertThat(ads.actualLoopBg()?.value).isEqualTo(124.0)
+
+        // Not newer than the bucket: the bucket
+        ads.newestLoopReading = InMemoryGlucoseValue(timestamp = realNow - T.mins(4).msecs(), value = 124.0)
+        assertThat(ads.actualLoopBg()?.value).isEqualTo(120.0)
+
+        // 5 minute data: the bucket, as actualBg
+        ads.newestLoopReading = null
+        assertThat(ads.actualLoopBg()?.value).isEqualTo(120.0)
     }
 }

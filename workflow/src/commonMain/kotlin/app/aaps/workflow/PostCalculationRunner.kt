@@ -4,6 +4,7 @@ import app.aaps.core.data.configuration.Constants
 import app.aaps.core.data.model.SourceSensor
 import app.aaps.core.data.time.T
 import app.aaps.core.interfaces.aps.GlucoseStatusAutoIsf
+import app.aaps.core.interfaces.aps.actualLoopBg
 import app.aaps.core.interfaces.aps.Loop
 import app.aaps.core.interfaces.configuration.Config
 import app.aaps.core.interfaces.iob.IobCobCalculator
@@ -113,7 +114,8 @@ class PostCalculationRunner(
      * for the same BG must not follow.
      */
     private suspend fun invokeLoop() {
-        val glucoseValue = iobCobCalculator.ads.actualBg() ?: return
+        // autoISF: with 1 minute data every reading counts, not only every new 5 minute bucket (AAPS 3.x)
+        val glucoseValue = iobCobCalculator.ads.actualLoopBg() ?: return
         if (glucoseValue.timestamp <= loop.lastBgTriggeredRun) return
         val previousTrigger = loop.lastBgTriggeredRun
         val decisionBefore = loop.lastRun?.lastAPSRun

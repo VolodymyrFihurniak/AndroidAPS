@@ -2,6 +2,7 @@ package app.aaps.plugins.aps.openAPSSMB
 
 import app.aaps.core.interfaces.aps.GlucoseStatus
 import app.aaps.core.interfaces.aps.GlucoseStatusSMB
+import app.aaps.core.interfaces.aps.loopBucketedDataCopy
 import app.aaps.core.interfaces.iob.GlucoseStatusProvider
 import app.aaps.core.interfaces.iob.IobCobCalculator
 import app.aaps.core.interfaces.logging.AAPSLogger
@@ -30,7 +31,7 @@ class GlucoseStatusCalculatorSMB(
         get() = getGlucoseStatusData(false)
 
     override fun getGlucoseStatusData(allowOldData: Boolean): GlucoseStatusSMB? {
-        val data = iobCobCalculator.ads.getBucketedDataTableCopy() ?: return null
+        val data = iobCobCalculator.ads.loopBucketedDataCopy() ?: return null
 
         val sizeRecords = data.size
         if (sizeRecords == 0) {

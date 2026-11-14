@@ -73,6 +73,11 @@ class AutosensDataStoreObject : AutosensDataStore {
         get() = dataLock.withLock { field }
         set(value) { dataLock.withLock { field = value } }
 
+    // autoISF: see AutosensDataStore.newestLoopReading. Set together with bucketedData by the calculation.
+    override var newestLoopReading: InMemoryGlucoseValue? = null
+        get() = dataLock.withLock { field }
+        set(value) { dataLock.withLock { field = value } }
+
     override fun clone(): AutosensDataStore =
         AutosensDataStoreObject().also {
             dataLock.withLock {
@@ -90,6 +95,8 @@ class AutosensDataStoreObject : AutosensDataStore {
                 it.bgReadings = this.bgReadings.toMutableList()
                 it.autosensDataTable = LongSparseArray<AutosensData>(this.autosensDataTable.size).apply { putAll(this@AutosensDataStoreObject.autosensDataTable) }
                 it.bucketedData = this.bucketedData?.toMutableList()
+                // autoISF: published with the buckets it belongs to
+                it.newestLoopReading = this.newestLoopReading
             }
         }
 

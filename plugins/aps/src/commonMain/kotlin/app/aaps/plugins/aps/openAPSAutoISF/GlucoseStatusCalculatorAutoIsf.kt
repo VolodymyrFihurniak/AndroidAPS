@@ -1,6 +1,7 @@
 package app.aaps.plugins.aps.openAPSAutoISF
 
 import app.aaps.core.interfaces.aps.GlucoseStatusAutoIsf
+import app.aaps.core.interfaces.aps.loopBucketedDataCopy
 import app.aaps.core.interfaces.iob.IobCobCalculator
 import app.aaps.core.interfaces.logging.AAPSLogger
 import app.aaps.core.interfaces.logging.LTag
@@ -31,7 +32,7 @@ class GlucoseStatusCalculatorAutoIsf(
 ) {
 
     fun getGlucoseStatusData(allowOldData: Boolean): GlucoseStatusAutoIsf? {
-        val data = iobCobCalculator.ads.getBucketedDataTableCopy() ?: return null
+        val data = iobCobCalculator.ads.loopBucketedDataCopy() ?: return null
         val orig = iobCobCalculator.ads.getBgReadingsDataTableCopy()
 
         var sizeRecords = data.size

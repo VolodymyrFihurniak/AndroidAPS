@@ -18,6 +18,16 @@ interface AutosensDataStore {
     var lastUsed5minCalculation: Boolean?
 
     /**
+     * autoISF: the newest reading, when the data comes more often than every 5 minutes (1 minute
+     * Libre from xDrip+) and the reading is newer than the newest bucket. Calibrated, and moved by the
+     * same amount as the smoothing moved the newest bucket. Null for 5 minute data.
+     *
+     * The bucket grid stays where it is (the autosens cache needs that, #5066), and the loop still gets
+     * every new reading, as it did in AAPS 3.x. See [loopBucketedDataCopy] and [actualLoopBg].
+     */
+    var newestLoopReading: InMemoryGlucoseValue?
+
+    /**
      * Return last valid (>39) InMemoryGlucoseValue from bucketed data or null if db is empty
      *
      * @return InMemoryGlucoseValue or null

@@ -12,6 +12,7 @@ import app.aaps.core.interfaces.workflow.CalculationSignalsEmitter
 import app.aaps.core.objects.workflow.WorkOutcome
 import app.aaps.shared.tests.TestBaseWithProfile
 import com.google.common.truth.Truth.assertThat
+import kotlin.time.Clock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
@@ -118,6 +119,28 @@ class PostCalculationRunnerTest : TestBaseWithProfile() {
 
         Assertions.assertEquals(WorkOutcome.Success, result)
         verify(loop).invoke(any(), any(), any())
+    }
+
+    // autoISF: with 1 minute data the newest bucket stays on its 5 minute grid, but every new reading must
+    // run the loop, as in AAPS 3.x. The newest reading comes from AutosensDataStore.newestLoopReading.
+    @Test
+    fun `a newer 1 minute reading runs the loop although the bucket was used`() = runTest {
+        val now = Clock.System.now().toEpochMilliseconds()
+        val ads = mock<AutosensDataStore>()
+        val bucket = InMemoryGlucoseValue(timestamp = now - 3 * 60_000L, value = 120.0)
+        val reading = InMemoryGlucoseValue(timestamp = now - 60_000L, value = 124.0)
+        whenever(iobCobCalculator.ads).thenReturn(ads)
+        whenever(ads.actualBg()).thenReturn(bucket)
+        whenever(ads.newestLoopReading).thenReturn(reading)
+        // The loop ran for the bucket already
+        whenever(loop.lastBgTriggeredRun).thenReturn(bucket.timestamp)
+        val data = dataWith(runLoopAndWidgetPhase = true)
+        whenever(workflowChainData.postFor(any(), any())).thenReturn(data)
+
+        run()
+
+        verify(loop).invoke(any(), any(), any())
+        verify(loop).lastBgTriggeredRun = reading.timestamp
     }
 
     @Test
