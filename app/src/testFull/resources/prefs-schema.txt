@@ -79,6 +79,7 @@ activity_ratio|DoubleNonKey|false
 activity_scale_factor|DoubleKey|true
 actual_basal_profile|MedtrumStringNonKey|true
 age|StringKey|true
+aisf_automation_examples_added|BooleanNonKey|false
 alarm_setting|MedtrumStringKey|true
 alert_override_dnd|BooleanKey|true
 allow_hardware_pump|BooleanNonKey|true

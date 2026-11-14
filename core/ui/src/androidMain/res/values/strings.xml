@@ -91,6 +91,8 @@
     <string name="pump_management">Pump</string>
     <string name="openaps">OpenAPS</string>
     <string name="openaps_short">OAPS</string>
+    <string name="aisf_algorithm" comment="Title of the AAPSClient status that shows the algorithm of the master and the debug lines of its last run">Algorithm</string>
+    <string name="aisf_algorithm_short" comment="Short label of the AAPSClient algorithm status chip, like OAPS for OpenAPS">ALG</string>
     <string name="uploader">Uploader</string>
     <string name="uploader_short">UPLD</string>
     <string name="missed_bg_readings">Missed BG readings</string>

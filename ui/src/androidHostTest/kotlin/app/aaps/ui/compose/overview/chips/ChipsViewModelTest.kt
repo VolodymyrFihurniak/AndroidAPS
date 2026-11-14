@@ -12,6 +12,7 @@ import app.aaps.core.interfaces.plugin.ActivePlugin
 import app.aaps.core.interfaces.resources.ResourceHelper
 import app.aaps.core.interfaces.rx.bus.RxBus
 import app.aaps.core.interfaces.utils.DecimalFormatter
+import app.aaps.core.interfaces.widget.WidgetUpdater
 import app.aaps.core.keys.BooleanKey
 import app.aaps.core.keys.interfaces.Preferences
 import com.google.common.truth.Truth.assertThat
@@ -43,6 +44,7 @@ internal class ChipsViewModelTest {
     @Mock private lateinit var rxBus: RxBus
     @Mock private lateinit var preferences: Preferences
     @Mock private lateinit var activePlugin: ActivePlugin
+    @Mock private lateinit var widgetUpdater: WidgetUpdater
 
     private lateinit var sut: ChipsViewModel
 
@@ -55,7 +57,7 @@ internal class ChipsViewModelTest {
         whenever(cache.iobGraphFlow).thenReturn(MutableStateFlow(IobGraphData(emptyList(), emptyList())))
         whenever(cache.cobGraphFlow).thenReturn(MutableStateFlow(CobGraphData(emptyList(), emptyList())))
         whenever(cache.predictionsFlow).thenReturn(MutableStateFlow(emptyList()))
-        sut = ChipsViewModel(cache, iobCobCalculator, loop, config, persistenceLayer, sensitivityOverview, rh, decimalFormatter, rxBus, preferences, activePlugin)
+        sut = ChipsViewModel(cache, iobCobCalculator, loop, config, persistenceLayer, sensitivityOverview, rh, decimalFormatter, rxBus, preferences, activePlugin, widgetUpdater)
     }
 
     @AfterEach
@@ -80,6 +82,7 @@ internal class ChipsViewModelTest {
         sut.toggleExerciseMode()
 
         verify(preferences).put(BooleanKey.ApsAutoIsfHighTtRaisesSens, true)
+        verify(widgetUpdater).update("ExerciseMode")
     }
 
     @Test

@@ -319,6 +319,17 @@ private fun ChipsPanel(state: WidgetRenderState, sizes: WidgetSizes, modifier: G
                 accentColor = DarkElementColors.tempBasal,
                 attention = false
             )
+            // autoISF: exercise mode, only while it is on. Warning colour, as the button in the overview.
+            if (state.exerciseModeOn) {
+                Spacer(modifier = GlanceModifier.width(ChipGap))
+                IconChip(
+                    modifier = GlanceModifier.fillMaxHeight(),
+                    iconResId = state.exerciseModeIconResId,
+                    iconDescription = state.exerciseModeDescription,
+                    accentColor = DarkGeneralColors.statusWarning,
+                    attention = true
+                )
+            }
         }
         Spacer(modifier = GlanceModifier.height(ChipGap))
         Row(modifier = GlanceModifier.fillMaxWidth().defaultWeight()) {

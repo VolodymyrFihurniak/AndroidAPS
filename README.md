@@ -46,11 +46,36 @@ and carb ratios.
   with the predictions.
 * Exercise mode button in the overview, next to the temp basal chip: it shows and switches
   *High temp target raises sensitivity*. It is shown while AutoISF or SMB is the active APS.
+  While the mode is on, the widget shows the same icon next to the temp basal icon.
+* AAPSClient shows the algorithm of the master (*ALG: AutoISF*, *DynISF*, *SMB*, ...) next to the
+  OpenAPS status. Tap the card to see the debug lines of the last loop run of the master (the
+  "Script debug" of aisf).
 * Automation: actions *Enable/Disable glucose ISF weights*, *Set bgAccel weight*, *Set iobTH*,
   *Set automation state*; triggers *iobTH percent*, *BgAccel weight*, *Check automation state*.
 * Automation States plugin: named states like `Sleeping` with their possible values. AutoISF
   reads `Sleeping` to stop the inactivity detection.
 * Logs are rolled every hour into `Documents/aapsLogs` and kept for 30 days.
+
+### Ready made automations
+They are added once to the automation list. The AutoISF examples are **switched off**: their
+values are only a starting point. Check and change them, then switch on the ones you want.
+
+| Automation | When | What |
+|---|---|---|
+| AutoISF example: night, iobTH 80% | every day at 22:00 | iobTH 80% |
+| AutoISF example: day, iobTH 100% | every day at 06:00 | iobTH 100% |
+| AutoISF example: sport, high temp target | 1500 steps or more in 30 minutes | temp target 140 mg/dL for 60 min (with exercise mode on, this raises the sensitivity) |
+| AutoISF example: meal, bgAccel weight up | BG ≥ 120 mg/dL, delta ≥ +6 mg/dL, bgAccel weight < 0.2 | bgAccel weight 0.2 |
+| AutoISF example: after meal, bgAccel weight back | delta ≤ 0, bgAccel weight > 0.1 | bgAccel weight 0.1 (set your own normal value) |
+| Daily settings export (**on**) | every day at 03:00 | export of the settings |
+
+For the daily export, *Unattended settings export* is on by default (Maintenance settings). It needs
+the master password: do one export by hand (Maintenance → Export settings), then the password is
+kept for the automatic export. When it must be entered again, the app shows a notification.
+
+For a sleeping state as in aisf: create the state `Sleeping` with the values `True` and `False` in the
+Automation States plugin, and add *Set automation state* to the night and day automations. Once the
+state exists, AutoISF uses it instead of the overnight hours to stop the inactivity detection.
 
 ### Unlocked in this build
 * **Simple mode is off.** Simple mode hides the AutoISF settings and uses their default values
@@ -63,9 +88,9 @@ and carb ratios.
 * The debug controls of the objectives screen (*Enable fake time and progress*, *Reset*) are shown.
 * Engineering mode is always on, so the AutoISF automations and Autotune are available.
 
-### Not ported yet (work in progress)
-* The exercise mode icon in the widget.
-* The "Algorithm" status of the master in AAPSClient.
+Everything of aisf 3.2.1 is ported. The aisf widget showed the AutoISF factor as "ai: 85%"; the
+AAPS 4.0 widget shows the profile ISF and the ISF in use (from → to), which for AutoISF is the
+result of AutoISF.
 
 ### Changes compared to autoISF 3.2.1 on AAPS 3.4
 * The UKF smoothing plugin of AAPS 4.0 is used. It comes from the same source as the one in aisf.
@@ -75,6 +100,20 @@ and carb ratios.
 * Automations, automation states and settings of aisf 3.2.x are read with the same names.
 * The steps count trigger uses the newest steps of the last 5 minutes, from the watch or from the
   phone. This is the newer fix of ga-zelle for AAPS 4.0, not the 1 minute window of aisf 3.2.1.
+
+## Keeping up with autoISF
+ga-zelle, the author of autoISF, works on autoISF for AAPS 4.0 in the branch
+[`400-dev/v400-dev`](https://github.com/ga-zelle/AndroidAPS/tree/400-dev/v400-dev). Its newest fix
+(steps count trigger) is already in this branch. To see whether there is something new:
+
+```bash
+git remote add gazelle https://github.com/ga-zelle/AndroidAPS.git
+git fetch gazelle 400-dev/v400-dev
+git log --oneline --author=ga-zelle HEAD..gazelle/400-dev/v400-dev
+```
+
+Take his commits with `git cherry-pick <commit>`. When he releases autoISF for AAPS 4.0, merge his
+release branch into this one.
 
 ## Updating from autoISF 3.2.x (AAPS 3.4)
 1. Export your settings in the old build (Maintenance → Export settings).

@@ -56,5 +56,10 @@ data class WidgetRenderState(
     val cobLabel: String,
     // The glucose value as spoken. An old reading is only struck through on screen, so a screen
     // reader read it as if it were current; this adds "old reading" in that case.
-    val bgSpoken: String
+    val bgSpoken: String,
+    // autoISF: exercise mode is on (and means something here, see exerciseModeApplies). Shown as an
+    // icon next to the temp basal icon, as the button in the overview.
+    val exerciseModeOn: Boolean = false,
+    @DrawableRes val exerciseModeIconResId: Int = 0,
+    val exerciseModeDescription: String = ""
 )

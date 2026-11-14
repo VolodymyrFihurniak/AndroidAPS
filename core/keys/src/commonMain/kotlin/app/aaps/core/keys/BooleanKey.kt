@@ -209,7 +209,8 @@ enum class BooleanKey(
     // Master-only (not a follower client): unattended settings export backs up the local config, which on a
     // client is derived from the master. showInNsClientMode=false hides it in apsMode + pumpControlMode only;
     // hideParentScreenIfHidden collapses the now-empty "Unattended Settings Export" subscreen on a client.
-    MaintenanceEnableExportSettingsAutomation("enable_unattended_export", false, KeysStrings.pref_title_maintenance_enable_export_automation, defaultedBySM = false, showInNsClientMode = false, hideParentScreenIfHidden = true),
+    // autoISF build: on by default, for the daily settings export automation (AutoIsfAutomationExamples)
+    MaintenanceEnableExportSettingsAutomation("enable_unattended_export", true, KeysStrings.pref_title_maintenance_enable_export_automation, defaultedBySM = false, showInNsClientMode = false, hideParentScreenIfHidden = true),
 
     AutotuneAutoSwitchProfile("autotune_auto", false, KeysStrings.pref_title_autotune_auto_switch_profile, KeysStrings.pref_summary_autotune_auto_switch_profile),
     AutotuneCategorizeUamAsBasal("categorize_uam_as_basal", false, KeysStrings.pref_title_autotune_categorize_uam_as_basal, KeysStrings.pref_summary_autotune_categorize_uam_as_basal),

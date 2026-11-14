@@ -4,7 +4,6 @@ import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.aaps.core.interfaces.InterfacesStrings
-import app.aaps.core.interfaces.aps.APSResult
 import app.aaps.core.interfaces.aps.Loop
 import app.aaps.core.interfaces.configuration.Config
 import app.aaps.core.interfaces.db.PersistenceLayer
@@ -16,6 +15,7 @@ import app.aaps.core.interfaces.resources.TextResolver
 import app.aaps.core.interfaces.rx.bus.RxBus
 import app.aaps.core.interfaces.rx.events.EventShowDialog
 import app.aaps.core.interfaces.utils.DecimalFormatter
+import app.aaps.core.interfaces.widget.WidgetUpdater
 import app.aaps.core.keys.BooleanKey
 import app.aaps.core.keys.interfaces.Preferences
 import app.aaps.core.objects.extensions.round
@@ -47,7 +47,8 @@ class ChipsViewModel(
     private val decimalFormatter: DecimalFormatter,
     private val rxBus: RxBus,
     private val preferences: Preferences,
-    private val activePlugin: ActivePlugin
+    private val activePlugin: ActivePlugin,
+    private val widgetUpdater: WidgetUpdater
 ) : ViewModel() {
 
     @AssistedFactory
@@ -121,20 +122,17 @@ class ChipsViewModel(
         iobCobTicker,
         flow { emitAll(preferences.observe(BooleanKey.ApsAutoIsfHighTtRaisesSens)) }
     ) { _, enabled ->
-        ExerciseModeUiState(visible = activeApsUsesExerciseMode(), enabled = enabled)
+        ExerciseModeUiState(visible = exerciseModeApplies(config, activePlugin), enabled = enabled)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = ExerciseModeUiState()
     )
 
-    /** Only the master runs an APS. Of the algorithms, only AutoISF and SMB read the exercise mode. */
-    private fun activeApsUsesExerciseMode(): Boolean =
-        config.APS && activePlugin.activeAPS?.algorithm?.let { it in EXERCISE_MODE_ALGORITHMS } == true
-
-    /** autoISF: switches exercise mode, as the button of aisf did */
+    /** autoISF: switches exercise mode, as the button of aisf did. The widget shows the mode too. */
     fun toggleExerciseMode() {
         preferences.put(BooleanKey.ApsAutoIsfHighTtRaisesSens, !preferences.get(BooleanKey.ApsAutoIsfHighTtRaisesSens))
+        widgetUpdater.update("ExerciseMode")
     }
 
     private suspend fun buildSensitivityUiState(): SensitivityUiState {
@@ -171,10 +169,5 @@ class ChipsViewModel(
                 )
             )
         }
-    }
-
-    private companion object {
-
-        val EXERCISE_MODE_ALGORITHMS = setOf(APSResult.Algorithm.AUTO_ISF, APSResult.Algorithm.SMB)
     }
 }

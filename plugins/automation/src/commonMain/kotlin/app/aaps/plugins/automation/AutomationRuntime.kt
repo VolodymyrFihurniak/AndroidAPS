@@ -32,6 +32,7 @@ import app.aaps.core.interfaces.rx.events.EventBTChange
 import app.aaps.core.interfaces.rx.events.EventWearUpdateTiles
 import app.aaps.core.interfaces.scenes.SceneAutomationApi
 import app.aaps.core.interfaces.utils.DateUtil
+import app.aaps.core.keys.BooleanNonKey
 import app.aaps.core.keys.LongComposedKey
 import app.aaps.core.keys.StringKey
 import app.aaps.core.keys.StringNonKey
@@ -520,6 +521,8 @@ class AutomationRuntime(
             val before = preferences.get(StringNonKey.AutomationEvents)
             if (!loadFromSP()) return
             if (before == "") automationEvents.add(automationEventFactory.fromJSON(EMPTY_EVENT))
+            // autoISF build: the AutoISF actions exist only in engineering mode, so do their examples
+            if (config.isEngineeringMode()) addAutoIsfExamplesOnce()
             notifyChanged()
             val after = eventsToJson()
             if (after != before)
@@ -528,6 +531,20 @@ class AutomationRuntime(
                     preferences.get(LongComposedKey.SyncedPrefModified, StringNonKey.AutomationEvents.key)
                 )
         }
+    }
+
+    /**
+     * autoISF build: adds [AutoIsfAutomationExamples] once per install. Called with [eventsLock] held.
+     * An example the user deleted does not come back, and one with a title already in the list is not
+     * added twice.
+     */
+    private fun addAutoIsfExamplesOnce() {
+        if (preferences.get(BooleanNonKey.AutomationAutoIsfExamplesAdded)) return
+        val titles = automationEvents.map { it.title }.toSet()
+        AutoIsfAutomationExamples(automationEventFactory, actionFactory, triggerDeps, rh).build()
+            .filter { it.title !in titles }
+            .forEach { automationEvents.add(it) }
+        preferences.put(BooleanNonKey.AutomationAutoIsfExamplesAdded, true)
     }
 
     internal suspend fun processActions() {

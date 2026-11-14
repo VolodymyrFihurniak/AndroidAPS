@@ -100,6 +100,7 @@ import app.aaps.core.objects.extensions.fromGv
 import app.aaps.core.objects.profile.ProfileSealed
 import app.aaps.core.ui.CoreUiStrings
 import app.aaps.ui.UiStrings
+import app.aaps.ui.compose.overview.aapsClient.aisfAlgorithmName
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedInject
 import kotlinx.coroutines.CoroutineScope
@@ -1250,7 +1251,19 @@ class OverviewDataCacheImpl(
             )
         } else null
 
-        _nsClientStatusFlow.value = AapsClientStatusData(pump = pumpItem, openAps = openApsItem, uploader = uploaderItem)
+        // autoISF: which algorithm the master runs, and the debug lines of its last run, as the
+        // "Script debug" status of aisf. Same age colour as the OpenAPS item, it is the same result.
+        val algorithmItem = processedDeviceStatusData.openAPSData.suggested?.let { suggested ->
+            AapsClientStatusItem(
+                label = rh.gs(CoreUiStrings.aisf_algorithm_short),
+                value = aisfAlgorithmName(suggested),
+                level = openApsItem?.level ?: AapsClientLevel.INFO,
+                dialogTitle = rh.gs(CoreUiStrings.aisf_algorithm),
+                dialogText = suggested.consoleError.orEmpty().joinToString("\n")
+            )
+        }
+
+        _nsClientStatusFlow.value = AapsClientStatusData(pump = pumpItem, openAps = openApsItem, uploader = uploaderItem, algorithm = algorithmItem)
     }
 
     private suspend fun rebuildHeartRateGraph() {

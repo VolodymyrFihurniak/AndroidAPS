@@ -15,6 +15,7 @@ import app.aaps.core.interfaces.nsclient.ProcessedDeviceStatusData
 import app.aaps.core.interfaces.overview.IsfStep
 import app.aaps.core.interfaces.overview.LastBgData
 import app.aaps.core.interfaces.overview.SensitivityOverview
+import app.aaps.core.interfaces.plugin.ActivePlugin
 import app.aaps.core.interfaces.profile.ProfileFunction
 import app.aaps.core.interfaces.profile.ProfileUtil
 import app.aaps.core.interfaces.resources.TextResolver
@@ -22,6 +23,7 @@ import app.aaps.core.interfaces.utils.DateUtil
 import app.aaps.core.interfaces.utils.DecimalFormatter
 import app.aaps.core.interfaces.utils.TrendCalculator
 import app.aaps.core.keys.BooleanComposedKey
+import app.aaps.core.keys.BooleanKey
 import app.aaps.core.keys.IntComposedKey
 import app.aaps.core.keys.interfaces.Preferences
 import app.aaps.core.objects.extensions.apsAdjustedTargetMgdl
@@ -35,6 +37,7 @@ import app.aaps.core.ui.extensions.directionToDescription
 import app.aaps.core.ui.extensions.displayText
 import app.aaps.ui.R
 import app.aaps.ui.UiStrings
+import app.aaps.ui.compose.overview.chips.exerciseModeApplies
 import app.aaps.ui.widget.directionToDrawableRes
 import dev.zacsweers.metro.Inject
 import kotlin.math.abs
@@ -55,7 +58,8 @@ class WidgetStateLoader(
     private val decimalFormatter: DecimalFormatter,
     private val persistenceLayer: PersistenceLayer,
     private val processedDeviceStatusData: ProcessedDeviceStatusData,
-    private val sensitivityOverview: SensitivityOverview
+    private val sensitivityOverview: SensitivityOverview,
+    private val activePlugin: ActivePlugin
 ) {
 
     suspend fun loadState(appWidgetId: Int): WidgetRenderState {
@@ -250,7 +254,10 @@ class WidgetStateLoader(
             isfStepIconResId = isfStepIconResId,
             isfStepDescription = isfStepDescription,
             tbrIconResId = tbrIconResId,
-            backgroundColor = backgroundColor
+            backgroundColor = backgroundColor,
+            exerciseModeOn = exerciseModeApplies(config, activePlugin) && preferences.get(BooleanKey.ApsAutoIsfHighTtRaisesSens),
+            exerciseModeIconResId = R.drawable.ic_widget_exercise,
+            exerciseModeDescription = rh.gs(UiStrings.exercise_mode)
         )
     }
 }

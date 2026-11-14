@@ -46,6 +46,10 @@ enum class BooleanNonKey(
     // pairing.
     NsClientControlSecretReplaced("nsclient_control_secret_replaced", false, exportable = false),
 
+    // autoISF build: the ready made automations (AutoIsfAutomationExamples) were added once. Not exportable:
+    // on another phone the examples are added again, the ones already there are kept by their title.
+    AutomationAutoIsfExamplesAdded("aisf_automation_examples_added", false, exportable = false),
+
     // autoISF: what the activity monitor found in the last loop run. State, not a setting → not exportable.
     ActivityMonitorStepsActive("steps_activity_detected", false, exportable = false),
     ActivityMonitorStepsInactive("steps_inactivity_detected", false, exportable = false),

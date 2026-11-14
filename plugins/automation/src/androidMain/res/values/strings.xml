@@ -206,4 +206,11 @@
     <string name="state_values_one_per_line">Possible values, one per line</string>
     <string name="delete_state">Delete state</string>
     <string name="delete_state_confirmation">Do you really want to delete this state?</string>
+    <!-- autoISF build: titles of the ready made automations -->
+    <string name="aisf_example_night_iobth">AutoISF example: night, iobTH 80%</string>
+    <string name="aisf_example_day_iobth">AutoISF example: day, iobTH 100%</string>
+    <string name="aisf_example_sport">AutoISF example: sport, high temp target</string>
+    <string name="aisf_example_meal">AutoISF example: meal, bgAccel weight up</string>
+    <string name="aisf_example_after_meal">AutoISF example: after meal, bgAccel weight back</string>
+    <string name="aisf_daily_settings_export">Daily settings export</string>
 </resources>
