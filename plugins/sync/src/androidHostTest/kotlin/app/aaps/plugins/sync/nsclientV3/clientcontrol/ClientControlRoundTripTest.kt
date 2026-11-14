@@ -227,8 +227,8 @@ internal class ClientControlRoundTripTest {
     }
 
     /** A signed ACK doc as the WS layer would hand it to onAckDoc. [signSecret] lets a test forge one. */
-    private fun ackDoc(phase: AckPhase, status: AckStatus, reason: String? = null, payload: String? = null, ctr: Long = counter, signSecret: ByteArray = secret): JsonObject {
-        val ack = ClientControlCrypto.signAck(signSecret, AckEnvelope(clientId, ctr, phase, status, reason, payload, timestamp = now, signature = ""))
+    private fun ackDoc(phase: AckPhase, status: AckStatus, reason: String? = null, payload: String? = null, ctr: Long = counter, signSecret: ByteArray = secret, ts: Long = now): JsonObject {
+        val ack = ClientControlCrypto.signAck(signSecret, AckEnvelope(clientId, ctr, phase, status, reason, payload, timestamp = ts, signature = ""))
         return buildJsonObject { put("ack", json.encodeToJsonElement(AckEnvelope.serializer(), ack)) }
     }
 
@@ -336,6 +336,20 @@ internal class ClientControlRoundTripTest {
         whenever(publisher.publishTracked(any(), any(), any())).thenReturn(ClientControlPublisher.TrackedPublish(ClientControlSendResult.Success, counter))
         sut.sendPing()
         verify(publisher).publishTracked(eq(ClientControlMessage.Ping), any(), eq(true))
+    }
+
+    // autoISF build: validUntil is read by the master with its own clock, so it is given in that clock
+    @Test
+    fun aMasterClockAheadMovesValidUntilWithIt() = runTest {
+        whenever(publisher.publishTracked(any(), any(), any())).thenReturn(ClientControlPublisher.TrackedPublish(ClientControlSendResult.Success, counter))
+        sut.sendPing()
+        verify(publisher).publishTracked(eq(ClientControlMessage.Ping), eq(now + ClientControlRoundTrip.PING_TTL_MS), eq(true))
+
+        // The master signed its ACK 20 s ahead of this phone
+        sut.onAckDoc(ackDoc(AckPhase.Done, AckStatus.Ok, ts = now + 20_000L))
+        sut.sendPing()
+
+        verify(publisher).publishTracked(eq(ClientControlMessage.Ping), eq(now + 20_000L + ClientControlRoundTrip.PING_TTL_MS), eq(true))
     }
 
     @Test

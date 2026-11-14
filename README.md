@@ -93,6 +93,19 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
 * The debug controls of the objectives screen (*Enable fake time and progress*, *Reset*) are shown.
 * Engineering mode is always on, so the AutoISF automations and Autotune are available.
 
+### Fixes compared to AAPS 4.0
+* **Bolus PIN works on its own, as in AAPS 3.4.** AAPS 4.0 ignored every protection while no master
+  password was set, and the bolus protection while the settings had none, without telling. Now each
+  level (application, bolus, settings) is protected on its own. Opening settings that have no
+  protection does not let the next bolus pass without its PIN.
+* **Commands from AAPSClient no longer expire because the phone clocks differ.** A command is valid
+  for 8 seconds, and the master checked that time with its own clock: a master clock ahead by 8 s or
+  more made every command "expired". The client now learns the clock of the master from its signed
+  answers and gives the time in that clock. The first command after a start can still expire when
+  the clocks are far apart; the next one works. A master that receives a command late (screen off,
+  battery saving) still rejects it, on purpose. The NSClient log shows how late an expired command
+  was (master) and how far the clocks are apart (client).
+
 Everything of aisf 3.2.1 is ported. The aisf widget showed the AutoISF factor as "ai: 85%"; the
 AAPS 4.0 widget shows the profile ISF and the ISF in use (from → to), which for AutoISF is the
 result of AutoISF.

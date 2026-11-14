@@ -100,6 +100,9 @@ class ClientControlRoundTrip(
     private val appScope: CoroutineScope
 ) : ClientControlActionDispatcher {
 
+    // autoISF build: the clock of the master, learned from its signed ACKs. See MasterClockOffset.
+    private val masterClock = MasterClockOffset()
+
     companion object {
 
         // The command travels over a live WS to the master and back — a healthy round trip is
@@ -183,7 +186,11 @@ class ClientControlRoundTrip(
         // now — feed the liveness clock so masterReachable clears the offline banner without waiting
         // for the next devicestatus heartbeat.
         nsClientV3Plugin().bumpMasterSignal(dateUtil.now())
+        // autoISF build: this ACK came live, so it tells the clock of the master
+        masterClock.addSample(ack.timestamp, dateUtil.now())
         nsClientRepository.addLog("◄ CLIENTCTL", "ack ${ack.phase}/${ack.status} counter=${ack.commandCounter}" + (ack.reason?.let { " ($it)" } ?: ""))
+        if (ack.status == AckStatus.Expired)
+            nsClientRepository.addLog("◄ CLIENTCTL", "master clock is ${masterClock.offset(dateUtil.now()) / 1000} s from this phone")
         // A pong carries the master's key for its settings docs. Other payloads (a prepared bolus, a failure text) have
         // no such field, or are not JSON at all.
         if (ack.phase == AckPhase.Done && ack.status == AckStatus.Ok)
@@ -285,7 +292,9 @@ class ClientControlRoundTrip(
      * liveness clock. No-op if unpaired (publishTracked returns NotPaired).
      */
     suspend fun sendPing() {
-        publisher.publishTracked(ClientControlMessage.Ping, dateUtil.now() + PING_TTL_MS, wantsAck = true)
+        // autoISF build: valid until a time of the master clock, see MasterClockOffset
+        val now = dateUtil.now()
+        publisher.publishTracked(ClientControlMessage.Ping, now + masterClock.offset(now) + PING_TTL_MS, wantsAck = true)
     }
 
     /**
@@ -385,7 +394,11 @@ class ClientControlRoundTrip(
             }
             // A pump-direct commit waits the longer window (the master blocks on the pump); everything else is fast-or-never.
             val ttl = if (command is ClientControlActionDispatcher.Command.BolusCommit && command.pumpDirect) PUMP_ROUND_TRIP_TTL_MS else ROUND_TRIP_TTL_MS
-            val validUntil = dateUtil.now() + ttl
+            // autoISF build: the master reads validUntil with its own clock, so it is given in that clock. This
+            // client still waits ttl by its own clock (waitMs below), so the master never applies the command
+            // after this client has stopped waiting, whichever clock is ahead.
+            val sentAt = dateUtil.now()
+            val validUntil = sentAt + masterClock.offset(sentAt) + ttl
             val tracked = publisher.publishTracked(message, validUntil)
             val counter = when (val r = tracked.result) {
                 is ClientControlSendResult.NotPaired     -> {
@@ -422,7 +435,7 @@ class ClientControlRoundTrip(
                 }
             }
 
-            val waitMs = (validUntil + PROPAGATION_MARGIN_MS - dateUtil.now()).coerceAtLeast(0L)
+            val waitMs = (sentAt + ttl + PROPAGATION_MARGIN_MS - dateUtil.now()).coerceAtLeast(0L)
             val result = withTimeoutOrNull(waitMs) { terminal.await() }
                 ?: pollAck(counter)
                 ?: ActionProgress.Unconfirmed(FailureReason.NoReply)

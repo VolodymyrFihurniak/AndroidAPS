@@ -340,7 +340,8 @@ class ClientControlReceiver(
         // tell the client definitively rather than leaving it to time out.
         if (now > envelope.validUntil) {
             authorizedRepository.bumpLastSeen(entry.clientId, envelope.counter, now)
-            nsClientRepository.addLog("◄ CLIENTCTL", "expired ${envelope.type} from ${entry.name}")
+            // autoISF build: how late, so the log shows whether the clocks differ or the command came late
+            nsClientRepository.addLog("◄ CLIENTCTL", "expired ${envelope.type} from ${entry.name}, ${(now - envelope.validUntil) / 1000} s late")
             aapsLogger.warn(LTag.NSCLIENT, "ClientControl: $identifier expired (validUntil=${envelope.validUntil} < now=$now), not executing")
             if (envelope.wantsAck) writeAck(client, secret, envelope.clientId, envelope.counter, AckPhase.Done, AckStatus.Expired, "expired before master applied it", null, now)
             return
