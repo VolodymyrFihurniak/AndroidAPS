@@ -30,7 +30,9 @@ enum class BooleanKey(
     override val defaultedByHardenedMode: Boolean = false
 ) : BooleanPreferenceKey {
 
-    GeneralSimpleMode(key = "simple_mode", defaultValue = true, title = KeysStrings.pref_title_simple_mode, sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)),
+    // autoISF build: off by default. Simple mode hides the AutoISF settings and reads their default values
+    // instead (weights 0, AutoISF off), so AutoISF cannot work in it. See OpenAPSAutoISFPlugin.onStart.
+    GeneralSimpleMode(key = "simple_mode", defaultValue = false, title = KeysStrings.pref_title_simple_mode, sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)),
     GeneralInsulinConcentration(
         key = "insulin_concentration_enabled", defaultValue = false, title = KeysStrings.pref_title_insulin_concentration, summary = KeysStrings.pref_summary_insulin_concentration,
         defaultedBySM = true,

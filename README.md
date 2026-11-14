@@ -52,6 +52,17 @@ and carb ratios.
   reads `Sleeping` to stop the inactivity detection.
 * Logs are rolled every hour into `Documents/aapsLogs` and kept for 30 days.
 
+### Unlocked in this build
+* **Simple mode is off.** Simple mode hides the AutoISF settings and uses their default values
+  (weights 0, AutoISF off), so AutoISF cannot work in it. It is off by default, and AutoISF switches
+  it off every time it starts. The switch stays in the general settings for the other algorithms.
+* **All objectives are done.** At every start, each objective that is not done yet is marked as
+  started and accomplished, so closed loop, SMB, autosens, automation and the insulin concentration
+  are open at once. Objectives that were done before keep their dates. This build is meant for users
+  who looped with autoISF before: make sure you know how to run the loop safely.
+* The debug controls of the objectives screen (*Enable fake time and progress*, *Reset*) are shown.
+* Engineering mode is always on, so the AutoISF automations and Autotune are available.
+
 ### Not ported yet (work in progress)
 * The exercise mode icon in the widget.
 * The "Algorithm" status of the master in AAPSClient.

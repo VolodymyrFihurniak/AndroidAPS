@@ -177,7 +177,19 @@ open class OpenAPSAutoISFPlugin(
 
     override suspend fun onStart() {
         super.onStart()
+        switchOffSimpleMode()
         phoneActivitySensor.start()
+    }
+
+    /**
+     * autoISF: simple mode hides every AutoISF setting and makes [Preferences.get] answer its default
+     * value (weights 0, AutoISF off), so AutoISF would run without any of its settings. It is switched
+     * off whenever AutoISF starts. The switch stays in the settings for the other algorithms.
+     */
+    internal fun switchOffSimpleMode() {
+        if (!preferences.get(BooleanKey.GeneralSimpleMode)) return
+        preferences.put(BooleanKey.GeneralSimpleMode, false)
+        aapsLogger.info(LTag.APS, "AutoISF: simple mode switched off, AutoISF needs its own settings")
     }
 
     override fun requiredPermissions(): List<PermissionGroup> =

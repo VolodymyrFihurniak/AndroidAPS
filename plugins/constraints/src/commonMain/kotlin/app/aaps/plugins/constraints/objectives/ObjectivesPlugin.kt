@@ -66,6 +66,28 @@ class ObjectivesPlugin(
     aapsLogger, rh, preferences, notificationManager
 ), PluginConstraints, Objectives {
 
+    override suspend fun onStart() {
+        super.onStart()
+        completeAllObjectives()
+    }
+
+    /**
+     * autoISF build: every objective counts as done, so closed loop, SMB, autosens, automation and the
+     * insulin concentration are open from the first start. The build is for users who looped with
+     * autoISF before. An objective that is done already keeps its dates.
+     *
+     * Runs at every start, so an objective that was reset on the objectives screen is done again
+     * after the next start.
+     */
+    fun completeAllObjectives() {
+        for (objective in objectives) {
+            // 1 s in the past: isAccomplished asks for a time before now, as the fake mode of the screen does
+            val past = objective.dateUtil.now() - 1000
+            if (!objective.isStarted) objective.startedOn = past
+            if (!objective.isAccomplished) objective.accomplishedOn = past
+        }
+    }
+
     fun reset() {
         for (objective in objectives) {
             objective.startedOn = 0

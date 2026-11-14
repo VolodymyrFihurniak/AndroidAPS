@@ -62,7 +62,9 @@ class ObjectivesViewModel(
 
     private val scope get() = viewModelScope
 
-    private val _uiState = MutableStateFlow(ObjectivesUiState())
+    // autoISF build: the debug controls (fake time and progress, reset) are shown. Nothing else set
+    // this flag, so they were hidden in every build.
+    private val _uiState = MutableStateFlow(ObjectivesUiState(showDebugControls = true))
     val uiState: StateFlow<ObjectivesUiState> = _uiState.asStateFlow()
 
     /** Index to auto-scroll to after state update */

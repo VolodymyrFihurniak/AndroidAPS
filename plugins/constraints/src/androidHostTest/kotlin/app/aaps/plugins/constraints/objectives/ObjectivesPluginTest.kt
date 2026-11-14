@@ -110,4 +110,40 @@ class ObjectivesPluginTest : TestBaseWithProfile() {
         assertThat(c.getReasons()).contains("Objective 9 not started")
         assertThat(c.value()).isFalse()
     }
+
+    @Test fun startCompletesEveryObjective() = runTest {
+        // setUp ran onStart
+        assertThat(objectivesPlugin.objectives.all { it.isStarted && it.isAccomplished }).isTrue()
+        assertThat(objectivesPlugin.isLoopInvocationAllowed(ConstraintObject(true, aapsLogger)).value()).isTrue()
+        assertThat(objectivesPlugin.isClosedLoopAllowed(ConstraintObject(true, aapsLogger)).value()).isTrue()
+        assertThat(objectivesPlugin.isLgsForced(ConstraintObject(false, aapsLogger)).value()).isFalse()
+        assertThat(objectivesPlugin.isAutosensModeEnabled(ConstraintObject(true, aapsLogger)).value()).isTrue()
+        assertThat(objectivesPlugin.isSMBModeEnabled(ConstraintObject(true, aapsLogger)).value()).isTrue()
+        assertThat(objectivesPlugin.isAutomationEnabled(ConstraintObject(true, aapsLogger)).value()).isTrue()
+        assertThat(objectivesPlugin.isConcentrationEnabled(ConstraintObject(true, aapsLogger)).value()).isTrue()
+    }
+
+    @Test fun startKeepsTheDatesOfDoneObjectives() {
+        val objective = objectivesPlugin.objectives[Objectives.FIRST_OBJECTIVE]
+        val started = dateUtil.now() - 10 * 24 * 3600 * 1000L
+        val accomplished = dateUtil.now() - 3 * 24 * 3600 * 1000L
+        objective.startedOn = started
+        objective.accomplishedOn = accomplished
+
+        objectivesPlugin.completeAllObjectives()
+
+        assertThat(objective.startedOn).isEqualTo(started)
+        assertThat(objective.accomplishedOn).isEqualTo(accomplished)
+    }
+
+    @Test fun startCompletesAnObjectiveThatWasReset() {
+        val objective = objectivesPlugin.objectives[Objectives.SMB_OBJECTIVE]
+        objective.startedOn = 0
+        objective.accomplishedOn = 0
+
+        objectivesPlugin.completeAllObjectives()
+
+        assertThat(objective.isStarted).isTrue()
+        assertThat(objective.isAccomplished).isTrue()
+    }
 }

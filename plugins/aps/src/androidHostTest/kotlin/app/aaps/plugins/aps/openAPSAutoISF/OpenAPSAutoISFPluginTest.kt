@@ -21,6 +21,8 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mock
 import org.mockito.kotlin.any
+import org.mockito.kotlin.never
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
 class OpenAPSAutoISFPluginTest : TestBaseWithProfile() {
@@ -55,6 +57,24 @@ class OpenAPSAutoISFPluginTest : TestBaseWithProfile() {
     fun `a build without engineering mode forces it off`() {
         whenever(config.isEngineeringMode()).thenReturn(false)
         assertThat(openAPSAutoISFPlugin.enforcedState()).isEqualTo(EnforcedState.Disabled)
+    }
+
+    @Test
+    fun `simple mode is switched off, AutoISF cannot work in it`() {
+        whenever(preferences.get(BooleanKey.GeneralSimpleMode)).thenReturn(true)
+
+        openAPSAutoISFPlugin.switchOffSimpleMode()
+
+        verify(preferences).put(BooleanKey.GeneralSimpleMode, false)
+    }
+
+    @Test
+    fun `simple mode that is off is left alone`() {
+        whenever(preferences.get(BooleanKey.GeneralSimpleMode)).thenReturn(false)
+
+        openAPSAutoISFPlugin.switchOffSimpleMode()
+
+        verify(preferences, never()).put(BooleanKey.GeneralSimpleMode, false)
     }
 
     @Test
