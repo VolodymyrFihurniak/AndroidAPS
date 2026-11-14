@@ -514,6 +514,8 @@ internal class ClientControlReceiverTest {
         val entry = authorizedRepository.current(now).single { it.clientId == clientId }
         assertThat(entry.state).isEqualTo(ClientState.Pending)
         verify(nsAndroidClient, never()).deleteSettings(any())
+        // autoISF build: the user sees why the command got no answer
+        verify(nsClientRepository).addLog(eq("◄ CLIENTCTL"), argThat<String> { contains("wrong signature") })
     }
 
     @Test
@@ -527,6 +529,7 @@ internal class ClientControlReceiverTest {
         val entry = authorizedRepository.current(now).single { it.clientId == clientId }
         assertThat(entry.counterReceived).isEqualTo(5L)
         verify(nsAndroidClient, never()).deleteSettings(any())
+        verify(nsClientRepository).addLog(eq("◄ CLIENTCTL"), argThat<String> { contains("old number 5 (had 5 already)") })
     }
 
     @Test
@@ -540,6 +543,7 @@ internal class ClientControlReceiverTest {
         val entry = authorizedRepository.current(now).single { it.clientId == clientId }
         assertThat(entry.state).isEqualTo(ClientState.Pending)
         verify(nsAndroidClient, never()).deleteSettings(any())
+        verify(nsClientRepository).addLog(eq("◄ CLIENTCTL"), argThat<String> { contains("sent 3600 s ago") && contains("Check the time") })
     }
 
     @Test
@@ -555,6 +559,7 @@ internal class ClientControlReceiverTest {
         // soft nor a permanent delete is ever issued for an inbound command doc.
         verify(nsAndroidClient, never()).deleteSettings(any())
         verify(nsAndroidClient, never()).deleteSettingsPermanent(any())
+        verify(nsClientRepository).addLog(eq("◄ CLIENTCTL"), argThat<String> { contains("not paired here (stranger-uuid)") })
     }
 
     /**
@@ -1101,6 +1106,48 @@ internal class ClientControlReceiverTest {
         assertThat(acks.single().status.name).isEqualTo("Expired")
         // Counter consumed so a late replay can't fire it.
         assertThat(authorizedRepository.current(now).single { it.clientId == clientId }.counterReceived).isEqualTo(5L)
+    }
+
+    // autoISF build: what the user needs to find out why a client shows "No reply from the master in time"
+
+    @Test
+    fun theTimeACommandTookToComeIsLogged() = runTest {
+        val (clientId, secret) = pair()
+        authorizedRepository.markActive(clientId, counterReceived = 1L, now = now - 5_000L)
+        captureAcks(clientId)
+        val env = envelope(clientId, secret, message = ClientControlMessage.Ping, counter = 2L, timestamp = now - 3_000L, wantsAck = true)
+
+        sut.onSettingsDocChanged("${ClientControlPublisher.IDENTIFIER_CMD_PREFIX}ping_$clientId", wrap(env))
+
+        verify(nsClientRepository).addLog(eq("◄ CLIENTCTL"), argThat<String> { contains("ping from phone came 3 s after it was sent") })
+    }
+
+    @Test
+    fun anAckNightscoutRefusesIsLoggedAsNotWritten() = runTest {
+        val (clientId, secret) = pair()
+        authorizedRepository.markActive(clientId, counterReceived = 1L, now = now - 5_000L)
+        // Nightscout answers a refused write with a code, not an exception
+        val refused = CreateUpdateResponse(response = 410, identifier = null, isDeduplication = false, deduplicatedIdentifier = null, lastModified = null, errorResponse = "gone")
+        whenever(nsAndroidClient.updateSettings(eq(ClientControlPublisher.IDENTIFIER_ACK_PREFIX + clientId), any())).thenReturn(refused)
+        val env = envelope(clientId, secret, message = ClientControlMessage.Ping, counter = 2L, wantsAck = true)
+
+        sut.onSettingsDocChanged("${ClientControlPublisher.IDENTIFIER_CMD_PREFIX}ping_$clientId", wrap(env))
+
+        verify(nsClientRepository).addLog(eq("✕ CLIENTCTL"), argThat<String> { contains("ack Done/Ok counter=2 not written: HTTP 410") })
+        verify(nsClientRepository, never()).addLog(eq("► CLIENTCTL"), argThat<String> { startsWith("ack ") })
+    }
+
+    @Test
+    fun aWrittenAckIsLogged() = runTest {
+        val (clientId, secret) = pair()
+        authorizedRepository.markActive(clientId, counterReceived = 1L, now = now - 5_000L)
+        captureAcks(clientId)
+        val env = envelope(clientId, secret, message = ClientControlMessage.Ping, counter = 2L, wantsAck = true)
+
+        sut.onSettingsDocChanged("${ClientControlPublisher.IDENTIFIER_CMD_PREFIX}ping_$clientId", wrap(env))
+
+        verify(nsClientRepository).addLog(eq("► CLIENTCTL"), argThat<String> { startsWith("ack Done/Ok counter=2") })
+        verify(nsClientRepository, never()).addLog(eq("✕ CLIENTCTL"), any<String>())
     }
 
     // -- preferences_update (generic synced-pref channel) ---------------------------------

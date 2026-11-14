@@ -441,6 +441,9 @@ class ClientControlRoundTrip(
                 ?: ActionProgress.Unconfirmed(FailureReason.NoReply)
             ackJob.cancel()
             reachJob.cancel()
+            // autoISF build: next to the acks in the NSClient log, so a late ack shows how late it was
+            if (result is ActionProgress.Unconfirmed)
+                nsClientRepository.addLog("✕ CLIENTCTL", "no answer for counter=$counter after ${(dateUtil.now() - sentAt) / 1000} s (${result.reason})")
             send(result)
         } finally {
             inFlight.store(false)

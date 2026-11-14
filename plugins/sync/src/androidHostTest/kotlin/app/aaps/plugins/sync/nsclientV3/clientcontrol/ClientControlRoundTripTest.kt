@@ -243,6 +243,7 @@ internal class ClientControlRoundTripTest {
         runCurrent()
         job.join()
         assertThat(out).containsExactly(ActionProgress.Sending, ActionProgress.MasterExecuting, ActionProgress.Applied).inOrder()
+        verify(nsClientRepository, never()).addLog(eq("✕ CLIENTCTL"), any<String>())
     }
 
     @Test
@@ -285,6 +286,8 @@ internal class ClientControlRoundTripTest {
         advanceUntilIdle() // past validUntil + margin → withTimeoutOrNull times out → pollAck (null) → Unconfirmed
         job.join()
         assertThat(out.last()).isInstanceOf(ActionProgress.Unconfirmed::class.java)
+        // autoISF build: in the NSClient log next to the acks, so a late ack shows how late it was
+        verify(nsClientRepository).addLog(eq("✕ CLIENTCTL"), argThat<String> { contains("no answer for counter=$counter") && contains("NoReply") })
     }
 
     @Test

@@ -270,6 +270,8 @@ class ClientControlReceiver(
         // counter; stray/garbage docs simply linger until NS auto-prunes them.
         val envelopeObj = doc.optJsonObjectCompat("envelope") ?: run {
             aapsLogger.error(LTag.NSCLIENT, "ClientControl: $identifier has no envelope field, ignoring")
+            // autoISF build: the refusals of this function go to the NSClient log too, so the user sees why a command got no answer
+            nsClientRepository.addLog("◄ CLIENTCTL", "$identifier has no envelope, ignored")
             return
         }
         // Decoded straight from the tree - the text round trip only existed because org.json and
@@ -277,6 +279,7 @@ class ClientControlReceiver(
         val envelope = runCatching { json.decodeFromJsonElement(SignedEnvelope.serializer(), envelopeObj) }.getOrNull()
         if (envelope == null) {
             aapsLogger.error(LTag.NSCLIENT, "ClientControl: $identifier malformed envelope, ignoring")
+            nsClientRepository.addLog("◄ CLIENTCTL", "$identifier cannot be read, ignored")
             return
         }
         // Resolve the authorized client by the envelope's clientId — never trust the
@@ -287,10 +290,13 @@ class ClientControlReceiver(
         val raw = authorizedRepository.findRaw(envelope.clientId)
         val entry = authorizedRepository.current(now).firstOrNull { it.clientId == envelope.clientId }
         if (entry == null) {
-            if (raw != null && raw.state == ClientState.Pending && raw.pairExpiresAt <= now)
+            if (raw != null && raw.state == ClientState.Pending && raw.pairExpiresAt <= now) {
                 aapsLogger.error(LTag.NSCLIENT, "ClientControl: $identifier pairing window expired for clientId=${envelope.clientId}, ignoring")
-            else
+                nsClientRepository.addLog("◄ CLIENTCTL", "${envelope.type} from ${raw.name}: pairing time is over, ignored. Pair the phone again")
+            } else {
                 aapsLogger.error(LTag.NSCLIENT, "ClientControl: $identifier unknown clientId=${envelope.clientId}, ignoring")
+                nsClientRepository.addLog("◄ CLIENTCTL", "${envelope.type} from a phone that is not paired here (${envelope.clientId}), ignored")
+            }
             // See the no-delete rationale above: never tombstone a slot we don't own.
             return
         }
@@ -304,6 +310,7 @@ class ClientControlReceiver(
 
             else                                                                                   -> {
                 aapsLogger.error(LTag.NSCLIENT, "ClientControl: $identifier signature invalid")
+                nsClientRepository.addLog("◄ CLIENTCTL", "${envelope.type} from ${entry.name}: wrong signature, ignored. Pair the phone again")
                 return
             }
         }
@@ -312,12 +319,17 @@ class ClientControlReceiver(
                 LTag.NSCLIENT,
                 "ClientControl: $identifier replay (counter=${envelope.counter} <= seen=${lookup.counterReceived}); leaving doc for diagnostics"
             )
+            nsClientRepository.addLog("◄ CLIENTCTL", "${envelope.type} from ${entry.name}: old number ${envelope.counter} (had ${lookup.counterReceived} already), ignored")
             return
         }
         if (!ClientControlCrypto.timestampWithinSkew(envelope.timestamp, now)) {
             aapsLogger.error(LTag.NSCLIENT, "ClientControl: $identifier timestamp outside skew window")
+            nsClientRepository.addLog("◄ CLIENTCTL", "${envelope.type} from ${entry.name}: sent ${(now - envelope.timestamp) / 1000} s ago, ignored. Check the time on both phones")
             return
         }
+        // autoISF build: how long the command took to come here. Measured with the clocks of both phones, so a clock
+        // difference is in it too. Much more than a second or two means Nightscout is slow.
+        nsClientRepository.addLog("◄ CLIENTCTL", "${envelope.type} from ${entry.name} came ${(now - envelope.timestamp) / 1000} s after it was sent")
         // The name of the Nightscout token this was written with. Nightscout sets it; a client cannot choose it. Kept
         // only now that the message is known to come from this client.
         val subject = doc.optStringCompat("subject")
@@ -975,9 +987,21 @@ class ClientControlReceiver(
             put("schemaVersion", ClientControlPublisher.SCHEMA_VERSION)
             put("ack", json.encodeToJsonElement(AckEnvelope.serializer(), ack))
         }
-        runCatching { client.updateSettings(identifier, doc) }
-            .onSuccess { nsClientRepository.addLog("► CLIENTCTL", "ack $phase/$status counter=$commandCounter" + (reason?.let { " ($it)" } ?: "")) }
-            .onFailure { aapsLogger.error(LTag.NSCLIENT, "ClientControl: ack write failed for $identifier: ${it.message}") }
+        // autoISF build: Nightscout answers a refused write with an HTTP code, not an exception. Such an ack never reaches
+        // the client, which then shows "No reply from the master in time", so it must not be logged as written.
+        runCatching { client.updateSettings(identifier, doc).response }
+            .onSuccess { code ->
+                if (code in 200..299)
+                    nsClientRepository.addLog("► CLIENTCTL", "ack $phase/$status counter=$commandCounter" + (reason?.let { " ($it)" } ?: ""))
+                else {
+                    aapsLogger.error(LTag.NSCLIENT, "ClientControl: ack write failed for $identifier: HTTP $code")
+                    nsClientRepository.addLog("✕ CLIENTCTL", "ack $phase/$status counter=$commandCounter not written: HTTP $code")
+                }
+            }
+            .onFailure {
+                aapsLogger.error(LTag.NSCLIENT, "ClientControl: ack write failed for $identifier: ${it.message}")
+                nsClientRepository.addLog("✕ CLIENTCTL", "ack $phase/$status counter=$commandCounter not written: ${it.message}")
+            }
     }
 
     /**

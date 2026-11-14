@@ -107,6 +107,12 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
   the clocks are far apart; the next one works. A master that receives a command late (screen off,
   battery saving) still rejects it, on purpose. The NSClient log shows how late an expired command
   was (master) and how far the clocks are apart (client).
+* **The NSClient log shows why a client command got no answer.** AAPS 4.0 wrote it only to the AAPS
+  log file. Now the master writes to the NSClient log how many seconds each command took to come,
+  why it ignored a command (wrong signature, old command number, phone not paired, clock more than
+  5 minutes off), and when Nightscout refused its answer. Before, a refused answer was logged as
+  written, and the client only showed "No reply from the master in time". The client logs the
+  command number that got no answer, so a late answer can be found next to it.
 
 Everything of aisf 3.2.1 is ported. The aisf widget showed the AutoISF factor as "ai: 85%"; the
 AAPS 4.0 widget shows the profile ISF and the ISF in use (from → to), which for AutoISF is the
