@@ -3,6 +3,7 @@ package app.aaps.ui.compose.overview
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -67,6 +68,8 @@ fun OverviewChipsColumn(
      * across the whole width instead (`OverviewMetricsRow`), and passes false.
      */
     showMetrics: Boolean = true,
+    /** autoISF build: false on a phone, where the loop card of `OverviewCardRow` shows the running mode. */
+    showRunningMode: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -92,7 +95,8 @@ fun OverviewChipsColumn(
             onNavigate = onNavigate,
             commandsAllowed = commandsAllowed,
             exerciseModeUiState = exerciseModeUiState,
-            onExerciseModeClick = onExerciseModeClick
+            onExerciseModeClick = onExerciseModeClick,
+            showRunningMode = showRunningMode
         )
         if (showMetrics) MetricChips(basalUiState, iobUiState, cobUiState, sensitivityUiState, onNavigate, onIobChipClick)
     }
@@ -150,23 +154,10 @@ private fun NarrowChips(
     onNavigate: (NavigationRequest) -> Unit,
     commandsAllowed: Boolean,
     exerciseModeUiState: ExerciseModeUiState,
-    onExerciseModeClick: () -> Unit
+    onExerciseModeClick: () -> Unit,
+    showRunningMode: Boolean
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (runningModeText.isNotEmpty()) {
-            RunningModeChip(
-                mode = runningMode,
-                text = runningModeText,
-                progress = runningModeProgress,
-                remaining = runningModeRemaining,
-                sceneManaged = runningModeSceneManaged,
-                smbEnabled = smbEnabled,
-                enabled = commandsAllowed && LocalClientRole.current.allows(ElementType.RUNNING_MODE.role),
-                onClick = { onNavigate(NavigationRequest.Element(ElementType.RUNNING_MODE)) }
-            )
-        }
+    val profile: @Composable (Modifier) -> Unit = { modifier ->
         ProfileChip(
             profileName = profileName.ifEmpty { stringResource(CoreUiStrings.no_profile_set) },
             isModified = isProfileModified,
@@ -176,13 +167,10 @@ private fun NarrowChips(
             isNoProfile = profileName.isEmpty(),
             // Stays clickable even on an unpaired client: profile management opens read-only there,
             // so this is a view affordance, not a command one (unlike the running-mode / TT chips).
-            modifier = Modifier.weight(1f)
+            modifier = modifier
         )
     }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(AapsSpacing.small)
-    ) {
+    val tempTargetAndExercise: @Composable RowScope.() -> Unit = {
         if (tempTargetText.isNotEmpty()) {
             TempTargetChip(
                 targetText = tempTargetText,
@@ -202,6 +190,40 @@ private fun NarrowChips(
                 clickable = commandsAllowed
             )
         }
+    }
+    if (!showRunningMode) {
+        // autoISF build: on a phone the running mode is a card, so profile, temp target and exercise fit one row
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(AapsSpacing.small)
+        ) {
+            profile(Modifier.weight(1f))
+            tempTargetAndExercise()
+        }
+        return
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (runningModeText.isNotEmpty()) {
+            RunningModeChip(
+                mode = runningMode,
+                text = runningModeText,
+                progress = runningModeProgress,
+                remaining = runningModeRemaining,
+                sceneManaged = runningModeSceneManaged,
+                smbEnabled = smbEnabled,
+                enabled = commandsAllowed && LocalClientRole.current.allows(ElementType.RUNNING_MODE.role),
+                onClick = { onNavigate(NavigationRequest.Element(ElementType.RUNNING_MODE)) }
+            )
+        }
+        profile(Modifier.weight(1f))
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(AapsSpacing.small)
+    ) {
+        tempTargetAndExercise()
     }
 }
 

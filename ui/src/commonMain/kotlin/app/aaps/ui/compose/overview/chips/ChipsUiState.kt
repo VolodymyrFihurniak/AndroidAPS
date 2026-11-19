@@ -48,6 +48,16 @@ data class SensitivityUiState(
 )
 
 /**
+ * autoISF build: the loop card of the overview. [lastRunText] is when the loop last ran (on a client: when the master's
+ * last run came), empty when it never did.
+ */
+@Immutable
+data class LoopUiState(
+    val lastRunText: String = "",
+    val isOld: Boolean = false
+)
+
+/**
  * autoISF build: the basal card next to IOB and COB, and the details it opens. See `basalCardState` for the rules.
  *
  * [rateText] is the main value, [statusText] the smaller line under it. [isWarning] marks a state where the rate is

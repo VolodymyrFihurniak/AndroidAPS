@@ -184,6 +184,11 @@ class ChipsViewModel(
         return basalUiState(card, profile?.let { profileFunction.getProfileName() } ?: "", tbr, profile)
     }
 
+    private companion object {
+
+        const val LOOP_OLD_MS = 15 * 60_000L
+    }
+
     private fun rateText(rate: Double): String = rh.gs(CoreUiStrings.pump_base_basal_rate, rate)
 
     private fun basalUiState(card: BasalCardState, profileName: String, tbr: BasalTbr?, profile: Profile?): BasalUiState {
@@ -240,6 +245,20 @@ class ChipsViewModel(
             profile = profile
         )
     }
+
+    // autoISF build: the loop card, when the loop last ran
+    val loopUiState: StateFlow<LoopUiState> = combine(basalTicker, cache.predictionsFlow) { _, _ ->
+        val lastRun = if (config.AAPSCLIENT) processedDeviceStatusData.openApsTimestamp.takeIf { it > 0 } else loop.lastRun?.lastAPSRun
+        LoopUiState(
+            lastRunText = lastRun?.let { dateUtil.minAgo(rh, it) } ?: "",
+            // The loop runs every 5 minutes at most; older than 15 means it stopped
+            isOld = lastRun == null || dateUtil.now() - lastRun > LOOP_OLD_MS
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = LoopUiState()
+    )
 
     /** autoISF: switches exercise mode, as the button of aisf did. The widget shows the mode too. */
     fun toggleExerciseMode() {

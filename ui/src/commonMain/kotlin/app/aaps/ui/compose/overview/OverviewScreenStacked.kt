@@ -1,9 +1,9 @@
 package app.aaps.ui.compose.overview
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -15,7 +15,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -34,7 +33,7 @@ import app.aaps.ui.compose.main.TempTargetChipState
 import app.aaps.ui.compose.manageSheet.ManageViewModel
 import app.aaps.ui.compose.overview.aapsClient.AapsClientStatusCard
 import app.aaps.ui.compose.overview.chips.ChipsViewModel
-import app.aaps.ui.compose.overview.chips.OverviewMetricsRow
+import app.aaps.ui.compose.overview.chips.OverviewCardRow
 import app.aaps.ui.compose.overview.graphs.GraphViewModel
 import app.aaps.ui.compose.overview.graphs.GraphsSection
 import app.aaps.ui.compose.overview.statusLights.StatusViewModel
@@ -88,6 +87,7 @@ fun OverviewScreenStacked(
     val exerciseModeUiState by chipsViewModel.exerciseModeUiState.collectAsStateWithLifecycle()
     // autoISF build: the basal card next to IOB and COB
     val basalUiState by chipsViewModel.basalUiState.collectAsStateWithLifecycle()
+    val loopUiState by chipsViewModel.loopUiState.collectAsStateWithLifecycle()
     val statusState by statusViewModel.uiState.collectAsStateWithLifecycle()
 
     var statusExpanded by rememberSaveable { mutableStateOf(false) }
@@ -123,21 +123,19 @@ fun OverviewScreenStacked(
                     formatDuration = formatDuration
                 )
                 eatReminderBanner()
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.Bottom
+                // autoISF build: the main screen of the user's concept. The main BG card with IOB and COB, the chips
+                // that set something (profile, temp target, exercise), and the cards basal, sensitivity and loop.
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(AapsSpacing.medium),
+                    modifier = Modifier.padding(horizontal = AapsSpacing.large, vertical = AapsSpacing.medium)
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        BgInfoSection(
-                            bgInfo = bgInfoState.bgInfo,
-                            timeAgoText = bgInfoState.timeAgoText
-                        )
-                    }
-
+                    MainBgCard(
+                        bgInfo = bgInfoState.bgInfo,
+                        timeAgoText = bgInfoState.timeAgoText,
+                        iobText = iobUiState.text,
+                        cobText = cobUiState.text,
+                        onIobClick = onIobChipClick
+                    )
                     OverviewChipsColumn(
                         runningMode = runningMode,
                         runningModeText = runningModeText,
@@ -163,24 +161,21 @@ fun OverviewScreenStacked(
                         commandsAllowed = commandsAllowed,
                         exerciseModeUiState = exerciseModeUiState,
                         onExerciseModeClick = chipsViewModel::toggleExerciseMode,
-                        // autoISF build: they get the whole width below, see OverviewMetricsRow
+                        // In the cards: IOB and COB in the main card, the rest and the running mode in the card row
                         showMetrics = false,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(start = 8.dp)
+                        showRunningMode = false,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OverviewCardRow(
+                        basalUiState = basalUiState,
+                        sensitivityUiState = sensitivityUiState,
+                        loopUiState = loopUiState,
+                        runningMode = runningMode,
+                        runningModeText = runningModeText,
+                        commandsAllowed = commandsAllowed,
+                        onNavigate = onNavigate
                     )
                 }
-
-                // autoISF build: IOB, COB, basal and sensitivity across the whole width, as the row of AAPS 3.4
-                OverviewMetricsRow(
-                    iobUiState = iobUiState,
-                    cobUiState = cobUiState,
-                    basalUiState = basalUiState,
-                    sensitivityUiState = sensitivityUiState,
-                    onIobClick = onIobChipClick,
-                    onNavigate = onNavigate,
-                    modifier = Modifier.padding(horizontal = AapsSpacing.medium, vertical = AapsSpacing.small)
-                )
 
                 OverviewStatusSection(
                     sensorStatus = statusState.sensorStatus,

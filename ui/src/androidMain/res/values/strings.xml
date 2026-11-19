@@ -413,4 +413,5 @@
     <string name="basal_details_daily_profile">Basal of the profile over the day</string>
     <string name="basal_details_open_profiles">Profiles</string>
     <string name="basal_inspect_with_profile" comment="Basal on the graph at the chosen time. %1$s=basal given with unit, %2$s=basal of the profile with unit. Example: 0.75 U/h (profile 0.50 U/h)">%1$s (profile %2$s)</string>
+    <string name="delta_minutes" comment="Label of a BG change over some minutes on the main card. %1$d=minutes. Example: Δ 15 min">Δ %1$d min</string>
 </resources>

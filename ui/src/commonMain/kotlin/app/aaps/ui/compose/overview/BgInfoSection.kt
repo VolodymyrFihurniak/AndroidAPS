@@ -300,7 +300,7 @@ private fun Placeable.PlacementScope.placeScaled(line: Placeable, centerX: Float
  * Maps BgRange to the appropriate theme color.
  */
 @Composable
-private fun BgRange.toColor(): Color = when (this) {
+internal fun BgRange.toColor(): Color = when (this) {
     BgRange.HIGH     -> AapsTheme.generalColors.bgHigh
     BgRange.IN_RANGE -> AapsTheme.generalColors.bgInRange
     BgRange.LOW      -> AapsTheme.generalColors.bgLow
