@@ -48,6 +48,22 @@ data class SensitivityUiState(
 )
 
 /**
+ * autoISF build: the statistics of today on the overview. [visible] is false while there is no reading today.
+ * [timeInRange] is 0..1 for the bar under the value.
+ */
+@Immutable
+data class TodayStatsUiState(
+    val visible: Boolean = false,
+    val timeInRangeText: String = "",
+    val timeInRange: Float = 0f,
+    val cvText: String = "",
+    val cvFraction: Float = 0f,
+    val averageText: String = "",
+    val averageFraction: Float = 0f,
+    val unitText: String = ""
+)
+
+/**
  * autoISF build: the loop card of the overview. [lastRunText] is when the loop last ran (on a client: when the master's
  * last run came), empty when it never did.
  */

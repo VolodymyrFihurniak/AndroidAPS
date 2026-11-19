@@ -161,6 +161,8 @@ internal class OverviewViewModelFixture(private val screen: AapsScreenFixture) {
             whenever(iobCobCalculator.calculateIobFromBolus()).thenReturn(IobTotal(NOW))
             whenever(iobCobCalculator.calculateIobFromTempBasalsIncludingConvertedExtended()).thenReturn(IobTotal(NOW))
             whenever(iobCobCalculator.getCobInfo(any())).thenReturn(CobInfo(NOW, null, 0.0))
+            // autoISF build: the statistics of today read the readings since midnight
+            whenever(persistenceLayer.getBgReadingsDataFromTimeToTime(any(), any(), any())).thenReturn(emptyList())
         }
         whenever(iobCobCalculator.ads).thenReturn(mock<AutosensDataStore>())
         val autosensEnabled: Constraint<Boolean> = mock()
@@ -199,7 +201,7 @@ internal class OverviewViewModelFixture(private val screen: AapsScreenFixture) {
 
     val chipsViewModel: ChipsViewModel by lazy {
         // The real English texts: the basal card resolves strings of this module, which the mocked rh does not know
-        ChipsViewModel(cache, iobCobCalculator, loop, screen.config, persistenceLayer, sensitivityOverview, generatedTextResolver(rh, "ui" to UiStringsValues::textOf), decimalFormatter, rxBus, screen.preferences, activePlugin, mock(), mock(), mock(), mock(), screen.dateUtil)
+        ChipsViewModel(cache, iobCobCalculator, loop, screen.config, persistenceLayer, sensitivityOverview, generatedTextResolver(rh, "ui" to UiStringsValues::textOf), decimalFormatter, rxBus, screen.preferences, activePlugin, mock(), mock(), mock(), mock(), screen.dateUtil, mock())
     }
 
     val statusViewModel: StatusViewModel by lazy {

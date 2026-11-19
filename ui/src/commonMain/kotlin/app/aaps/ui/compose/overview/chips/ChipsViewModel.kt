@@ -15,13 +15,16 @@ import app.aaps.core.interfaces.overview.graph.OverviewDataCache
 import app.aaps.core.interfaces.plugin.ActivePlugin
 import app.aaps.core.interfaces.profile.Profile
 import app.aaps.core.interfaces.profile.ProfileFunction
+import app.aaps.core.interfaces.profile.ProfileUtil
 import app.aaps.core.interfaces.resources.TextResolver
 import app.aaps.core.interfaces.rx.bus.RxBus
 import app.aaps.core.interfaces.rx.events.EventShowDialog
 import app.aaps.core.interfaces.utils.DateUtil
 import app.aaps.core.interfaces.utils.DecimalFormatter
 import app.aaps.core.interfaces.widget.WidgetUpdater
+import app.aaps.core.data.model.GlucoseUnit
 import app.aaps.core.keys.BooleanKey
+import app.aaps.core.keys.UnitDoubleKey
 import app.aaps.core.keys.interfaces.Preferences
 import app.aaps.core.objects.extensions.convertedToAbsolute
 import app.aaps.core.objects.extensions.round
@@ -59,7 +62,8 @@ class ChipsViewModel(
     private val profileFunction: ProfileFunction,
     private val processedTbrEbData: ProcessedTbrEbData,
     private val processedDeviceStatusData: ProcessedDeviceStatusData,
-    private val dateUtil: DateUtil
+    private val dateUtil: DateUtil,
+    private val profileUtil: ProfileUtil
 ) : ViewModel() {
 
     @AssistedFactory
@@ -243,6 +247,42 @@ class ChipsViewModel(
             profileName = profileName,
             details = details,
             profile = profile
+        )
+    }
+
+    // autoISF build: the statistics of today. Every 5 minutes is enough for numbers of a whole day.
+    private val statsTicker = flow {
+        while (true) {
+            emit(Unit)
+            delay(5 * 60_000L)
+        }
+    }
+
+    val todayStatsUiState: StateFlow<TodayStatsUiState> = statsTicker.combine(cache.bgInfoFlow) { _, _ -> buildTodayStats() }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = TodayStatsUiState()
+        )
+
+    private suspend fun buildTodayStats(): TodayStatsUiState {
+        val now = dateUtil.now()
+        val readings = persistenceLayer.getBgReadingsDataFromTimeToTime(dateUtil.beginOfDay(now), now, false)
+        // The range of the overview, the one the BG value is coloured by
+        val low = profileUtil.convertToMgdl(preferences.get(UnitDoubleKey.OverviewLowMark), profileUtil.units)
+        val high = profileUtil.convertToMgdl(preferences.get(UnitDoubleKey.OverviewHighMark), profileUtil.units)
+        val stats = todayStats(readings.map { it.value }, low, high) ?: return TodayStatsUiState()
+        return TodayStatsUiState(
+            visible = true,
+            timeInRangeText = rh.gs(UiStrings.today_percent_whole, stats.timeInRangePercent),
+            timeInRange = stats.timeInRangePercent / 100f,
+            cvText = rh.gs(UiStrings.today_percent_one_decimal, stats.cvPercent),
+            // The bar of CV is full at 50 %, where it is far too high (36 % is the usual limit)
+            cvFraction = (stats.cvPercent / 50.0).toFloat().coerceIn(0f, 1f),
+            averageText = profileUtil.fromMgdlToStringInUnits(stats.averageMgdl),
+            // Full at the top of the range
+            averageFraction = (stats.averageMgdl / high).toFloat().coerceIn(0f, 1f),
+            unitText = rh.gs(if (profileUtil.units == GlucoseUnit.MGDL) CoreUiStrings.mgdl else CoreUiStrings.mmol)
         )
     }
 

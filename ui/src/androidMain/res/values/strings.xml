@@ -414,4 +414,11 @@
     <string name="basal_details_open_profiles">Profiles</string>
     <string name="basal_inspect_with_profile" comment="Basal on the graph at the chosen time. %1$s=basal given with unit, %2$s=basal of the profile with unit. Example: 0.75 U/h (profile 0.50 U/h)">%1$s (profile %2$s)</string>
     <string name="delta_minutes" comment="Label of a BG change over some minutes on the main card. %1$d=minutes. Example: Δ 15 min">Δ %1$d min</string>
+    <string name="today_stats_title">Today</string>
+    <string name="today_tir_short" comment="Short name of time in range on the overview statistics">TIR</string>
+    <string name="today_cv_short" comment="Short name of the coefficient of variation of BG on the overview statistics">CV</string>
+    <string name="today_percent_whole" comment="%1$d=percent. Example: 51%">%1$d%%</string>
+    <string name="today_percent_one_decimal" comment="%1$.1f=percent with one decimal. Example: 39.5%">%1$.1f%%</string>
+    <string name="quick_action_more" comment="Button that opens all the treatments, beside the quick actions on the overview">More</string>
+    <string name="quick_action_temp_target" comment="Short label of the quick action that opens the temporary targets, on a small button">Temp target</string>
 </resources>

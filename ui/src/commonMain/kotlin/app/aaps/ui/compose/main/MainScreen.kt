@@ -284,6 +284,11 @@ fun MainScreen(
                         statusLightsDef = statusLightsDef,
                         onNavigate = onNavigate,
                         onIobChipClick = chipsViewModel::showIobInfo,
+                        // autoISF build: the "More" quick action opens the treatments sheet, as the bottom bar does
+                        onMoreActionsClick = {
+                            treatmentViewModel.refreshState()
+                            showTreatmentSheet = true
+                        },
                         notifications = notifications,
                         onDismissNotification = onDismissNotification,
                         onNotificationActionClick = onNotificationActionClick,

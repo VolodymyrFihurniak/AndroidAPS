@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.aaps.core.data.model.ActiveSceneState
 import app.aaps.core.data.model.RM
 import app.aaps.core.data.model.TT
+import app.aaps.core.interfaces.navigation.ElementType
 import app.aaps.core.ui.compose.AapsSpacing
 import app.aaps.core.ui.compose.AapsTheme
 import app.aaps.core.ui.compose.LocalConfig
@@ -34,6 +35,8 @@ import app.aaps.ui.compose.manageSheet.ManageViewModel
 import app.aaps.ui.compose.overview.aapsClient.AapsClientStatusCard
 import app.aaps.ui.compose.overview.chips.ChipsViewModel
 import app.aaps.ui.compose.overview.chips.OverviewCardRow
+import app.aaps.ui.compose.overview.chips.QuickActionsRow
+import app.aaps.ui.compose.overview.chips.TodayStatsRow
 import app.aaps.ui.compose.overview.graphs.GraphViewModel
 import app.aaps.ui.compose.overview.graphs.GraphsSection
 import app.aaps.ui.compose.overview.statusLights.StatusViewModel
@@ -64,6 +67,8 @@ fun OverviewScreenStacked(
     statusLightsDef: PreferenceSubScreenDef,
     onNavigate: (NavigationRequest) -> Unit,
     onIobChipClick: () -> Unit,
+    /** autoISF build: the "More" quick action, opens all the treatments. */
+    onMoreActionsClick: () -> Unit = {},
     paddingValues: PaddingValues,
     activeSceneState: ActiveSceneState? = null,
     sceneExpired: Boolean = false,
@@ -88,6 +93,7 @@ fun OverviewScreenStacked(
     // autoISF build: the basal card next to IOB and COB
     val basalUiState by chipsViewModel.basalUiState.collectAsStateWithLifecycle()
     val loopUiState by chipsViewModel.loopUiState.collectAsStateWithLifecycle()
+    val todayStatsUiState by chipsViewModel.todayStatsUiState.collectAsStateWithLifecycle()
     val statusState by statusViewModel.uiState.collectAsStateWithLifecycle()
 
     var statusExpanded by rememberSaveable { mutableStateOf(false) }
@@ -207,7 +213,20 @@ fun OverviewScreenStacked(
                 GraphsSection(
                     graphViewModel = graphViewModel, isSimpleMode = isSimpleMode, iobText = iobUiState.text, cobText = cobUiState.text,
                     overlaidBarsHeight = overlaidBarsHeight,
-                    bgExtraHeight = bgExtraHeight
+                    bgExtraHeight = bgExtraHeight,
+                    footer = {
+                        // autoISF build: the statistics of today and the quick actions of the user's concept
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(AapsSpacing.large),
+                            modifier = Modifier.padding(horizontal = AapsSpacing.large, vertical = AapsSpacing.medium)
+                        ) {
+                            TodayStatsRow(
+                                state = todayStatsUiState,
+                                onOpenStatistics = { onNavigate(NavigationRequest.Element(ElementType.STATISTICS)) }
+                            )
+                            QuickActionsRow(commandsAllowed = commandsAllowed, onNavigate = onNavigate, onMore = onMoreActionsClick)
+                        }
+                    }
                 )
             }
         }

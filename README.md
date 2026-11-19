@@ -101,7 +101,10 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
   15 and 40 minutes, and IOB and COB on the right. Under it one row with the profile, the temp
   target and the exercise button, and the cards *Basal*, *Sensitivity* and *Loop* (running mode and
   when the loop last ran, in the warning colour after 15 minutes). The BG graph grows to fill the
-  screen below it. Tablets and landscape keep the BG circle with the chips beside it.
+  screen below it. Under the graphs: the statistics of today (time in the overview's range, CV and
+  the average, each with a bar; tap opens the statistics) and the quick actions *Carbs*, *Bolus*,
+  *Temp target* and *More* (all the treatments). Tablets and landscape keep the BG circle with the
+  chips beside it.
 * **Basal card** next to IOB and COB, in their style: the basal given now in U/h, and under it the
   percent of the active profile and the state: *By profile*, *TBR · 12 min left*, *PS 110%* while a
   profile switch is active, or *Asked 0.90 U/h* while the loop asked for a temp basal the pump has

@@ -232,7 +232,9 @@ fun GraphsSection(
     /** Height of the bars drawn over the end of this section (the overview's preview mode), added to the space at its end. */
     overlaidBarsHeight: Dp = 0.dp,
     /** autoISF build: added to the BG graph height, so on a phone the BG graph fills the screen below it. */
-    bgExtraHeight: Dp = 0.dp
+    bgExtraHeight: Dp = 0.dp,
+    /** autoISF build: shown under the graphs, above the room kept for the toolbar (the phone's statistics and actions). */
+    footer: @Composable () -> Unit = {}
 ) {
     val dateUtil = LocalDateUtil.current
     val savedGraphConfig by graphViewModel.graphConfigFlow.collectAsStateWithLifecycle()
@@ -818,6 +820,7 @@ fun GraphsSection(
                 }
             )
         }
+        footer()
         // Spacer so the last graph / Add button isn't covered by QuickLaunch toolbar
         Spacer(Modifier.height(48.dp + overlaidBarsHeight))
     }
