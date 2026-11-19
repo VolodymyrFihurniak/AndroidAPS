@@ -96,6 +96,10 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
 * Engineering mode is always on, so the AutoISF automations and Autotune are available.
 
 ### Basal card on the main screen
+* On a phone IOB, COB, basal and sensitivity are one row across the whole width, each an icon over
+  its value, as the row of AAPS 3.4. Beside the BG circle stay the running mode, the profile, the
+  temp target and the exercise button. The BG graph grows to fill the screen below it. Tablets and
+  landscape keep the chips beside the BG circle.
 * **Basal card** next to IOB and COB, in their style: the basal given now in U/h, and under it the
   percent of the active profile and the state: *By profile*, *TBR · 12 min left*, *PS 110%* while a
   profile switch is active, or *Asked 0.90 U/h* while the loop asked for a temp basal the pump has

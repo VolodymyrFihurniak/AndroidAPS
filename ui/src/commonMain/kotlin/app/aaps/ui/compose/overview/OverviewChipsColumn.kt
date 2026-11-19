@@ -62,6 +62,11 @@ fun OverviewChipsColumn(
     // autoISF: the exercise mode button, next to the temp basal chip
     exerciseModeUiState: ExerciseModeUiState = ExerciseModeUiState(),
     onExerciseModeClick: () -> Unit = {},
+    /**
+     * autoISF build: IOB, COB, basal and sensitivity under the other chips. A phone shows them in a row of their own
+     * across the whole width instead (`OverviewMetricsRow`), and passes false.
+     */
+    showMetrics: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -89,27 +94,40 @@ fun OverviewChipsColumn(
             exerciseModeUiState = exerciseModeUiState,
             onExerciseModeClick = onExerciseModeClick
         )
-        // autoISF build: the basal card, in the row of IOB and COB, opens its details
-        var showBasalDetails by remember { mutableStateOf(false) }
-        IobCobChipsRow(
-            iobUiState = iobUiState,
-            cobUiState = cobUiState,
-            onIobChipClick = onIobChipClick,
-            basalUiState = basalUiState,
-            onBasalChipClick = { showBasalDetails = true }
-        )
-        if (showBasalDetails) {
-            BasalDetailsSheet(
-                state = basalUiState,
-                onOpenProfiles = { onNavigate(NavigationRequest.Element(ElementType.PROFILE_MANAGEMENT)) },
-                onDismiss = { showBasalDetails = false }
-            )
-        }
-        SensitivityChipBlock(
-            state = sensitivityUiState,
-            modifier = Modifier.fillMaxWidth()
+        if (showMetrics) MetricChips(basalUiState, iobUiState, cobUiState, sensitivityUiState, onNavigate, onIobChipClick)
+    }
+}
+
+/** IOB, COB and the basal card in one row, and the sensitivity under them. */
+@Composable
+private fun MetricChips(
+    basalUiState: BasalUiState,
+    iobUiState: IobUiState,
+    cobUiState: CobUiState,
+    sensitivityUiState: SensitivityUiState,
+    onNavigate: (NavigationRequest) -> Unit,
+    onIobChipClick: () -> Unit
+) {
+    // autoISF build: the basal card, in the row of IOB and COB, opens its details
+    var showBasalDetails by remember { mutableStateOf(false) }
+    IobCobChipsRow(
+        iobUiState = iobUiState,
+        cobUiState = cobUiState,
+        onIobChipClick = onIobChipClick,
+        basalUiState = basalUiState,
+        onBasalChipClick = { showBasalDetails = true }
+    )
+    if (showBasalDetails) {
+        BasalDetailsSheet(
+            state = basalUiState,
+            onOpenProfiles = { onNavigate(NavigationRequest.Element(ElementType.PROFILE_MANAGEMENT)) },
+            onDismiss = { showBasalDetails = false }
         )
     }
+    SensitivityChipBlock(
+        state = sensitivityUiState,
+        modifier = Modifier.fillMaxWidth()
+    )
 }
 
 @Composable

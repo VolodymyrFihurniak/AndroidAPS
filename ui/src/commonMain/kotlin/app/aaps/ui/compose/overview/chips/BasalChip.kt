@@ -111,7 +111,7 @@ internal fun BasalChip(
     }
 }
 
-private fun BasalDirection.toTbrState(): TbrState = when (this) {
+internal fun BasalDirection.toTbrState(): TbrState = when (this) {
     BasalDirection.HIGHER -> TbrState.HIGH
     BasalDirection.LOWER  -> TbrState.LOW
     BasalDirection.SAME   -> TbrState.NONE

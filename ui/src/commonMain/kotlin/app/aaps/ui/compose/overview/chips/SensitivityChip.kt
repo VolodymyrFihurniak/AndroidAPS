@@ -110,7 +110,7 @@ internal fun SensitivityChip(
     }
 }
 
-private fun selectSensIcon(ratio: Double, isEnabled: Boolean): ImageVector =
+internal fun selectSensIcon(ratio: Double, isEnabled: Boolean): ImageVector =
     if (isEnabled) {
         when {
             ratio > 1.0 -> IcAsAbove

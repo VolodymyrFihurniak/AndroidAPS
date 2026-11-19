@@ -1,5 +1,6 @@
 package app.aaps.ui.compose.overview
 
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,16 +12,20 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.aaps.core.data.model.ActiveSceneState
 import app.aaps.core.data.model.RM
 import app.aaps.core.data.model.TT
+import app.aaps.core.ui.compose.AapsSpacing
 import app.aaps.core.ui.compose.AapsTheme
 import app.aaps.core.ui.compose.LocalConfig
 import app.aaps.core.ui.compose.navigation.NavigationRequest
@@ -29,6 +34,7 @@ import app.aaps.ui.compose.main.TempTargetChipState
 import app.aaps.ui.compose.manageSheet.ManageViewModel
 import app.aaps.ui.compose.overview.aapsClient.AapsClientStatusCard
 import app.aaps.ui.compose.overview.chips.ChipsViewModel
+import app.aaps.ui.compose.overview.chips.OverviewMetricsRow
 import app.aaps.ui.compose.overview.graphs.GraphViewModel
 import app.aaps.ui.compose.overview.graphs.GraphsSection
 import app.aaps.ui.compose.overview.statusLights.StatusViewModel
@@ -86,98 +92,129 @@ fun OverviewScreenStacked(
 
     var statusExpanded by rememberSaveable { mutableStateOf(false) }
 
-    Column(
+    // autoISF build: the BG graph takes the screen height the content leaves free, so there is no empty space under
+    // the graphs. The content is measured without that extra height, so adding it changes nothing in the next pass.
+    var bgExtraHeight by remember { mutableStateOf(0.dp) }
+    val density = LocalDensity.current
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .padding(paddingValues)
-            .verticalScroll(rememberScrollState())
     ) {
-        ActiveSceneBanner(
-            activeState = activeSceneState,
-            expired = sceneExpired,
-            chainTargetName = activeSceneChainTargetName,
-            onEndClick = onEndScene,
-            onDismiss = onDismissScene,
-            endEnabled = endSceneEnabled,
-            formatDuration = formatDuration
-        )
-        eatReminderBanner()
-        Row(
+        val viewportHeight = maxHeight
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.Bottom
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
         ) {
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier.onSizeChanged { size ->
+                    val contentHeight = with(density) { size.height.toDp() } - bgExtraHeight
+                    bgExtraHeight = (viewportHeight - contentHeight).coerceAtLeast(0.dp)
+                }
             ) {
-                BgInfoSection(
-                    bgInfo = bgInfoState.bgInfo,
-                    timeAgoText = bgInfoState.timeAgoText
+                ActiveSceneBanner(
+                    activeState = activeSceneState,
+                    expired = sceneExpired,
+                    chainTargetName = activeSceneChainTargetName,
+                    onEndClick = onEndScene,
+                    onDismiss = onDismissScene,
+                    endEnabled = endSceneEnabled,
+                    formatDuration = formatDuration
+                )
+                eatReminderBanner()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        BgInfoSection(
+                            bgInfo = bgInfoState.bgInfo,
+                            timeAgoText = bgInfoState.timeAgoText
+                        )
+                    }
+
+                    OverviewChipsColumn(
+                        runningMode = runningMode,
+                        runningModeText = runningModeText,
+                        runningModeRemaining = runningModeRemaining,
+                        runningModeProgress = runningModeProgress,
+                        runningModeSceneManaged = runningModeSceneManaged,
+                        smbEnabled = smbEnabled,
+                        profileName = profileName,
+                        isProfileModified = isProfileModified,
+                        profileProgress = profileProgress,
+                        profileSceneManaged = profileSceneManaged,
+                        tempTargetText = tempTargetText,
+                        tempTargetState = tempTargetState,
+                        tempTargetProgress = tempTargetProgress,
+                        tempTargetReason = tempTargetReason,
+                        tempTargetSceneManaged = tempTargetSceneManaged,
+                        basalUiState = basalUiState,
+                        iobUiState = iobUiState,
+                        cobUiState = cobUiState,
+                        sensitivityUiState = sensitivityUiState,
+                        onNavigate = onNavigate,
+                        onIobChipClick = onIobChipClick,
+                        commandsAllowed = commandsAllowed,
+                        exerciseModeUiState = exerciseModeUiState,
+                        onExerciseModeClick = chipsViewModel::toggleExerciseMode,
+                        // autoISF build: they get the whole width below, see OverviewMetricsRow
+                        showMetrics = false,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = 8.dp)
+                    )
+                }
+
+                // autoISF build: IOB, COB, basal and sensitivity across the whole width, as the row of AAPS 3.4
+                OverviewMetricsRow(
+                    iobUiState = iobUiState,
+                    cobUiState = cobUiState,
+                    basalUiState = basalUiState,
+                    sensitivityUiState = sensitivityUiState,
+                    onIobClick = onIobChipClick,
+                    onNavigate = onNavigate,
+                    modifier = Modifier.padding(horizontal = AapsSpacing.medium, vertical = AapsSpacing.small)
+                )
+
+                OverviewStatusSection(
+                    sensorStatus = statusState.sensorStatus,
+                    insulinStatus = statusState.insulinStatus,
+                    cannulaStatus = statusState.cannulaStatus,
+                    batteryStatus = statusState.batteryStatus,
+                    showFill = statusState.showFill,
+                    showPumpBatteryChange = statusState.showPumpBatteryChange,
+                    commandsAllowed = commandsAllowed,
+                    onNavigate = onNavigate,
+                    statusLightsDef = statusLightsDef,
+                    expanded = statusExpanded,
+                    onExpandedChange = { statusExpanded = it }
+                )
+
+                if (config.AAPSCLIENT) {
+                    val nsClientStatus by graphViewModel.nsClientStatusFlow.collectAsStateWithLifecycle()
+                    val flavorTint = when {
+                        config.AAPSCLIENT3 -> AapsTheme.generalColors.flavorClient3Tint
+                        config.AAPSCLIENT2 -> AapsTheme.generalColors.flavorClient2Tint
+                        else               -> AapsTheme.generalColors.flavorClient1Tint
+                    }
+                    AapsClientStatusCard(
+                        statusData = nsClientStatus,
+                        flavorTint = flavorTint
+                    )
+                }
+
+                GraphsSection(
+                    graphViewModel = graphViewModel, isSimpleMode = isSimpleMode, iobText = iobUiState.text, cobText = cobUiState.text,
+                    overlaidBarsHeight = overlaidBarsHeight,
+                    bgExtraHeight = bgExtraHeight
                 )
             }
-
-            OverviewChipsColumn(
-                runningMode = runningMode,
-                runningModeText = runningModeText,
-                runningModeRemaining = runningModeRemaining,
-                runningModeProgress = runningModeProgress,
-                runningModeSceneManaged = runningModeSceneManaged,
-                smbEnabled = smbEnabled,
-                profileName = profileName,
-                isProfileModified = isProfileModified,
-                profileProgress = profileProgress,
-                profileSceneManaged = profileSceneManaged,
-                tempTargetText = tempTargetText,
-                tempTargetState = tempTargetState,
-                tempTargetProgress = tempTargetProgress,
-                tempTargetReason = tempTargetReason,
-                tempTargetSceneManaged = tempTargetSceneManaged,
-                basalUiState = basalUiState,
-                iobUiState = iobUiState,
-                cobUiState = cobUiState,
-                sensitivityUiState = sensitivityUiState,
-                onNavigate = onNavigate,
-                onIobChipClick = onIobChipClick,
-                commandsAllowed = commandsAllowed,
-                exerciseModeUiState = exerciseModeUiState,
-                onExerciseModeClick = chipsViewModel::toggleExerciseMode,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 8.dp)
-            )
         }
-
-        OverviewStatusSection(
-            sensorStatus = statusState.sensorStatus,
-            insulinStatus = statusState.insulinStatus,
-            cannulaStatus = statusState.cannulaStatus,
-            batteryStatus = statusState.batteryStatus,
-            showFill = statusState.showFill,
-            showPumpBatteryChange = statusState.showPumpBatteryChange,
-            commandsAllowed = commandsAllowed,
-            onNavigate = onNavigate,
-            statusLightsDef = statusLightsDef,
-            expanded = statusExpanded,
-            onExpandedChange = { statusExpanded = it }
-        )
-
-        if (config.AAPSCLIENT) {
-            val nsClientStatus by graphViewModel.nsClientStatusFlow.collectAsStateWithLifecycle()
-            val flavorTint = when {
-                config.AAPSCLIENT3 -> AapsTheme.generalColors.flavorClient3Tint
-                config.AAPSCLIENT2 -> AapsTheme.generalColors.flavorClient2Tint
-                else               -> AapsTheme.generalColors.flavorClient1Tint
-            }
-            AapsClientStatusCard(
-                statusData = nsClientStatus,
-                flavorTint = flavorTint
-            )
-        }
-
-        GraphsSection(
-            graphViewModel = graphViewModel, isSimpleMode = isSimpleMode, iobText = iobUiState.text, cobText = cobUiState.text,
-            overlaidBarsHeight = overlaidBarsHeight
-        )
     }
 }

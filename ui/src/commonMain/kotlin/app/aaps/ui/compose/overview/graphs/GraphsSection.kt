@@ -230,7 +230,9 @@ fun GraphsSection(
     iobText: String? = null,
     cobText: String? = null,
     /** Height of the bars drawn over the end of this section (the overview's preview mode), added to the space at its end. */
-    overlaidBarsHeight: Dp = 0.dp
+    overlaidBarsHeight: Dp = 0.dp,
+    /** autoISF build: added to the BG graph height, so on a phone the BG graph fills the screen below it. */
+    bgExtraHeight: Dp = 0.dp
 ) {
     val dateUtil = LocalDateUtil.current
     val savedGraphConfig by graphViewModel.graphConfigFlow.collectAsStateWithLifecycle()
@@ -578,7 +580,7 @@ fun GraphsSection(
                 inspect = inspect,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(graphConfig.bgHeight.dp)
+                    .height(graphConfig.bgHeight.dp + bgExtraHeight)
                     .onScrollOrZoomGesture(graphViewModel::onGraphInteraction)
                     .then(
                         // Merging, not a bare semantics block: a described node is reached by linear
