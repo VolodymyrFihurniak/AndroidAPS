@@ -88,7 +88,28 @@ class GraphConfigRepositoryImplTest {
         val restored = GraphConfigRepositoryImpl.fromJson("{}")
 
         assertThat(restored.bgOverlays).containsExactly(SeriesType.ACTIVITY, SeriesType.PREDICTIONS, SeriesType.BG_PARABOLA).inOrder()
-        assertThat(restored.iobOverlays).containsExactly(SeriesType.ACTIVITY)
+        assertThat(restored.iobOverlays).containsExactly(SeriesType.ACTIVITY, SeriesType.BASAL)
+    }
+
+    // autoISF build: the basal band became a layer that can be switched off
+
+    @Test
+    fun `a config saved before the basal layer keeps showing the basal`() {
+        // The user had switched the activity off; the basal was always shown then
+        val restored = GraphConfigRepositoryImpl.fromJson("""{"iobOverlays":[]}""")
+
+        assertThat(restored.iobOverlays).containsExactly(SeriesType.BASAL)
+    }
+
+    @Test
+    fun `a basal layer switched off stays off`() {
+        val config = GraphConfig(iobOverlays = listOf(SeriesType.ACTIVITY))
+
+        val json = GraphConfigRepositoryImpl.toJson(config)
+
+        assertThat(GraphConfigRepositoryImpl.fromJson(json).iobOverlays).containsExactly(SeriesType.ACTIVITY)
+        // An older version reads the old key, which never holds the basal layer
+        assertThat(json).contains(""""iobOverlays":["ACTIVITY"]""")
     }
 
     @Test

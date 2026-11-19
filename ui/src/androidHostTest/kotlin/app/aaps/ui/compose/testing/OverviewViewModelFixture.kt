@@ -44,7 +44,9 @@ import app.aaps.core.keys.UnitDoubleKey
 import app.aaps.core.keys.interfaces.ClientRole
 import app.aaps.core.keys.interfaces.VisibilityContext
 import app.aaps.ui.R
+import app.aaps.shared.tests.generatedTextResolver
 import app.aaps.ui.UiStrings
+import app.aaps.ui.UiStringsValues
 import app.aaps.ui.compose.manageSheet.FakePumpPlugin
 import app.aaps.ui.compose.manageSheet.ManageViewModel
 import app.aaps.ui.compose.overview.chips.ChipsViewModel
@@ -173,6 +175,8 @@ internal class OverviewViewModelFixture(private val screen: AapsScreenFixture) {
         whenever(activePump.pumpDescription).thenReturn(pumpDescription)
         whenever(activePump.batteryLevel).thenReturn(MutableStateFlow<Int?>(null))
         whenever(activePump.reservoirLevel).thenReturn(MutableStateFlow(PumpInsulin(0.0)))
+        // autoISF build: the basal card reads when the pump last gave data
+        whenever(activePump.lastDataTime).thenReturn(MutableStateFlow(0L))
         whenever(pumpPlugin.pumpDescription).thenReturn(pumpDescription)
         whenever(pumpPlugin.batteryLevel).thenReturn(MutableStateFlow<Int?>(null))
         whenever(rxBus.toFlow(EventInitializationChanged::class)).thenReturn(emptyFlow())
@@ -194,7 +198,8 @@ internal class OverviewViewModelFixture(private val screen: AapsScreenFixture) {
     }
 
     val chipsViewModel: ChipsViewModel by lazy {
-        ChipsViewModel(cache, iobCobCalculator, loop, screen.config, persistenceLayer, sensitivityOverview, rh, decimalFormatter, rxBus, screen.preferences, activePlugin, mock())
+        // The real English texts: the basal card resolves strings of this module, which the mocked rh does not know
+        ChipsViewModel(cache, iobCobCalculator, loop, screen.config, persistenceLayer, sensitivityOverview, generatedTextResolver(rh, "ui" to UiStringsValues::textOf), decimalFormatter, rxBus, screen.preferences, activePlugin, mock(), mock(), mock(), mock(), screen.dateUtil)
     }
 
     val statusViewModel: StatusViewModel by lazy {

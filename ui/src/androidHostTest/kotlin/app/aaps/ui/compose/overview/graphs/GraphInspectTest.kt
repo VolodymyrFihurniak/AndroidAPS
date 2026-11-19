@@ -54,6 +54,8 @@ class GraphInspectTest {
         // Basal is the last change before the reading
         assertThat(data.basal).isEqualTo(1.5)
         assertThat(data.tbrState).isEqualTo(TbrState.HIGH)
+        // autoISF build: the profile basal of the same minute, shown beside it in the pill
+        assertThat(data.profileBasal).isEqualTo(0.8)
     }
 
     @Test

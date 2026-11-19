@@ -27,7 +27,6 @@ import app.aaps.core.data.model.GlucoseUnit
 import app.aaps.core.data.model.RM
 import app.aaps.core.data.model.TDD
 import app.aaps.core.data.model.TE
-import app.aaps.core.interfaces.overview.graph.TbrState
 import app.aaps.core.interfaces.utils.TimeDiff
 import app.aaps.core.ui.compose.preference.PreferenceSubScreenDef
 import app.aaps.ui.compose.main.TempTargetChipState
@@ -203,11 +202,11 @@ class OverviewSizeSweepTest {
             tempTargetProgress = 0.5f, tempTargetReason = null,
             runningMode = RM.Mode.CLOSED_LOOP, runningModeText = RM_TEXT,
             runningModeRemaining = "", runningModeProgress = 0f,
-            tbrState = TbrState.NONE, smbEnabled = true, isSimpleMode = false, calcProgress = 100,
+            smbEnabled = true, isSimpleMode = false, calcProgress = 100,
             graphViewModel = viewModels.graphViewModel, chipsViewModel = viewModels.chipsViewModel,
             manageViewModel = viewModels.manageViewModel, statusViewModel = status,
             statusLightsDef = PreferenceSubScreenDef(key = "statuslights", titleResId = CoreUiR.string.statuslights),
-            onNavigate = {}, onTbrChipClick = {}, onIobChipClick = {},
+            onNavigate = {}, onIobChipClick = {},
             notifications = emptyList(), onDismissNotification = {}, onNotificationActionClick = {},
             autoShowNotificationSheet = false, onAutoShowConsumed = {},
             paddingValues = PaddingValues(0.dp)

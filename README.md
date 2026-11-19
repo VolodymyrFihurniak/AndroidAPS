@@ -95,6 +95,27 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
 * The debug controls of the objectives screen (*Enable fake time and progress*, *Reset*) are shown.
 * Engineering mode is always on, so the AutoISF automations and Autotune are available.
 
+### Basal card on the main screen
+* **Basal card** next to IOB and COB, in their style: the basal given now in U/h, and under it the
+  percent of the active profile and the state: *By profile*, *TBR · 12 min left*, *PS 110%* while a
+  profile switch is active, or *Asked 0.90 U/h* while the loop asked for a temp basal the pump has
+  not set yet (open loop, or a failed command). The percent is worked out against the basal of the
+  profile at this time, with the percent of a profile switch already in it, so a TBR and a profile
+  switch are never mixed up; "—" when the profile basal is 0 or not known.
+* The card does not show an old rate as the basal now. With no pump data for 15 minutes it shows
+  "—" and *No recent pump data*. A pump that suspended itself shows 0 U/h and *Suspended by pump*,
+  a disconnected pump 0 U/h and *Pump disconnected*. On AAPSClient the data of the master's pump is
+  used.
+* Tap the card for the details: profile, profile basal now, basal given, percent, profile switch,
+  temp basal and the time left, the age of the pump data, the basal of the profile over the day,
+  and a button to the profiles.
+* The icon-only temp basal chip is gone: the card shows the same icons.
+* IOB/BAS graph: where more basal is given than the profile, the band is orange; where less, blue.
+  While the pump itself is suspended the given basal is drawn as 0. Holding a graph shows the
+  profile basal of the same minute next to the given basal. The basal band can be switched off in
+  the settings of the IOB graph (*Basal (profile and given)*); a graph setup saved before keeps it on.
+* Only the display changed: the basal the loop, the pump and the IOB calculation use is the same.
+
 ### Fixes compared to AAPS 4.0
 * **Bolus PIN works on its own, as in AAPS 3.4.** AAPS 4.0 ignored every protection while no master
   password was set, and the bolus protection while the settings had none, without telling. Now each

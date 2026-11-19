@@ -50,6 +50,8 @@ import androidx.compose.ui.graphics.Color
  * @property uamPrediction Color for UAM (unannounced meals) predictions (yellow)
  * @property ztPrediction Color for zero-temp predictions (cyan)
  * @property bgParabola Color for the autoISF BG parabola on the BG graph (magenta, as in aisf)
+ * @property basalIncrease Fill of the basal graph where the basal given is above the profile (autoISF build)
+ * @property basalDecrease Fill of the basal graph where the basal given is below the profile (autoISF build)
  * @property graphGrid Color for the grid lines on the overview graphs, translucent so a band drawn under them shows through
  */
 data class GeneralColors(
@@ -82,6 +84,8 @@ data class GeneralColors(
     val uamPrediction: Color,
     val ztPrediction: Color,
     val bgParabola: Color,
+    val basalIncrease: Color,
+    val basalDecrease: Color,
     val graphGrid: Color,
     // Loop mode colors
     val loopClosed: Color,
@@ -145,6 +149,8 @@ val LightGeneralColors = GeneralColors(
     uamPrediction = Color(0xFFC9BD60),       // yellow-ish for UAM predictions (matches uamColor attr)
     ztPrediction = Color(0xFF00D2D2),        // cyan for zero-temp predictions (matches ztColor attr)
     bgParabola = Color(0xFFFF00FF),          // magenta for the autoISF BG parabola (bgParabolaColor of aisf)
+    basalIncrease = Color(0x66FB8C00),       // orange at 40%: more basal than the profile
+    basalDecrease = Color(0x6642A5F5),       // blue at 40%: less basal than the profile
     graphGrid = Color(0x80CAC4D0),           // Material outlineVariant at 50%
     // Loop mode colors
     loopClosed = Color(0xFF00C03E),          // green for closed loop
@@ -204,6 +210,8 @@ val DarkGeneralColors = GeneralColors(
     uamPrediction = Color(0xFFE6D39A),       // lighter yellow for UAM predictions (dark mode)
     ztPrediction = Color(0xFF4DD4D4),        // lighter cyan for zero-temp predictions (dark mode)
     bgParabola = Color(0xFFFF00FF),          // magenta for the autoISF BG parabola (same in both modes, as in aisf)
+    basalIncrease = Color(0x66FFB74D),       // lighter orange at 40% for dark mode
+    basalDecrease = Color(0x6664B5F6),       // lighter blue at 40% for dark mode
     graphGrid = Color(0x40938F99),           // Material outline at 25%: outlineVariant at 50% was barely visible on the dark surface
     // Loop mode colors (same in both modes)
     loopClosed = Color(0xFF00C03E),          // green for closed loop

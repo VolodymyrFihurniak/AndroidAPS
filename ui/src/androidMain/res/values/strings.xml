@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="cancel_action_with_details" comment="%1$s=the word Cancel, %2$s=the active item being cancelled (e.g. a running temp basal or extended bolus description). Example: 'Cancel 150% 30min'">%1$s %2$s</string>
-    <string name="no_temp_basal_running">No temp basal running</string>
     <string name="start_activity_tt">Start Activity TT</string>
     <string name="start_eating_soon_tt">Start Eating soon TT</string>
     <string name="start_hypo_tt">Start Hypo TT</string>
@@ -386,4 +385,32 @@
     <string name="exercise_mode" comment="Name of the overview button that switches the autoISF exercise mode. In this mode a high temp target raises the insulin sensitivity.">Exercise mode</string>
     <string name="exercise_mode_on" comment="Spoken state of the exercise mode button when the mode is on">On</string>
     <string name="exercise_mode_off" comment="Spoken state of the exercise mode button when the mode is off">Off</string>
+    <!-- autoISF build: the basal card of the overview and its details -->
+    <string name="basal_card" comment="Name of the overview card that shows the basal insulin rate given now">Basal</string>
+    <string name="basal_unknown" comment="Shown instead of a rate or a percent that is not known">—</string>
+    <string name="basal_percent_of_profile" comment="%1$d=the basal given now as percent of the basal of the active profile. Example: 150% of profile">%1$d%% of profile</string>
+    <string name="basal_by_profile" comment="Short status: the pump gives the basal of the profile, no temp basal runs">By profile</string>
+    <string name="basal_tbr_left" comment="Short status of a running temp basal (TBR). %1$d=minutes left. Example: TBR · 12 min left">TBR · %1$d min left</string>
+    <string name="basal_profile_switch_short" comment="Short status of an active profile switch (PS). %1$d=its percentage. Example: PS 110%">PS %1$d%%</string>
+    <string name="basal_requested_short" comment="Short status: the loop asked for a temp basal the pump has not set yet. %1$s=rate with unit. Example: Asked 0.90 U/h">Asked %1$s</string>
+    <string name="basal_suspended_by_pump">Suspended by pump</string>
+    <string name="basal_pump_disconnected">Pump disconnected</string>
+    <string name="basal_no_recent_data">No recent pump data</string>
+    <string name="basal_no_profile">No profile</string>
+    <string name="basal_status_join" comment="Joins two short statuses of the basal card. %1$s and %2$s are statuses. Example: 150% of profile · TBR · 12 min left">%1$s · %2$s</string>
+    <string name="basal_details_profile_basal">Profile basal now</string>
+    <string name="basal_details_rate">Basal given now</string>
+    <string name="basal_details_percent">Percent of profile</string>
+    <string name="basal_details_profile_switch">Profile switch</string>
+    <string name="basal_details_profile_switch_value" comment="%1$d=percentage, %2$d=time shift in hours. Example: 110%, time shift 2 h">%1$d%%, time shift %2$d h</string>
+    <string name="basal_details_tbr">Temp basal</string>
+    <string name="basal_details_tbr_value" comment="%1$s=rate with unit, %2$d=minutes it runs in total. Example: 0.75 U/h for 30 min">%1$s for %2$d min</string>
+    <string name="basal_details_remaining">Time left</string>
+    <string name="basal_details_none">None</string>
+    <string name="basal_details_requested" comment="Label of a temp basal the loop asked for and the pump has not set yet">Asked by the loop, not set yet</string>
+    <string name="basal_details_pump_data" comment="State of the pump with the age of its newest data. %1$d=minutes. Example: Data 2 min old">Data %1$d min old</string>
+    <string name="basal_details_pump_never">No data from the pump yet</string>
+    <string name="basal_details_daily_profile">Basal of the profile over the day</string>
+    <string name="basal_details_open_profiles">Profiles</string>
+    <string name="basal_inspect_with_profile" comment="Basal on the graph at the chosen time. %1$s=basal given with unit, %2$s=basal of the profile with unit. Example: 0.75 U/h (profile 0.50 U/h)">%1$s (profile %2$s)</string>
 </resources>

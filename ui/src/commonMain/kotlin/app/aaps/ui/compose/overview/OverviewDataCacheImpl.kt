@@ -467,6 +467,8 @@ class OverviewDataCacheImpl(
                     .collect {
                         updateRunningModeFromDatabase()
                         rebuildRunningModeGraph()
+                        // autoISF build: a pump suspend is drawn on the basal graph too
+                        rebuildBasalGraph()
                     }
             }
 
@@ -1021,7 +1023,11 @@ class OverviewDataCacheImpl(
     private suspend fun rebuildRunningModeGraph() = runningModeRebuildMutex.withLock {
         val (fromTime, toTime) = graphTimeRange() ?: return
         val endTime = graphEndTime(toTime)
+        _runningModeGraphFlow.value = RunningModeGraphData(segments = runningModeSegments(fromTime, endTime))
+    }
 
+    /** The running mode bands of [fromTime]..[endTime], for the belt and (autoISF build) the basal graph. */
+    private suspend fun runningModeSegments(fromTime: Long, endTime: Long): List<RunningModeSegment> {
         val rmRecords = persistenceLayer.getRunningModesFromTimeToTime(fromTime, endTime, true)
 
         // Every moment the effective mode can change: the start of the window, each record, and the
@@ -1045,8 +1051,7 @@ class OverviewDataCacheImpl(
         // with what the loop thinks it is doing, and brings back the permanent mode by itself once a
         // temporary one has run out.
         val samples = boundaries.map { it to persistenceLayer.getRunningModeActiveAt(it).mode }
-
-        _runningModeGraphFlow.value = RunningModeGraphData(segments = mergeRunningModeSegments(samples, endTime))
+        return mergeRunningModeSegments(samples, endTime)
     }
 
     private suspend fun rebuildTargetLine() = targetLineRebuildMutex.withLock {
@@ -1109,6 +1114,9 @@ class OverviewDataCacheImpl(
         // minute, about 1,500 for a 24 hour graph. The IOB calculator's basal cache is cleared on every
         // BG reload, so the per-minute calls almost always went to the database, several times per BG.
         val temporaryBasals = processedTbrEbData.getTempBasalsIncludingConvertedExtended(fromTime, roundUpToMinute(endTime))
+        // autoISF build: while the pump itself has stopped (the pump reported it), nothing is given, whatever the
+        // profile or a TBR say. Only for the graph: the IOB calculation is not changed.
+        val pumpSuspended = runningModeSegments(fromTime, endTime).filter { it.mode == RM.Mode.SUSPENDED_BY_PUMP }
 
         var time = fromTime
         while (time < endTime) {
@@ -1123,7 +1131,9 @@ class OverviewDataCacheImpl(
             // The full minute getBasalData used to look the values up at
             val minute = roundUpToMinute(time)
             val profileBasalValue = profile.getBasal(minute)
-            val actualBasalValue = temporaryBasals.at(minute)?.convertedToAbsolute(minute, profile) ?: profileBasalValue
+            val actualBasalValue =
+                if (pumpSuspended.any { minute >= it.startTime && minute < it.endTime }) 0.0
+                else temporaryBasals.at(minute)?.convertedToAbsolute(minute, profile) ?: profileBasalValue
 
             if (profileBasalValue != lastProfileBasal) {
                 profileBasal.add(GraphDataPoint(time, profileBasalValue))

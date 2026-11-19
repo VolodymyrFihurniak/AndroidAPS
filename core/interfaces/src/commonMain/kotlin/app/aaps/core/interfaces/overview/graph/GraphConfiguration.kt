@@ -32,7 +32,10 @@ enum class SeriesType {
     IOB_TH,
 
     // autoISF: the parabola fitted to the last BG values, an overlay of the BG graph only
-    BG_PARABOLA
+    BG_PARABOLA,
+
+    // autoISF build: the basal band (profile and given basal) at the top of the IOB graph, a layer of that graph only
+    BASAL
 }
 
 /**
@@ -63,7 +66,7 @@ data class SecondaryGraph(
  */
 data class GraphConfig(
     val bgOverlays: List<SeriesType> = listOf(SeriesType.ACTIVITY, SeriesType.PREDICTIONS, SeriesType.BG_PARABOLA),
-    val iobOverlays: List<SeriesType> = listOf(SeriesType.ACTIVITY),
+    val iobOverlays: List<SeriesType> = listOf(SeriesType.ACTIVITY, SeriesType.BASAL),
     val bgHeight: Int = DEFAULT_GRAPH_HEIGHT_DP,
     val iobHeight: Int = DEFAULT_GRAPH_HEIGHT_DP,
     val secondaryGraphs: List<SecondaryGraph> = listOf(

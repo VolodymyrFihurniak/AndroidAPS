@@ -67,6 +67,7 @@ import app.aaps.core.ui.compose.icons.IcBgCheck
 import app.aaps.core.ui.compose.navigation.color
 import app.aaps.core.ui.compose.navigation.icon
 import app.aaps.core.ui.compose.stringResource
+import app.aaps.ui.UiStrings
 import app.aaps.ui.compose.overview.chips.toIcon
 import com.patrykandpatrick.vico.compose.cartesian.CartesianDrawingContext
 import com.patrykandpatrick.vico.compose.cartesian.axis.Axis
@@ -415,6 +416,8 @@ data class InspectData(
     val cob: Double?,
     val basal: Double?,
     val tbrState: TbrState,
+    /** autoISF build: the basal of the profile at that time, shown beside [basal] when the two differ. */
+    val profileBasal: Double? = null,
     val boluses: List<BolusGraphPoint>,
     val carbs: List<CarbsGraphPoint>,
     val measured: List<String>,
@@ -450,13 +453,15 @@ fun inspectDataAt(
         else abs(at - time) <= INSPECT_TREATMENT_MS
     // Basal is stored at each change
     val basal = actualBasal.lastOrNull { it.timestamp <= time }?.value
+    val profileBasalAt = profileBasal.lastOrNull { it.timestamp <= time }?.value
     return InspectData(
         timestamp = time,
         bg = bg,
         iob = iob.nearest(time) { it.timestamp }?.value,
         cob = cob.nearest(time) { it.timestamp }?.value,
         basal = basal,
-        tbrState = tbrState(basal, profileBasal.lastOrNull { it.timestamp <= time }?.value),
+        tbrState = tbrState(basal, profileBasalAt),
+        profileBasal = profileBasalAt,
         boluses = boluses.filter { it.isValid && belongsHere(it.timestamp) },
         carbs = carbs.filter { it.isValid && belongsHere(it.timestamp) },
         measured = calibrations
@@ -547,7 +552,11 @@ fun GraphInspectPill(
                     PillItem(ElementType.COB.icon(), stringResource(InterfacesStrings.format_carbs, it), ElementType.COB.color(), iconSize = PILL_COB_ICON_SIZE)
                 }
                 data.basal?.let {
-                    PillItem(data.tbrState.toIcon(), stringResource(CoreUiStrings.pump_base_basal_rate, it), ElementType.TEMP_BASAL.color())
+                    val rate = stringResource(CoreUiStrings.pump_base_basal_rate, it)
+                    // autoISF build: the profile basal of the same minute, when the given basal is not the profile
+                    val profile = data.profileBasal?.takeIf { p -> data.tbrState != TbrState.NONE && p >= 0.0 }
+                    val text = if (profile != null) stringResource(UiStrings.basal_inspect_with_profile, rate, stringResource(CoreUiStrings.pump_base_basal_rate, profile)) else rate
+                    PillItem(data.tbrState.toIcon(), text, ElementType.TEMP_BASAL.color())
                 }
                 // Same triangles as the BG and IOB graphs: a manual bolus down, an SMB up, carbs up
                 data.boluses.forEach { bolus ->

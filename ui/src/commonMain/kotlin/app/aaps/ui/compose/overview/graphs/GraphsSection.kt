@@ -101,7 +101,7 @@ import kotlin.math.abs
 /** Fixed graph layout used in simple mode: BG (no overlays), IOB+BAS (no overlays), COB */
 private val SIMPLE_MODE_CONFIG = GraphConfig(
     bgOverlays = emptyList(),
-    iobOverlays = emptyList(),
+    iobOverlays = listOf(SeriesType.BASAL),
     secondaryGraphs = listOf(SecondaryGraph(listOf(SeriesType.COB)))
 )
 
@@ -209,8 +209,11 @@ private val BG_OVERLAY_SERIES = listOf(SeriesType.ACTIVITY, SeriesType.PREDICTIO
 
 /** Series types available for user-configurable secondary graphs (IOB + UI-only overlays excluded) */
 private val CONFIGURABLE_SERIES = SeriesType.entries.filter {
-    it != SeriesType.IOB && it != SeriesType.PREDICTIONS && it != SeriesType.BG_PARABOLA
+    it != SeriesType.IOB && it != SeriesType.PREDICTIONS && it != SeriesType.BG_PARABOLA && it != SeriesType.BASAL
 }
+
+/** autoISF build: the layers of the IOB graph that can be switched on and off */
+private val IOB_OVERLAY_SERIES = listOf(SeriesType.ACTIVITY, SeriesType.BASAL)
 
 @OptIn(FlowPreview::class)
 @Composable
@@ -656,6 +659,7 @@ fun GraphsSection(
                 derivedTimeRange = derivedTimeRange,
                 nowTimestamp = nowTimestamp,
                 activityOverlay = SeriesType.ACTIVITY in graphConfig.iobOverlays,
+                basalLayer = SeriesType.BASAL in graphConfig.iobOverlays,
                 onVisibleRangeChanged = { iobVisibleRange = it },
                 inspect = inspect,
                 modifier = Modifier
@@ -663,7 +667,9 @@ fun GraphsSection(
                     .height(graphConfig.iobHeight.dp - REMOVED_TIME_LABELS_HEIGHT)
             )
             GraphNameRow(
-                name = stringResource(InterfacesStrings.values_with_slash, stringResource(CoreUiStrings.iob), stringResource(CoreUiStrings.basal_shortname)),
+                name = if (SeriesType.BASAL in graphConfig.iobOverlays)
+                    stringResource(InterfacesStrings.values_with_slash, stringResource(CoreUiStrings.iob), stringResource(CoreUiStrings.basal_shortname))
+                else stringResource(CoreUiStrings.iob),
                 editName = stringResource(CoreUiStrings.iob),
                 onEdit = if (isSimpleMode) null else ({ editingIobOverlays = true }),
                 modifier = Modifier
@@ -675,7 +681,7 @@ fun GraphsSection(
             GraphSeriesBottomSheet(
                 title = stringResource(InterfacesStrings.values_with_slash, stringResource(CoreUiStrings.iob), stringResource(CoreUiStrings.basal_shortname)),
                 selectedSeries = graphConfig.iobOverlays,
-                availableSeries = listOf(SeriesType.ACTIVITY),
+                availableSeries = IOB_OVERLAY_SERIES,
                 height = graphConfig.iobHeight,
                 onHeightChange = { h ->
                     graphViewModel.updateGraphConfig(graphConfig.copy(iobHeight = h))
@@ -870,6 +876,7 @@ private fun seriesShortNameId(type: SeriesType): TextRef = when (type) {
     SeriesType.AUTOISF         -> CoreUiStrings.autoisf_shortname
     SeriesType.IOB_TH          -> CoreUiStrings.iob_threshold_shortname
     SeriesType.BG_PARABOLA     -> CoreUiStrings.bg_parabola_shortname
+    SeriesType.BASAL           -> CoreUiStrings.basal_shortname
 }
 
 /** String resource ID for the full name of a series type, for the graph settings where there is room (#5336) */
@@ -889,6 +896,7 @@ private fun seriesNameId(type: SeriesType): TextRef = when (type) {
     SeriesType.AUTOISF         -> CoreUiStrings.graph_series_autoisf
     SeriesType.IOB_TH          -> CoreUiStrings.graph_series_iob_threshold
     SeriesType.BG_PARABOLA     -> CoreUiStrings.graph_series_bg_parabola
+    SeriesType.BASAL           -> CoreUiStrings.graph_series_basal
 }
 
 // =========================================================================

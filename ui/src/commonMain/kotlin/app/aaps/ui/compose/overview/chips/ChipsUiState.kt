@@ -1,7 +1,9 @@
 package app.aaps.ui.compose.overview.chips
 
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Stable
 import app.aaps.core.interfaces.overview.IsfStep
+import app.aaps.core.interfaces.profile.Profile
 
 /**
  * What the overview chips show.
@@ -43,4 +45,24 @@ data class SensitivityUiState(
     val ratio: Double = 1.0,
     val isEnabled: Boolean = true,
     val hasData: Boolean = false
+)
+
+/**
+ * autoISF build: the basal card next to IOB and COB, and the details it opens. See `basalCardState` for the rules.
+ *
+ * [rateText] is the main value, [statusText] the smaller line under it. [isWarning] marks a state where the rate is
+ * not the profile or a TBR (no data, suspended, disconnected), shown in the warning colour.
+ */
+@Stable
+data class BasalUiState(
+    val visible: Boolean = false,
+    val rateText: String = "",
+    val statusText: String = "",
+    val direction: BasalDirection = BasalDirection.SAME,
+    val isWarning: Boolean = false,
+    val profileName: String = "",
+    /** Label and value of each line of the details. */
+    val details: List<Pair<String, String>> = emptyList(),
+    /** For the day graph of the details, null without a profile. */
+    val profile: Profile? = null
 )

@@ -80,7 +80,6 @@ import app.aaps.core.ui.compose.icons.IcTtEatingSoon
 import app.aaps.core.ui.compose.icons.IcTtHypo
 import app.aaps.core.ui.compose.icons.IcTtManual
 import app.aaps.core.ui.compose.navigation.icon
-import app.aaps.core.ui.extensions.toStringFull
 import app.aaps.ui.UiStrings
 import app.aaps.ui.compose.aboutDialog.AboutDialogData
 import app.aaps.ui.compose.quickLaunch.QuickLaunchAction
@@ -266,7 +265,6 @@ class MainViewModel(
             runningModeRemaining = chip.runningModeRemaining,
             runningModeProgress = chip.runningModeProgress,
             runningModeRecordId = chip.runningModeRecordId,
-            tbrState = chip.tbrState,
             smbEnabled = ev.smbEnabled,
             quickWizardItems = chip.quickWizardItems
         )
@@ -381,7 +379,6 @@ class MainViewModel(
             runningModeRemaining = rmRemaining,
             runningModeProgress = rmProgress,
             runningModeRecordId = if (rmExpired) 0 else rmData?.recordId ?: 0,
-            tbrState = if (tbrExpired) TbrState.NONE else tbrData?.state ?: TbrState.NONE,
             quickWizardItems = computeQuickWizardItems(rmData?.mode)
         )
     }
@@ -817,26 +814,6 @@ class MainViewModel(
         }
     }
 
-    fun showTbrInfo() {
-        viewModelScope.launch {
-            val activeTb = persistenceLayer.getTemporaryBasalActiveAt(dateUtil.now())
-            val profile = profileFunction.getProfile()
-            val title: String
-            val message: String
-            if (activeTb != null && profile != null) {
-                title = rh.gs(CoreUiStrings.temp_basal)
-                message = activeTb.toStringFull(profile, dateUtil, rh)
-            } else {
-                title = rh.gs(CoreUiStrings.base_basal_rate_label)
-                message = if (profile != null)
-                    rh.gs(CoreUiStrings.pump_base_basal_rate, profile.getBasal())
-                else
-                    rh.gs(UiStrings.no_temp_basal_running)
-            }
-            rxBus.send(EventShowDialog.Ok(title = title, message = message))
-        }
-    }
-
     fun performLoopAccept() {
         protectionCheck.requestProtection(ProtectionCheck.Protection.BOLUS) { result ->
             if (result == ProtectionResult.GRANTED) {
@@ -1056,6 +1033,5 @@ private data class ChipState(
     val runningModeRemaining: String = "",
     val runningModeProgress: Float = 0f,
     val runningModeRecordId: Long = 0,
-    val tbrState: TbrState = TbrState.NONE,
     val quickWizardItems: List<QuickWizardItem> = emptyList()
 )

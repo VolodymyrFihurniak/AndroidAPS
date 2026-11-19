@@ -26,7 +26,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.aaps.core.data.model.ActiveSceneState
 import app.aaps.core.data.model.RM
 import app.aaps.core.data.model.TT
-import app.aaps.core.interfaces.overview.graph.TbrState
 import app.aaps.core.ui.compose.AapsSpacing
 import app.aaps.core.ui.compose.AapsTheme
 import app.aaps.core.ui.compose.LocalConfig
@@ -63,7 +62,6 @@ fun OverviewScreenTablet(
     runningModeRemaining: String,
     runningModeProgress: Float,
     runningModeSceneManaged: Boolean = false,
-    tbrState: TbrState,
     smbEnabled: Boolean,
     isSimpleMode: Boolean,
     graphViewModel: GraphViewModel,
@@ -72,7 +70,6 @@ fun OverviewScreenTablet(
     statusViewModel: StatusViewModel,
     statusLightsDef: PreferenceSubScreenDef,
     onNavigate: (NavigationRequest) -> Unit,
-    onTbrChipClick: () -> Unit,
     onIobChipClick: () -> Unit,
     paddingValues: PaddingValues,
     activeSceneState: ActiveSceneState? = null,
@@ -95,6 +92,8 @@ fun OverviewScreenTablet(
     val iobUiState by chipsViewModel.iobUiState.collectAsStateWithLifecycle()
     val cobUiState by chipsViewModel.cobUiState.collectAsStateWithLifecycle()
     val exerciseModeUiState by chipsViewModel.exerciseModeUiState.collectAsStateWithLifecycle()
+    // autoISF build: the basal card next to IOB and COB
+    val basalUiState by chipsViewModel.basalUiState.collectAsStateWithLifecycle()
     val statusState by statusViewModel.uiState.collectAsStateWithLifecycle()
 
     var statusExpanded by rememberSaveable { mutableStateOf(true) }
@@ -169,12 +168,11 @@ fun OverviewScreenTablet(
                             tempTargetProgress = tempTargetProgress,
                             tempTargetReason = tempTargetReason,
                             tempTargetSceneManaged = tempTargetSceneManaged,
-                            tbrState = tbrState,
+                            basalUiState = basalUiState,
                             iobUiState = iobUiState,
                             cobUiState = cobUiState,
                             sensitivityUiState = sensitivityUiState,
                             onNavigate = onNavigate,
-                            onTbrChipClick = onTbrChipClick,
                             onIobChipClick = onIobChipClick,
                             commandsAllowed = commandsAllowed,
                             exerciseModeUiState = exerciseModeUiState,

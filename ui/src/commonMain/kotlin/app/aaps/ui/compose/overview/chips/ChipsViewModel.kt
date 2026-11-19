@@ -7,20 +7,27 @@ import app.aaps.core.interfaces.InterfacesStrings
 import app.aaps.core.interfaces.aps.Loop
 import app.aaps.core.interfaces.configuration.Config
 import app.aaps.core.interfaces.db.PersistenceLayer
+import app.aaps.core.interfaces.db.ProcessedTbrEbData
 import app.aaps.core.interfaces.iob.IobCobCalculator
+import app.aaps.core.interfaces.nsclient.ProcessedDeviceStatusData
 import app.aaps.core.interfaces.overview.SensitivityOverview
 import app.aaps.core.interfaces.overview.graph.OverviewDataCache
 import app.aaps.core.interfaces.plugin.ActivePlugin
+import app.aaps.core.interfaces.profile.Profile
+import app.aaps.core.interfaces.profile.ProfileFunction
 import app.aaps.core.interfaces.resources.TextResolver
 import app.aaps.core.interfaces.rx.bus.RxBus
 import app.aaps.core.interfaces.rx.events.EventShowDialog
+import app.aaps.core.interfaces.utils.DateUtil
 import app.aaps.core.interfaces.utils.DecimalFormatter
 import app.aaps.core.interfaces.widget.WidgetUpdater
 import app.aaps.core.keys.BooleanKey
 import app.aaps.core.keys.interfaces.Preferences
+import app.aaps.core.objects.extensions.convertedToAbsolute
 import app.aaps.core.objects.extensions.round
 import app.aaps.core.ui.CoreUiStrings
 import app.aaps.core.ui.extensions.displayText
+import app.aaps.ui.UiStrings
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
@@ -48,7 +55,11 @@ class ChipsViewModel(
     private val rxBus: RxBus,
     private val preferences: Preferences,
     private val activePlugin: ActivePlugin,
-    private val widgetUpdater: WidgetUpdater
+    private val widgetUpdater: WidgetUpdater,
+    private val profileFunction: ProfileFunction,
+    private val processedTbrEbData: ProcessedTbrEbData,
+    private val processedDeviceStatusData: ProcessedDeviceStatusData,
+    private val dateUtil: DateUtil
 ) : ViewModel() {
 
     @AssistedFactory
@@ -128,6 +139,107 @@ class ChipsViewModel(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = ExerciseModeUiState()
     )
+
+    // autoISF build: the basal card. Every 30 s, so the time left of a TBR, a new profile segment and old pump data
+    // show in time, and at once when a TBR, the running mode or the profile changes.
+    private val basalTicker = flow {
+        while (true) {
+            emit(Unit)
+            delay(30_000L)
+        }
+    }
+
+    val basalUiState: StateFlow<BasalUiState> = combine(basalTicker, cache.tbrFlow, cache.runningModeFlow, cache.profileFlow) { _, _, _, _ ->
+        buildBasalUiState()
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = BasalUiState()
+    )
+
+    private suspend fun buildBasalUiState(): BasalUiState {
+        val now = dateUtil.now()
+        val profile = profileFunction.getProfile()
+        val tb = processedTbrEbData.getTempBasalIncludingConvertedExtended(now)
+        val tbr = if (profile != null && tb != null) BasalTbr(rate = tb.convertedToAbsolute(now, profile), start = tb.timestamp, durationMs = tb.duration) else null
+        // On a client the pump is the master's, known from its device status
+        val pumpDataTime = if (config.AAPSCLIENT) processedDeviceStatusData.pumpData?.clock ?: 0L else activePlugin.activePump.lastDataTime.value
+        // A TBR the loop asked for in its last run that the pump did not set (open loop, or the command failed)
+        val lastRun = loop.lastRun
+        val request = lastRun?.constraintsProcessed?.takeIf { config.APS && it.isTempBasalRequested && lastRun.tbrSetByPump?.success != true }
+        val requestedRate = request?.let { if (it.usePercent && profile != null) profile.getBasal(now) * it.percent / 100.0 else it.rate }
+        val card = basalCardState(
+            BasalSnapshot(
+                now = now,
+                profileBasal = profile?.getBasal(now),
+                tbr = tbr,
+                profileSwitchPercentage = profile?.percentage ?: 100,
+                profileSwitchTimeshiftHours = profile?.timeshift ?: 0,
+                runningMode = persistenceLayer.getRunningModeActiveAtOrNull(now)?.mode,
+                pumpDataTime = pumpDataTime,
+                requestedRate = requestedRate,
+                requestedAt = lastRun?.lastAPSRun ?: 0L
+            )
+        )
+        return basalUiState(card, profile?.let { profileFunction.getProfileName() } ?: "", tbr, profile)
+    }
+
+    private fun rateText(rate: Double): String = rh.gs(CoreUiStrings.pump_base_basal_rate, rate)
+
+    private fun basalUiState(card: BasalCardState, profileName: String, tbr: BasalTbr?, profile: Profile?): BasalUiState {
+        val unknown = rh.gs(UiStrings.basal_unknown)
+        val percentText = card.percentOfProfile?.let { rh.gs(UiStrings.basal_percent_of_profile, it) } ?: unknown
+        val stateText = when (card.status) {
+            BasalStatus.PROFILE           -> card.pendingRate?.let { rh.gs(UiStrings.basal_requested_short, rateText(it)) } ?: rh.gs(UiStrings.basal_by_profile)
+            BasalStatus.TBR               -> card.pendingRate?.let { rh.gs(UiStrings.basal_requested_short, rateText(it)) }
+                ?: rh.gs(UiStrings.basal_tbr_left, card.tbrRemainingMinutes ?: 0)
+            BasalStatus.SUSPENDED_BY_PUMP -> rh.gs(UiStrings.basal_suspended_by_pump)
+            BasalStatus.PUMP_DISCONNECTED -> rh.gs(UiStrings.basal_pump_disconnected)
+            BasalStatus.NO_RECENT_DATA    -> rh.gs(UiStrings.basal_no_recent_data)
+            BasalStatus.NO_PROFILE        -> rh.gs(UiStrings.basal_no_profile)
+        }
+        var statusText = when (card.status) {
+            BasalStatus.PROFILE, BasalStatus.TBR -> rh.gs(UiStrings.basal_status_join, percentText, stateText)
+            else                                 -> stateText
+        }
+        card.profileSwitchPercentage?.let { statusText = rh.gs(UiStrings.basal_status_join, statusText, rh.gs(UiStrings.basal_profile_switch_short, it)) }
+
+        val details = buildList {
+            if (profileName.isNotEmpty()) add(rh.gs(CoreUiStrings.profile) to profileName)
+            add(rh.gs(UiStrings.basal_details_profile_basal) to (card.profileBasal?.let { rateText(it) } ?: unknown))
+            add(rh.gs(UiStrings.basal_details_rate) to (card.rate?.let { rateText(it) } ?: unknown))
+            add(rh.gs(UiStrings.basal_details_percent) to (card.percentOfProfile?.let { rh.gs(UiStrings.basal_percent_of_profile, it) } ?: unknown))
+            add(
+                rh.gs(UiStrings.basal_details_profile_switch) to
+                    if (card.profileSwitchPercentage != null || card.profileSwitchTimeshiftHours != null)
+                        rh.gs(UiStrings.basal_details_profile_switch_value, card.profileSwitchPercentage ?: 100, card.profileSwitchTimeshiftHours ?: 0)
+                    else rh.gs(UiStrings.basal_details_none)
+            )
+            val runningTbr = tbr?.takeIf { card.status == BasalStatus.TBR }
+            add(
+                rh.gs(UiStrings.basal_details_tbr) to
+                    (runningTbr?.let { rh.gs(UiStrings.basal_details_tbr_value, rateText(it.rate), (it.durationMs / 60_000L).toInt()) } ?: rh.gs(UiStrings.basal_details_none))
+            )
+            card.tbrRemainingMinutes?.let { add(rh.gs(UiStrings.basal_details_remaining) to rh.gs(CoreUiStrings.format_mins, it)) }
+            card.pendingRate?.let { add(rh.gs(UiStrings.basal_details_requested) to rateText(it)) }
+            val pumpState = when (card.status) {
+                BasalStatus.SUSPENDED_BY_PUMP -> rh.gs(UiStrings.basal_suspended_by_pump)
+                BasalStatus.PUMP_DISCONNECTED -> rh.gs(UiStrings.basal_pump_disconnected)
+                else                          -> card.dataAgeMinutes?.let { rh.gs(UiStrings.basal_details_pump_data, it.toInt()) } ?: rh.gs(UiStrings.basal_details_pump_never)
+            }
+            add(rh.gs(CoreUiStrings.pump) to pumpState)
+        }
+        return BasalUiState(
+            visible = true,
+            rateText = card.rate?.let { rateText(it) } ?: unknown,
+            statusText = statusText,
+            direction = card.direction,
+            isWarning = card.status != BasalStatus.PROFILE && card.status != BasalStatus.TBR,
+            profileName = profileName,
+            details = details,
+            profile = profile
+        )
+    }
 
     /** autoISF: switches exercise mode, as the button of aisf did. The widget shows the mode too. */
     fun toggleExerciseMode() {

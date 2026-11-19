@@ -5,19 +5,24 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.aaps.core.data.model.RM
 import app.aaps.core.data.model.TT
 import app.aaps.core.interfaces.navigation.ElementType
-import app.aaps.core.interfaces.overview.graph.TbrState
 import app.aaps.core.ui.CoreUiStrings
 import app.aaps.core.ui.compose.AapsSpacing
 import app.aaps.core.ui.compose.LocalClientRole
 import app.aaps.core.ui.compose.navigation.NavigationRequest
 import app.aaps.core.ui.compose.stringResource
 import app.aaps.ui.compose.main.TempTargetChipState
+import app.aaps.ui.compose.overview.chips.BasalDetailsSheet
+import app.aaps.ui.compose.overview.chips.BasalUiState
 import app.aaps.ui.compose.overview.chips.CobUiState
 import app.aaps.ui.compose.overview.chips.ExerciseModeChip
 import app.aaps.ui.compose.overview.chips.ExerciseModeUiState
@@ -26,7 +31,6 @@ import app.aaps.ui.compose.overview.chips.IobUiState
 import app.aaps.ui.compose.overview.chips.ProfileChip
 import app.aaps.ui.compose.overview.chips.RunningModeChip
 import app.aaps.ui.compose.overview.chips.SensitivityUiState
-import app.aaps.ui.compose.overview.chips.TbrChip
 import app.aaps.ui.compose.overview.chips.TempTargetChip
 
 @Composable
@@ -46,12 +50,11 @@ fun OverviewChipsColumn(
     tempTargetProgress: Float,
     tempTargetReason: TT.Reason?,
     tempTargetSceneManaged: Boolean = false,
-    tbrState: TbrState,
+    basalUiState: BasalUiState,
     iobUiState: IobUiState,
     cobUiState: CobUiState,
     sensitivityUiState: SensitivityUiState,
     onNavigate: (NavigationRequest) -> Unit,
-    onTbrChipClick: () -> Unit,
     onIobChipClick: () -> Unit,
     // The command chips (running mode / profile / temp target) open mutating screens — their click is disabled on an
     // unpaired client (same MASTER_OR_PAIRED_CLIENT gate as nav/Manage), while the chip stays visible as status.
@@ -81,18 +84,27 @@ fun OverviewChipsColumn(
             tempTargetProgress = tempTargetProgress,
             tempTargetReason = tempTargetReason,
             tempTargetSceneManaged = tempTargetSceneManaged,
-            tbrState = tbrState,
             onNavigate = onNavigate,
-            onTbrChipClick = onTbrChipClick,
             commandsAllowed = commandsAllowed,
             exerciseModeUiState = exerciseModeUiState,
             onExerciseModeClick = onExerciseModeClick
         )
+        // autoISF build: the basal card, in the row of IOB and COB, opens its details
+        var showBasalDetails by remember { mutableStateOf(false) }
         IobCobChipsRow(
             iobUiState = iobUiState,
             cobUiState = cobUiState,
-            onIobChipClick = onIobChipClick
+            onIobChipClick = onIobChipClick,
+            basalUiState = basalUiState,
+            onBasalChipClick = { showBasalDetails = true }
         )
+        if (showBasalDetails) {
+            BasalDetailsSheet(
+                state = basalUiState,
+                onOpenProfiles = { onNavigate(NavigationRequest.Element(ElementType.PROFILE_MANAGEMENT)) },
+                onDismiss = { showBasalDetails = false }
+            )
+        }
         SensitivityChipBlock(
             state = sensitivityUiState,
             modifier = Modifier.fillMaxWidth()
@@ -117,9 +129,7 @@ private fun NarrowChips(
     tempTargetProgress: Float,
     tempTargetReason: TT.Reason?,
     tempTargetSceneManaged: Boolean,
-    tbrState: TbrState,
     onNavigate: (NavigationRequest) -> Unit,
-    onTbrChipClick: () -> Unit,
     commandsAllowed: Boolean,
     exerciseModeUiState: ExerciseModeUiState,
     onExerciseModeClick: () -> Unit
@@ -167,10 +177,6 @@ private fun NarrowChips(
                 enabled = commandsAllowed && LocalClientRole.current.allows(ElementType.TEMP_TARGET_MANAGEMENT.role)
             )
         }
-        TbrChip(
-            state = tbrState,
-            onClick = onTbrChipClick
-        )
         if (exerciseModeUiState.visible) {
             ExerciseModeChip(
                 enabled = exerciseModeUiState.enabled,

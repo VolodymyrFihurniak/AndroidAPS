@@ -27,7 +27,6 @@ import app.aaps.core.data.model.ActiveSceneState
 import app.aaps.core.data.model.RM
 import app.aaps.core.data.model.TT
 import app.aaps.core.interfaces.notifications.AapsNotification
-import app.aaps.core.interfaces.overview.graph.TbrState
 import app.aaps.core.interfaces.pump.BolusProgressState
 import app.aaps.core.ui.compose.PHONE_COLUMN_MIN_WIDTH_DP
 import app.aaps.core.ui.compose.TABLET_MIN_SW_DP
@@ -64,7 +63,6 @@ fun OverviewScreen(
     runningModeRemaining: String,
     runningModeProgress: Float,
     runningModeRecordId: Long = 0,
-    tbrState: TbrState,
     smbEnabled: Boolean,
     isSimpleMode: Boolean,
     calcProgress: Int,
@@ -74,7 +72,6 @@ fun OverviewScreen(
     statusViewModel: StatusViewModel,
     statusLightsDef: PreferenceSubScreenDef,
     onNavigate: (NavigationRequest) -> Unit,
-    onTbrChipClick: () -> Unit,
     onIobChipClick: () -> Unit,
     notifications: List<AapsNotification>,
     onDismissNotification: (AapsNotification) -> Unit,
@@ -167,7 +164,6 @@ fun OverviewScreen(
                     runningModeRemaining = runningModeRemaining,
                     runningModeProgress = runningModeProgress,
                     runningModeSceneManaged = runningModeSceneManaged,
-                    tbrState = tbrState,
                     smbEnabled = smbEnabled,
                     isSimpleMode = isSimpleMode,
                     graphViewModel = graphViewModel,
@@ -176,7 +172,6 @@ fun OverviewScreen(
                     statusViewModel = statusViewModel,
                     statusLightsDef = statusLightsDef,
                     onNavigate = onNavigate,
-                    onTbrChipClick = onTbrChipClick,
                     onIobChipClick = onIobChipClick,
                     paddingValues = paddingValues,
                     activeSceneState = activeSceneState,
@@ -206,7 +201,6 @@ fun OverviewScreen(
                     runningModeRemaining = runningModeRemaining,
                     runningModeProgress = runningModeProgress,
                     runningModeSceneManaged = runningModeSceneManaged,
-                    tbrState = tbrState,
                     smbEnabled = smbEnabled,
                     isSimpleMode = isSimpleMode,
                     graphViewModel = graphViewModel,
@@ -215,7 +209,6 @@ fun OverviewScreen(
                     statusViewModel = statusViewModel,
                     statusLightsDef = statusLightsDef,
                     onNavigate = onNavigate,
-                    onTbrChipClick = onTbrChipClick,
                     onIobChipClick = onIobChipClick,
                     paddingValues = paddingValues,
                     activeSceneState = activeSceneState,
@@ -245,7 +238,6 @@ fun OverviewScreen(
                     runningModeRemaining = runningModeRemaining,
                     runningModeProgress = runningModeProgress,
                     runningModeSceneManaged = runningModeSceneManaged,
-                    tbrState = tbrState,
                     smbEnabled = smbEnabled,
                     isSimpleMode = isSimpleMode,
                     graphViewModel = graphViewModel,
@@ -254,7 +246,6 @@ fun OverviewScreen(
                     statusViewModel = statusViewModel,
                     statusLightsDef = statusLightsDef,
                     onNavigate = onNavigate,
-                    onTbrChipClick = onTbrChipClick,
                     onIobChipClick = onIobChipClick,
                     paddingValues = paddingValues,
                     activeSceneState = activeSceneState,

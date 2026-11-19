@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -115,6 +116,8 @@ fun SecondaryGraphCompose(
     derivedTimeRange: Pair<Long, Long>?,
     nowTimestamp: Long,
     activityOverlay: Boolean = false,
+    /** autoISF build: the basal band at the top of an IOB-only graph; it can be switched off in the graph settings. */
+    basalLayer: Boolean = true,
     onVisibleRangeChanged: ((Pair<Double, Double>?) -> Unit)? = null,
     /** While holding the BG graph, a line at the inspected time. Null turns it off. */
     inspect: GraphInspectState? = null,
@@ -150,7 +153,7 @@ fun SecondaryGraphCompose(
     val hasIob = SeriesType.IOB in seriesTypes
     val hasCob = SeriesType.COB in seriesTypes
     // The basal band takes the top of the graph, so only when IOB is the graph's only series
-    val hasBasalLayer = sides.left == listOf(SeriesType.IOB) && sides.right.isEmpty()
+    val hasBasalLayer = basalLayer && sides.left == listOf(SeriesType.IOB) && sides.right.isEmpty()
 
     val iobData = if (hasIob) viewModel.iobGraphFlow.collectAsStateWithLifecycle().value else null
     val cobData = if (hasCob) viewModel.cobGraphFlow.collectAsStateWithLifecycle().value else null
@@ -485,12 +488,20 @@ fun SecondaryGraphCompose(
         LineCartesianLayer.Line(
             fill = LineCartesianLayer.LineFill.single(Fill(basalColor)),
             stroke = LineCartesianLayer.LineStroke.Continuous(thickness = 1.dp),
-            areaFill = LineCartesianLayer.AreaFill.single(Fill(basalColor.copy(alpha = 0.3f))),
+            areaFill = null,
             interpolator = Square
         )
     }
-    val basalLines = remember(basalActualLine, basalProfileLine) {
-        listOf(basalActualLine, basalProfileLine)
+    // autoISF build: more basal than the profile and less are told apart by colour. Vico fills an area only down
+    // to the base line, so three areas are stacked: the profile in the decrease colour, the given basal in the
+    // increase colour, and on top the part both share in the old basal colour. Only the differences keep a colour.
+    // Opaque (mixed with the background the graphs lie on), so the stacked areas do not mix their colours.
+    val graphBackground = MaterialTheme.colorScheme.background
+    val basalDecreaseFill = AapsTheme.generalColors.basalDecrease.compositeOver(graphBackground)
+    val basalIncreaseFill = AapsTheme.generalColors.basalIncrease.compositeOver(graphBackground)
+    val basalSharedFill = basalColor.copy(alpha = 0.3f).compositeOver(graphBackground)
+    val basalLines = remember(basalActualLine, basalProfileLine, basalDecreaseFill, basalIncreaseFill, basalSharedFill) {
+        listOf(basalAreaLine(basalDecreaseFill), basalAreaLine(basalIncreaseFill), basalAreaLine(basalSharedFill), basalActualLine, basalProfileLine)
     }
 
     // =========================================================================
@@ -598,10 +609,12 @@ fun SecondaryGraphCompose(
             val normalizer = normalizerX(input.maxX) to NORMALIZER_Y
             val left = listOf(normalizer) + input.leftSpecs.map { it.x to it.y }
             val end = when {
-                input.hasBasalLayer -> listOf(
-                    if (input.basalActual.size >= 2) input.basalActual.map { it.first } to input.basalActual.map { it.second } else EMPTY_BASAL,
-                    if (input.basalProfile.size >= 2) input.basalProfile.map { it.first } to input.basalProfile.map { it.second } else EMPTY_BASAL
-                )
+                input.hasBasalLayer -> {
+                    val actual = basalSeries(input.basalActual)
+                    val profile = basalSeries(input.basalProfile)
+                    // The order of basalLines: profile area, given basal area, the shared part, then the two lines
+                    listOf(profile, actual, basalSeries(basalOverlap(input.basalProfile, input.basalActual)), actual, profile)
+                }
 
                 input.hasRightAxis  -> listOf(normalizer) + input.rightSpecs.map { it.x to it.y }
                 else                -> null
@@ -679,6 +692,34 @@ fun SecondaryGraphCompose(
 
 /** The two series a basal layer always needs, for a basal with fewer than two points. */
 private val EMPTY_BASAL = listOf(0.0, 1.0) to listOf(0.0, 0.0)
+
+/** A basal step series for the model, or [EMPTY_BASAL] when it has fewer than two points. */
+private fun basalSeries(points: List<Pair<Double, Double>>): Pair<List<Double>, List<Double>> =
+    if (points.size >= 2) points.map { it.first } to points.map { it.second } else EMPTY_BASAL
+
+/** autoISF build: an area of the basal band, without a line of its own. */
+private fun basalAreaLine(fill: Color): LineCartesianLayer.Line =
+    LineCartesianLayer.Line(
+        fill = LineCartesianLayer.LineFill.single(Fill(Color.Transparent)),
+        stroke = LineCartesianLayer.LineStroke.Continuous(thickness = 0.dp),
+        areaFill = LineCartesianLayer.AreaFill.single(Fill(fill)),
+        interpolator = Square
+    )
+
+/**
+ * autoISF build: the part of the basal band that the profile and the given basal share, as a step series with a point
+ * at every change of either. The band is drawn downwards, so the values are negative and the shared part is the one
+ * closer to 0, the larger value. Empty when either series is.
+ */
+internal fun basalOverlap(profile: List<Pair<Double, Double>>, actual: List<Pair<Double, Double>>): List<Pair<Double, Double>> {
+    if (profile.isEmpty() || actual.isEmpty()) return emptyList()
+    val xs = (profile.map { it.first } + actual.map { it.first }).distinct().sorted()
+    return xs.mapNotNull { x ->
+        val p = stepValueAt(profile, x) ?: return@mapNotNull null
+        val a = stepValueAt(actual, x) ?: return@mapNotNull null
+        x to maxOf(p, a)
+    }
+}
 
 /** The series drawn as columns. They are drawn before the other series, so a line is never hidden behind them. */
 private val COLUMN_SERIES = setOf(SeriesType.DEVIATIONS, SeriesType.STEPS)
@@ -939,6 +980,7 @@ data class SeriesColors(
         SeriesType.ACTIVITY        -> activity
         SeriesType.PREDICTIONS     -> activity // unused — PREDICTIONS is a BG overlay flag, not a secondary series
         SeriesType.BG_PARABOLA     -> activity // unused — BG_PARABOLA is a BG overlay flag, not a secondary series
+        SeriesType.BASAL           -> activity // unused — BASAL is a layer flag of the IOB graph, not a secondary series
         SeriesType.AUTOISF         -> finalIsf // each factor has its own color, see autoIsf()
         SeriesType.IOB_TH          -> iobTh
     }

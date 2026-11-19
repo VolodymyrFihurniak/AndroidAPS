@@ -8,7 +8,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.dp
 import app.aaps.core.data.model.RM
-import app.aaps.core.interfaces.overview.graph.TbrState
 import app.aaps.core.ui.compose.preference.PreferenceSubScreenDef
 import app.aaps.ui.compose.main.TempTargetChipState
 import app.aaps.ui.compose.testing.AapsScreenFixture
@@ -106,10 +105,10 @@ class OverviewScreenVariantsTest {
                     tempTargetProgress = 0f, tempTargetReason = null,
                     runningMode = RM.Mode.OPEN_LOOP, runningModeText = RM_TEXT,
                     runningModeRemaining = "", runningModeProgress = 0f,
-                    tbrState = TbrState.NONE, smbEnabled = false, isSimpleMode = true,
+                    smbEnabled = false, isSimpleMode = true,
                     graphViewModel = graph, chipsViewModel = chips, manageViewModel = manage,
                     statusViewModel = status, statusLightsDef = statusLightsDef,
-                    onNavigate = {}, onTbrChipClick = {}, onIobChipClick = {},
+                    onNavigate = {}, onIobChipClick = {},
                     paddingValues = PaddingValues(0.dp)
                 )
 
@@ -119,10 +118,10 @@ class OverviewScreenVariantsTest {
                     tempTargetProgress = 0f, tempTargetReason = null,
                     runningMode = RM.Mode.OPEN_LOOP, runningModeText = RM_TEXT,
                     runningModeRemaining = "", runningModeProgress = 0f,
-                    tbrState = TbrState.NONE, smbEnabled = false, isSimpleMode = true,
+                    smbEnabled = false, isSimpleMode = true,
                     graphViewModel = graph, chipsViewModel = chips, manageViewModel = manage,
                     statusViewModel = status, statusLightsDef = statusLightsDef,
-                    onNavigate = {}, onTbrChipClick = {}, onIobChipClick = {},
+                    onNavigate = {}, onIobChipClick = {},
                     paddingValues = PaddingValues(0.dp)
                 )
 
@@ -132,10 +131,10 @@ class OverviewScreenVariantsTest {
                     tempTargetProgress = 0f, tempTargetReason = null,
                     runningMode = RM.Mode.OPEN_LOOP, runningModeText = RM_TEXT,
                     runningModeRemaining = "", runningModeProgress = 0f,
-                    tbrState = TbrState.NONE, smbEnabled = false, isSimpleMode = true,
+                    smbEnabled = false, isSimpleMode = true,
                     graphViewModel = graph, chipsViewModel = chips, manageViewModel = manage,
                     statusViewModel = status, statusLightsDef = statusLightsDef,
-                    onNavigate = {}, onTbrChipClick = {}, onIobChipClick = {},
+                    onNavigate = {}, onIobChipClick = {},
                     paddingValues = PaddingValues(0.dp)
                 )
             }
