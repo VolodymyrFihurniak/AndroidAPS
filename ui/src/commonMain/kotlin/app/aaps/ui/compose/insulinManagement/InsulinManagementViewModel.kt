@@ -381,6 +381,21 @@ class InsulinManagementViewModel(
         }
     }
 
+    /**
+     * autoISF build: load the peak of the template behind a trade name, and use the trade name as the name. Not an
+     * automatic name, so a later change of the peak keeps it.
+     */
+    fun loadPeakFromBrand(brand: InsulinBrand) {
+        _uiState.update {
+            it.copy(
+                editorTemplate = brand.template,
+                editorPeakMinutes = brand.template.iCfg.peak,
+                editorNickname = brand.name,
+                autoNameEnabled = false
+            )
+        }
+    }
+
     fun autoGenerateName() {
         val newDefaultNickname = rh.gs((uiState.value.editorTemplate ?: InsulinType.fromPeak(uiState.value.editorPeakMinutes.toLong() * 60_000L)).label)
         _uiState.update { it.copy(editorNickname = newDefaultNickname) }

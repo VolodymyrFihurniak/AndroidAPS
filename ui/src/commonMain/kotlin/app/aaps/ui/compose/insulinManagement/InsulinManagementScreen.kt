@@ -396,7 +396,9 @@ fun InsulinManagementScreen(
                             if (editorEnabled) {
                                 PeakPresetChips(
                                     presets = viewModel.presetList(),
-                                    onPresetClick = { viewModel.loadPeakFromPreset(it) }
+                                    onPresetClick = { viewModel.loadPeakFromPreset(it) },
+                                    brands = INSULIN_BRANDS,
+                                    onBrandClick = { viewModel.loadPeakFromBrand(it) }
                                 )
                             }
 
@@ -522,7 +524,10 @@ private fun UnsavedChangesDialog(
 @Composable
 private fun PeakPresetChips(
     presets: List<InsulinType>,
-    onPresetClick: (InsulinType) -> Unit
+    onPresetClick: (InsulinType) -> Unit,
+    /** autoISF build: trade names, each with the peak of its template, see [InsulinBrand] */
+    brands: List<InsulinBrand> = emptyList(),
+    onBrandClick: (InsulinBrand) -> Unit = {}
 ) {
     var showInfo by remember { mutableStateOf(false) }
 
@@ -575,6 +580,12 @@ private fun PeakPresetChips(
                 AssistChip(
                     onClick = { onPresetClick(preset) },
                     label = { Text(stringResource(preset.label)) }
+                )
+            }
+            brands.forEach { brand ->
+                AssistChip(
+                    onClick = { onBrandClick(brand) },
+                    label = { Text(stringResource(UiStrings.insulin_brand_preset, brand.name, stringResource(CoreUiStrings.format_mins, brand.template.iCfg.peak))) }
                 )
             }
         }

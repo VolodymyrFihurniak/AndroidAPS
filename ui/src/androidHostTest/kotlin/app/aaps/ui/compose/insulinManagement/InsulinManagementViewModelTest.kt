@@ -109,6 +109,26 @@ internal class InsulinManagementViewModelTest {
         assertThat(state.autoNameEnabled).isFalse()
     }
 
+    // autoISF build: trade names from JugglucoNG, each with the peak of its AAPS template
+
+    @Test
+    fun `a trade name loads the peak of its template and keeps its name`() {
+        val fiasp = INSULIN_BRANDS.first { it.name == "Fiasp" }
+
+        sut.loadPeakFromBrand(fiasp)
+
+        val state = sut.uiState.value
+        assertThat(state.editorPeakMinutes).isEqualTo(55)
+        assertThat(state.editorNickname).isEqualTo("Fiasp")
+        assertThat(state.autoNameEnabled).isFalse()
+    }
+
+    @Test
+    fun `every trade name uses the peak AAPS tested, not a clinical one`() {
+        assertThat(INSULIN_BRANDS.associate { it.name to it.template.iCfg.peak })
+            .containsExactly("NovoRapid", 75, "Humalog", 75, "Apidra", 75, "Fiasp", 55)
+    }
+
     @Test
     fun `updateEditorConcentration sets the concentration`() {
         sut.updateEditorConcentration(ConcentrationType.U200)

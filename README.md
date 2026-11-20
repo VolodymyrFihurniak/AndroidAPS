@@ -97,6 +97,11 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
 * **All sensitivity plugins can be chosen**, as in AAPS 3.x: *Sensitivity Oref1*, *Sensitivity AAPS*
   and *Sensitivity WeightedAverage*. AAPS 4.0 shows the last two only with AMA. With SMB or AutoISF
   they work too, but UAM is off unless Oref1 is chosen.
+* **Insulins by trade name**, as in JugglucoNG: the insulin editor offers *NovoRapid*, *Humalog*,
+  *Apidra* (75 min) and *Fiasp* (55 min) beside the AAPS templates (*Lyumjev* is one already). Each
+  takes the peak of the AAPS template it belongs to and the trade name as its name; peak and DIA can
+  still be changed. The clinical curves of JugglucoNG are not used: they put the peak much later
+  (Fiasp about 91 min, Lyumjev about 120 min), and the loop would then give more insulin.
 
 ### Basal card on the main screen
 * On a phone the top of the overview follows the user's concept. On top a card with what the user

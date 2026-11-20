@@ -392,4 +392,5 @@
     <string name="graph_card_title">Глюкоза та інсулін</string>
     <string name="graph_card_history">Історія</string>
     <string name="graph_range_hours">%1$d год</string>
+    <string name="insulin_brand_preset">%1$s (%2$s)</string>
 </resources>

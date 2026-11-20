@@ -424,4 +424,5 @@
     <string name="graph_card_title">Glucose and insulin</string>
     <string name="graph_card_history" comment="Spoken name of the button that opens the history browser from the graph card">History</string>
     <string name="graph_range_hours" comment="Button that shows the last hours on the graph. %1$d=hours. Example: 6 h">%1$d h</string>
+    <string name="insulin_brand_preset" comment="Chip that loads the peak for an insulin by its trade name. %1$s=trade name, %2$s=peak with unit. Example: Fiasp (55 min)">%1$s (%2$s)</string>
 </resources>
