@@ -4,7 +4,6 @@ import androidx.collection.LongSparseArray
 import app.aaps.core.data.model.PS
 import app.aaps.core.data.model.TE
 import app.aaps.core.data.plugin.PluginType
-import app.aaps.core.interfaces.aps.APSResult
 import app.aaps.core.interfaces.aps.AutosensDataStore
 import app.aaps.core.interfaces.aps.AutosensResult
 import app.aaps.core.interfaces.aps.Sensitivity.SensitivityType
@@ -51,11 +50,7 @@ class SensitivityWeightedAveragePlugin(
         .mainType(PluginType.SENSITIVITY)
         .icon(IcAs)
         .pluginName(SensitivityStrings.sensitivity_weighted_average)
-        // Only meaningful with the AMA algorithm - see SensitivityAAPSPlugin, same rule.
-        .showInList {
-            val aps = activePlugin.activeAPS
-            aps == null || aps.algorithm == APSResult.Algorithm.AMA
-        }
+        // autoISF build: shown with every APS, as in AAPS 3.x - see SensitivityAAPSPlugin, same rule.
         .description(SensitivityStrings.description_sensitivity_weighted_average),
     aapsLogger, rh, preferences, notificationManager
 ) {

@@ -4,8 +4,6 @@ import app.aaps.core.data.model.GlucoseUnit
 import app.aaps.core.data.model.PS
 import app.aaps.core.data.model.TE
 import app.aaps.core.data.time.T
-import app.aaps.core.interfaces.aps.APS
-import app.aaps.core.interfaces.aps.APSResult
 import app.aaps.core.interfaces.aps.AutosensDataStore
 import app.aaps.core.interfaces.aps.Sensitivity
 import app.aaps.core.interfaces.profile.EffectiveProfile
@@ -22,7 +20,7 @@ class SensitivityAAPSPluginTest : SensitivityTestBase() {
     private lateinit var sut: SensitivityAAPSPlugin
 
     @BeforeEach fun prepare() {
-        sut = SensitivityAAPSPlugin(aapsLogger, rh, preferences, dateUtil, activePlugin, mock())
+        sut = SensitivityAAPSPlugin(aapsLogger, rh, preferences, dateUtil, mock())
     }
 
     private fun detect(
@@ -163,25 +161,9 @@ class SensitivityAAPSPluginTest : SensitivityTestBase() {
         assertThat(sut.maxAbsorptionHours()).isWithin(0.001).of(6.0)
     }
 
+    // autoISF build: shown with every APS, as in AAPS 3.x
     @Test
-    fun `shown while no APS is elected yet`() {
-        whenever(activePlugin.activeAPS).thenReturn(null)
+    fun `shown with every APS`() {
         assertThat(sut.showInList()).isTrue()
-    }
-
-    @Test
-    fun `shown when the active APS is AMA`() {
-        val aps = mock<APS>()
-        whenever(aps.algorithm).thenReturn(APSResult.Algorithm.AMA)
-        whenever(activePlugin.activeAPS).thenReturn(aps)
-        assertThat(sut.showInList()).isTrue()
-    }
-
-    @Test
-    fun `hidden when the active APS is SMB`() {
-        val aps = mock<APS>()
-        whenever(aps.algorithm).thenReturn(APSResult.Algorithm.SMB)
-        whenever(activePlugin.activeAPS).thenReturn(aps)
-        assertThat(sut.showInList()).isFalse()
     }
 }

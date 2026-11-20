@@ -157,11 +157,12 @@ class SensitivityWeightedAveragePluginTest : SensitivityTestBase() {
         assertThat(sut.getPreferenceScreenContent()).isNull()
     }
 
+    // autoISF build: shown with every APS, as in AAPS 3.x
     @Test
-    fun `hidden when the active APS is SMB`() {
+    fun `shown when the active APS is SMB`() {
         val aps = mock<APS>()
         whenever(aps.algorithm).thenReturn(APSResult.Algorithm.SMB)
         whenever(activePlugin.activeAPS).thenReturn(aps)
-        assertThat(sut.showInList()).isFalse()
+        assertThat(sut.showInList()).isTrue()
     }
 }

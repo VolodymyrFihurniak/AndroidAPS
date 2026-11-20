@@ -94,6 +94,9 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
   who looped with autoISF before: make sure you know how to run the loop safely.
 * The debug controls of the objectives screen (*Enable fake time and progress*, *Reset*) are shown.
 * Engineering mode is always on, so the AutoISF automations and Autotune are available.
+* **All sensitivity plugins can be chosen**, as in AAPS 3.x: *Sensitivity Oref1*, *Sensitivity AAPS*
+  and *Sensitivity WeightedAverage*. AAPS 4.0 shows the last two only with AMA. With SMB or AutoISF
+  they work too, but UAM is off unless Oref1 is chosen.
 
 ### Basal card on the main screen
 * On a phone the top of the overview follows the user's concept: a main card with the BG value in

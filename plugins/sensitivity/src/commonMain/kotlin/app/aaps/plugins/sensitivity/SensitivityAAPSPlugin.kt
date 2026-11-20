@@ -3,14 +3,12 @@ package app.aaps.plugins.sensitivity
 import app.aaps.core.data.model.PS
 import app.aaps.core.data.model.TE
 import app.aaps.core.data.plugin.PluginType
-import app.aaps.core.interfaces.aps.APSResult
 import app.aaps.core.interfaces.aps.AutosensDataStore
 import app.aaps.core.interfaces.aps.AutosensResult
 import app.aaps.core.interfaces.aps.Sensitivity.SensitivityType
 import app.aaps.core.interfaces.logging.AAPSLogger
 import app.aaps.core.interfaces.logging.LTag
 import app.aaps.core.interfaces.notifications.NotificationManager
-import app.aaps.core.interfaces.plugin.ActivePlugin
 import app.aaps.core.interfaces.plugin.PluginBase
 import app.aaps.core.interfaces.plugin.PluginDescription
 import app.aaps.core.interfaces.profile.EffectiveProfile
@@ -45,19 +43,14 @@ class SensitivityAAPSPlugin(
     rh: TextResolver,
     preferences: Preferences,
     private val dateUtil: DateUtil,
-    private val activePlugin: ActivePlugin,
     notificationManager: NotificationManager
 ) : AbstractSensitivityPlugin(
     PluginDescription()
         .mainType(PluginType.SENSITIVITY)
         .icon(IcAs)
         .pluginName(SensitivityStrings.sensitivity_aaps)
-        // Only meaningful with the AMA algorithm, so it is hidden while another APS is active. Still shown
-        // when no APS is elected yet, so the plugin does not vanish during start-up.
-        .showInList {
-            val aps = activePlugin.activeAPS
-            aps == null || aps.algorithm == APSResult.Algorithm.AMA
-        }
+        // autoISF build: shown with every APS, as in AAPS 3.x. Upstream 4.0 shows it only with AMA. With SMB or
+        // autoISF it works too, only UAM is off (SensitivityOref1Plugin.isUAMEnabled says why).
         .description(SensitivityStrings.description_sensitivity_aaps),
     aapsLogger, rh, preferences, notificationManager
 ) {
