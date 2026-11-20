@@ -1243,6 +1243,8 @@
     <string name="graph_series_bg_parabola">BG parabola (autoISF)</string>
     <string name="graph_series_basal">Basal (profile and given)</string>
     <string name="bg_parabola_shortname" comment="Short label for the BG parabola of autoISF on the BG graph">PARAB</string>
+    <string name="graph_series_bg_line" comment="Switch of the BG graph: draw the glucose readings as one line instead of dots">Glucose as a line</string>
+    <string name="bg_line_shortname" comment="Short label of the switch that draws the glucose as a line">LINE</string>
     <string name="graph_series_predictions">Predictions</string>
 
 

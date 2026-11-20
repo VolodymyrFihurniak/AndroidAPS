@@ -1224,4 +1224,6 @@
     <string name="graph_series_bg_parabola">Парабола глюкози (autoISF)</string>
     <string name="graph_series_basal">Базал (профіль і поданий)</string>
     <string name="bg_parabola_shortname">ПАРАБ</string>
+    <string name="graph_series_bg_line">Глюкоза лінією</string>
+    <string name="bg_line_shortname">ЛІНІЯ</string>
 </resources>

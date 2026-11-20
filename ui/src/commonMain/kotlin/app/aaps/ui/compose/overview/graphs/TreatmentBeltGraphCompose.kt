@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -52,6 +53,7 @@ import com.patrykandpatrick.vico.compose.common.Fill
 import com.patrykandpatrick.vico.compose.common.component.Component
 import com.patrykandpatrick.vico.compose.common.component.TextComponent
 import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
+import kotlinx.coroutines.delay
 
 /** How near to an icon a tap has to be to show that icon's event: half the icon and a little more. */
 private val BELT_ICON_TAP_RADIUS = 12.dp
@@ -94,9 +96,24 @@ fun TreatmentBeltGraphCompose(
     nowTimestamp: Long,
     /** The line at the inspected time, and a hold or a tap on the belt shows the pill. Null turns both off. */
     inspect: GraphInspectState? = null,
+    /**
+     * autoISF build: the visible window of the graphs, in minutes from the start of the range. The belt is always there
+     * and synced with BG, so the BG axis is windowed from it now that a phone has no IOB graph.
+     */
+    onVisibleRangeChanged: ((Pair<Double, Double>?) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val dateUtil = LocalDateUtil.current
+    // Same as SecondaryGraphCompose: written on every draw pass, collected here at most 20 times a second
+    val visibleRangeHolder = remember { VisibleRangeHolder() }
+    val visibleRangeReporter = rememberVisibleRangeReporter(visibleRangeHolder)
+    val currentOnVisibleRangeChanged by rememberUpdatedState(onVisibleRangeChanged)
+    LaunchedEffect(visibleRangeHolder) {
+        visibleRangeHolder.value.collect {
+            currentOnVisibleRangeChanged?.invoke(it)
+            delay(50)
+        }
+    }
     // Collect flows independently
     val runningModeData by viewModel.runningModeGraphFlow.collectAsStateWithLifecycle()
     val treatmentGraphData by viewModel.treatmentGraphFlow.collectAsStateWithLifecycle()
@@ -400,7 +417,9 @@ fun TreatmentBeltGraphCompose(
     val nowLine = rememberNowLine(minTimestamp, nowTimestamp, nowLineColor)
     val inspectLine = rememberInspectLine(inspect)
     val clockChanges = rememberClockChangeDecoration(minTimestamp, maxTimestamp, bgReadings)
-    val beltDecorations = remember(nowLine, clockChanges, inspectLine) { listOfNotNull(nowLine, clockChanges, inspectLine) }
+    val beltDecorations = remember(nowLine, clockChanges, inspectLine, visibleRangeReporter) {
+        listOfNotNull(nowLine, clockChanges, inspectLine, visibleRangeReporter)
+    }
 
     val rangeProvider = remember(maxX) {
         CartesianLayerRangeProvider.fixed(minX = 0.0, maxX = maxX, minY = 0.0, maxY = 1.0)

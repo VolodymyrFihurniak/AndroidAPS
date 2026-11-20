@@ -82,6 +82,13 @@ class GraphConfigRepositoryImpl(
         // autoISF build: the IOB layers with the basal band. A new key, so a config saved before the basal could be
         // switched off still shows it: under the old key BASAL is missing, which would read as "switched off".
         private const val KEY_IOB_LAYERS = "iobLayers"
+
+        // autoISF build: the BG layers with IOB, COB, basal and the line. A new key for the same reason: a config
+        // saved before had none of them, and that has to read as "not chosen yet", not as "switched off".
+        private const val KEY_BG_LAYERS = "bgLayers"
+
+        /** autoISF build: BG layers an older version does not know, left out of the old key */
+        private val NEW_BG_LAYERS = listOf(SeriesType.IOB, SeriesType.COB, SeriesType.BASAL, SeriesType.BG_LINE)
         private const val KEY_BG_HEIGHT = "bgHeight"
         private const val KEY_IOB_HEIGHT = "iobHeight"
         private const val KEY_SERIES = "series"
@@ -107,7 +114,9 @@ class GraphConfigRepositoryImpl(
 
         fun toJson(config: GraphConfig): String =
             buildJsonObject {
-                put(KEY_BG_OVERLAYS, overlaysToJson(config.bgOverlays))
+                // The old key without the new layers, for a version that does not know them
+                put(KEY_BG_OVERLAYS, overlaysToJson(config.bgOverlays - NEW_BG_LAYERS.toSet()))
+                put(KEY_BG_LAYERS, overlaysToJson(config.bgOverlays))
                 // The old key without BASAL, for a version that does not know it
                 put(KEY_IOB_OVERLAYS, overlaysToJson(config.iobOverlays - SeriesType.BASAL))
                 put(KEY_IOB_LAYERS, overlaysToJson(config.iobOverlays))
@@ -139,7 +148,13 @@ class GraphConfigRepositoryImpl(
 
         fun fromJson(json: String): GraphConfig {
             val obj = Json.parseToJsonElement(json) as JsonObject
-            val bgOverlays = overlaysFromJson(obj.array(KEY_BG_OVERLAYS), listOf(SeriesType.ACTIVITY, SeriesType.PREDICTIONS, SeriesType.BG_PARABOLA))
+            val bgLayers = obj.array(KEY_BG_LAYERS)
+            // autoISF build: a config from before the BG layers gets IOB, COB and the basal in the BG graph, and loses
+            // its graph with COB alone below it (the user asked to have COB in the BG graph instead).
+            val beforeBgLayers = bgLayers == null && obj.isNotEmpty()
+            val bgOverlays = bgLayers?.let { overlaysFromJson(it, emptyList()) }
+                ?: if (beforeBgLayers) (overlaysFromJson(obj.array(KEY_BG_OVERLAYS), OLD_DEFAULT_BG_OVERLAYS) + SeriesType.IOB + SeriesType.COB + SeriesType.BASAL).distinct()
+                else GraphConfig.DEFAULT_BG_OVERLAYS
             val iobOverlays = obj.array(KEY_IOB_LAYERS)?.let { overlaysFromJson(it, emptyList()) }
                 ?: (overlaysFromJson(obj.array(KEY_IOB_OVERLAYS), listOf(SeriesType.ACTIVITY)) + SeriesType.BASAL).distinct()
             val bgHeight = obj.height(KEY_BG_HEIGHT)
@@ -153,7 +168,8 @@ class GraphConfigRepositoryImpl(
                     is JsonObject -> (raw.array(KEY_SERIES)?.let { parseSeriesArray(it) } ?: emptyList()) to raw.height(KEY_HEIGHT)
                     else          -> emptyList<SeriesType>() to GraphConfig.DEFAULT_GRAPH_HEIGHT_DP
                 }
-                if (series.isNotEmpty()) graphs.add(SecondaryGraph(series, height))
+                if (series.isEmpty() || beforeBgLayers && series == listOf(SeriesType.COB)) continue
+                graphs.add(SecondaryGraph(series, height))
             }
             return GraphConfig(
                 bgOverlays = bgOverlays,
@@ -163,6 +179,9 @@ class GraphConfigRepositoryImpl(
                 secondaryGraphs = graphs
             )
         }
+
+        /** The BG overlays of a config written before the autoISF BG layers, when it had none at all */
+        private val OLD_DEFAULT_BG_OVERLAYS = listOf(SeriesType.ACTIVITY, SeriesType.PREDICTIONS, SeriesType.BG_PARABOLA)
 
         /** The named array, or null when it is absent or is something other than an array. */
         private fun JsonObject.array(key: String): JsonArray? = this[key] as? JsonArray

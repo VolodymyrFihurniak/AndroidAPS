@@ -213,11 +213,15 @@ private val PREDICTION_SPOKEN_ORDER = listOf(
 )
 
 /** Series types available as BG graph overlays */
-private val BG_OVERLAY_SERIES = listOf(SeriesType.ACTIVITY, SeriesType.PREDICTIONS, SeriesType.BG_PARABOLA)
+private val BG_OVERLAY_SERIES = listOf(
+    SeriesType.ACTIVITY, SeriesType.PREDICTIONS, SeriesType.BG_PARABOLA,
+    // autoISF build: IOB, COB and the basal inside the BG graph, and the readings as a line
+    SeriesType.IOB, SeriesType.COB, SeriesType.BASAL, SeriesType.BG_LINE
+)
 
 /** Series types available for user-configurable secondary graphs (IOB + UI-only overlays excluded) */
 private val CONFIGURABLE_SERIES = SeriesType.entries.filter {
-    it != SeriesType.IOB && it != SeriesType.PREDICTIONS && it != SeriesType.BG_PARABOLA && it != SeriesType.BASAL
+    it != SeriesType.IOB && it != SeriesType.PREDICTIONS && it != SeriesType.BG_PARABOLA && it != SeriesType.BASAL && it != SeriesType.BG_LINE
 }
 
 /** autoISF build: the layers of the IOB graph that can be switched on and off */
@@ -336,26 +340,27 @@ fun GraphsSection(
     // maps to different time when x-axis ranges differ).
     val derivedTimeRange by graphViewModel.derivedTimeRange.collectAsStateWithLifecycle()
 
-    // BG's own visible window, sourced from the fixed IOB graph's already-computed visible range
+    // BG's own visible window, sourced from the treatment belt's already-computed visible range
     // (its scroll/zoom are synced to BG's, see the sync LaunchedEffect below) — not from a
     // decoration on BG's own chart, since that was tried and found to break BG's pinch-zoom
     // gesture handling (BG is the only graph with live scrollEnabled/zoomEnabled = true).
-    var iobVisibleRange by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    // autoISF build: the belt and not the IOB graph, because a phone has no IOB graph any more.
+    var windowRange by remember { mutableStateOf<Pair<Double, Double>?>(null) }
 
     // Settle further before feeding into BG specifically: unlike the secondary graphs (which are
     // non-interactive and unaffected by frequent updates), BG has live pinch-zoom. Updating its
     // axis range on every ~80ms tick during an active gesture kept changing the Y-axis label
     // width/layerDimensions mid-gesture and broke pinch-zoom. Only update once the window has
     // been stable for a bit, i.e. after the gesture ends.
-    var iobVisibleRangeSettled by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    var windowRangeSettled by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     LaunchedEffect(Unit) {
-        snapshotFlow { iobVisibleRange }
+        snapshotFlow { windowRange }
             .debounce(400)
-            .collect { iobVisibleRangeSettled = it }
+            .collect { windowRangeSettled = it }
     }
 
     val bgVisibleTimeRange = derivedTimeRange?.first?.let { minTs ->
-        iobVisibleRangeSettled?.let { (minXv, maxXv) ->
+        windowRangeSettled?.let { (minXv, maxXv) ->
             (minTs + (minXv * 60_000).toLong()) to (minTs + (maxXv * 60_000).toLong())
         }
     }
@@ -520,7 +525,6 @@ fun GraphsSection(
                     bgViewportResetTrigger++
                 },
                 bgOverlays = graphConfig.bgOverlays,
-                iobOverlays = graphConfig.iobOverlays,
                 onOpenHistory = onOpenHistory
             )
         }
@@ -532,6 +536,7 @@ fun GraphsSection(
             zoomState = beltZoomState,
             derivedTimeRange = derivedTimeRange,
             nowTimestamp = nowTimestamp,
+            onVisibleRangeChanged = { windowRange = it },
             modifier = Modifier
                 .fillMaxWidth()
                 .graphInspectTouch(inspect)
@@ -692,56 +697,58 @@ fun GraphsSection(
                 onDismiss = { editingBgOverlays = false }
             )
         }
-        // Fixed IOB graph (Graph 1) with optional Activity overlay
-        var editingIobOverlays by remember { mutableStateOf(false) }
-        Box(
-            modifier = Modifier
-                .pullUp(IOB_GRAPH_PULL_UP)
-                .graphInspectTouch(inspect)
-                .scrollsBgGraph(bgScrollForwarder, inspect, graphViewModel::onGraphInteraction)
-        ) {
-            SecondaryGraphCompose(
-                viewModel = graphViewModel,
-                seriesTypes = listOf(SeriesType.IOB),
-                scrollState = iobScrollState,
-                zoomState = iobZoomState,
-                derivedTimeRange = derivedTimeRange,
-                nowTimestamp = nowTimestamp,
-                activityOverlay = SeriesType.ACTIVITY in graphConfig.iobOverlays,
-                basalLayer = SeriesType.BASAL in graphConfig.iobOverlays,
-                onVisibleRangeChanged = { iobVisibleRange = it },
-                inspect = inspect,
+        // Fixed IOB graph (Graph 1) with optional Activity overlay.
+        // autoISF build: not in the graph card of a phone. There IOB, COB and the basal are layers of the BG graph.
+        if (!cardStyle) {
+            var editingIobOverlays by remember { mutableStateOf(false) }
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(graphConfig.iobHeight.dp - REMOVED_TIME_LABELS_HEIGHT)
-            )
-            GraphNameRow(
-                name = if (SeriesType.BASAL in graphConfig.iobOverlays)
-                    stringResource(InterfacesStrings.values_with_slash, stringResource(CoreUiStrings.iob), stringResource(CoreUiStrings.basal_shortname))
-                else stringResource(CoreUiStrings.iob),
-                editName = stringResource(CoreUiStrings.iob),
-                onEdit = if (isSimpleMode) null else ({ editingIobOverlays = true }),
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 4.dp, bottom = GRAPH_NAME_BOTTOM_PADDING)
-            )
-        }
-        if (editingIobOverlays) {
-            GraphSeriesBottomSheet(
-                title = stringResource(InterfacesStrings.values_with_slash, stringResource(CoreUiStrings.iob), stringResource(CoreUiStrings.basal_shortname)),
-                selectedSeries = graphConfig.iobOverlays,
-                availableSeries = IOB_OVERLAY_SERIES,
-                height = graphConfig.iobHeight,
-                onHeightChange = { h ->
-                    graphViewModel.updateGraphConfig(graphConfig.copy(iobHeight = h))
-                },
-                onToggle = { type ->
-                    val current = graphConfig.iobOverlays.toMutableList()
-                    if (type in current) current.remove(type) else current.add(type)
-                    graphViewModel.updateGraphConfig(graphConfig.copy(iobOverlays = current))
-                },
-                onDismiss = { editingIobOverlays = false }
-            )
+                    .pullUp(IOB_GRAPH_PULL_UP)
+                    .graphInspectTouch(inspect)
+                    .scrollsBgGraph(bgScrollForwarder, inspect, graphViewModel::onGraphInteraction)
+            ) {
+                SecondaryGraphCompose(
+                    viewModel = graphViewModel,
+                    seriesTypes = listOf(SeriesType.IOB),
+                    scrollState = iobScrollState,
+                    zoomState = iobZoomState,
+                    derivedTimeRange = derivedTimeRange,
+                    nowTimestamp = nowTimestamp,
+                    activityOverlay = SeriesType.ACTIVITY in graphConfig.iobOverlays,
+                    basalLayer = SeriesType.BASAL in graphConfig.iobOverlays,
+                    inspect = inspect,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(graphConfig.iobHeight.dp - REMOVED_TIME_LABELS_HEIGHT)
+                )
+                GraphNameRow(
+                    name = if (SeriesType.BASAL in graphConfig.iobOverlays)
+                        stringResource(InterfacesStrings.values_with_slash, stringResource(CoreUiStrings.iob), stringResource(CoreUiStrings.basal_shortname))
+                    else stringResource(CoreUiStrings.iob),
+                    editName = stringResource(CoreUiStrings.iob),
+                    onEdit = if (isSimpleMode) null else ({ editingIobOverlays = true }),
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 4.dp, bottom = GRAPH_NAME_BOTTOM_PADDING)
+                )
+            }
+            if (editingIobOverlays) {
+                GraphSeriesBottomSheet(
+                    title = stringResource(InterfacesStrings.values_with_slash, stringResource(CoreUiStrings.iob), stringResource(CoreUiStrings.basal_shortname)),
+                    selectedSeries = graphConfig.iobOverlays,
+                    availableSeries = IOB_OVERLAY_SERIES,
+                    height = graphConfig.iobHeight,
+                    onHeightChange = { h ->
+                        graphViewModel.updateGraphConfig(graphConfig.copy(iobHeight = h))
+                    },
+                    onToggle = { type ->
+                        val current = graphConfig.iobOverlays.toMutableList()
+                        if (type in current) current.remove(type) else current.add(type)
+                        graphViewModel.updateGraphConfig(graphConfig.copy(iobOverlays = current))
+                    },
+                    onDismiss = { editingIobOverlays = false }
+                )
+            }
         }
 
         // Secondary graphs — config-driven (labels start at "Graph 2")
@@ -750,7 +757,8 @@ fun GraphsSection(
             val secondary = graphConfig.secondaryGraphs[i]
             Box(
                 modifier = Modifier
-                    .pullUp(GRAPH_OVERLAP)
+                    // autoISF build: right under BG when there is no IOB graph, as the IOB graph was
+                    .pullUp(if (i == 0 && cardStyle) IOB_GRAPH_PULL_UP else GRAPH_OVERLAP)
                     .graphInspectTouch(inspect)
                     .scrollsBgGraph(bgScrollForwarder, inspect, graphViewModel::onGraphInteraction)
             ) {
@@ -928,6 +936,7 @@ private fun seriesShortNameId(type: SeriesType): TextRef = when (type) {
     SeriesType.IOB_TH          -> CoreUiStrings.iob_threshold_shortname
     SeriesType.BG_PARABOLA     -> CoreUiStrings.bg_parabola_shortname
     SeriesType.BASAL           -> CoreUiStrings.basal_shortname
+    SeriesType.BG_LINE         -> CoreUiStrings.bg_line_shortname
 }
 
 /** String resource ID for the full name of a series type, for the graph settings where there is room (#5336) */
@@ -948,6 +957,7 @@ private fun seriesNameId(type: SeriesType): TextRef = when (type) {
     SeriesType.IOB_TH          -> CoreUiStrings.graph_series_iob_threshold
     SeriesType.BG_PARABOLA     -> CoreUiStrings.graph_series_bg_parabola
     SeriesType.BASAL           -> CoreUiStrings.graph_series_basal
+    SeriesType.BG_LINE         -> CoreUiStrings.graph_series_bg_line
 }
 
 // =========================================================================

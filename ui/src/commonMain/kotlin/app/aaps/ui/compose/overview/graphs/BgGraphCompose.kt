@@ -21,8 +21,10 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.aaps.core.data.configuration.Constants
+import app.aaps.core.data.model.GlucoseUnit
 import app.aaps.core.data.ui.MarkerTier
 import app.aaps.core.graph.vico.Square
 import app.aaps.core.interfaces.overview.graph.ActivityGraphData
@@ -37,6 +39,7 @@ import app.aaps.core.interfaces.overview.graph.TargetLineData
 import app.aaps.core.interfaces.overview.graph.TreatmentGraphData
 import app.aaps.core.ui.compose.AapsTheme
 import app.aaps.core.ui.compose.LocalDateUtil
+import app.aaps.core.ui.compose.LocalDecimalFormatter
 import app.aaps.core.ui.compose.LocalProfileUtil
 import app.aaps.core.ui.compose.icons.IcBgCheck
 import app.aaps.core.ui.compose.icons.IcProfile
@@ -51,11 +54,15 @@ import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProdu
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianLayerRangeProvider
 import com.patrykandpatrick.vico.compose.cartesian.data.lineModel
 import com.patrykandpatrick.vico.compose.cartesian.decoration.Decoration
+import com.patrykandpatrick.vico.compose.cartesian.decoration.HorizontalLine
 import com.patrykandpatrick.vico.compose.cartesian.marker.CartesianMarkerController
 import com.patrykandpatrick.vico.compose.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
+import com.patrykandpatrick.vico.compose.common.DashedShape
 import com.patrykandpatrick.vico.compose.common.Fill
+import com.patrykandpatrick.vico.compose.common.Insets
+import com.patrykandpatrick.vico.compose.common.Position
 import com.patrykandpatrick.vico.compose.common.component.LineComponent
 import com.patrykandpatrick.vico.compose.common.component.ShapeComponent
 import com.patrykandpatrick.vico.compose.common.component.TextComponent
@@ -63,11 +70,19 @@ import com.patrykandpatrick.vico.compose.common.component.rememberTextComponent
 import com.patrykandpatrick.vico.compose.common.data.ExtraStore
 import kotlin.concurrent.Volatile
 
-/** Series identifiers */
-/** Basal on BG graph — deprecated, now shown as flipped overlay on IOB graph. Set to true to restore. */
-@Deprecated("Basal moved to IOB graph as flipped overlay")
-private const val showBasalOnBgGraph = false
+/**
+ * autoISF build: the part of the height the basal band takes at the top of the BG graph, for the highest basal. The
+ * band hangs from the top edge, as on the IOB graph, so it does not cover the IOB and COB areas at the bottom.
+ */
+private const val BG_BASAL_BAND_FRACTION = 0.2
 
+/** autoISF build: the part of the height the IOB and the COB area take at the bottom of the BG graph, each for its own maximum. */
+private const val BG_THERAPY_FRACTION = 0.25
+
+/** autoISF build: the bottom of the BG axis, so the IOB and COB areas are filled down to it and not to 0. */
+private val BG_FLOOR_KEY = ExtraStore.Key<Double>()
+
+/** Series identifiers */
 private const val SERIES_REGULAR = "regular"
 private const val SERIES_BUCKETED = "bucketed"
 private const val SERIES_PRED_IOB = "pred_iob"
@@ -146,7 +161,8 @@ private class MutableYRangeProvider(
  * carbs below it pointing up, and a measured value (calibration, BG check) sits on its own value. See
  * [treatmentMarkers] for the placement rules.
  *
- * Basal Y-axis is scaled so maxBasal occupies [BASAL_HEIGHT_FRACTION] of the chart height (maxY = maxBasal / BASAL_HEIGHT_FRACTION).
+ * autoISF build: the basal (layer 1) is a band that hangs from the top, the highest basal down to [BG_BASAL_BAND_FRACTION]
+ * of the height. IOB and COB are areas at the bottom, in a layer drawn before the readings (block 0 of submitBgModel).
  *
  * The insulin activity overlay has no axis of its own: it is mapped into the BG axis' units with
  * zero at the low mark (see [activityOverlayScale]), and never changes the BG scale.
@@ -181,10 +197,15 @@ fun BgGraphCompose(
     val targetData by viewModel.targetLineFlow.collectAsStateWithLifecycle()
     val treatmentData by viewModel.treatmentGraphFlow.collectAsStateWithLifecycle()
 
-    // Basal on BG graph is deprecated — now shown as flipped overlay on IOB graph instead.
-    // Keep the layer structure intact (dummy data) to avoid chart restructuring.
-    @Suppress("DEPRECATION")
-    val basalData = if (showBasalOnBgGraph) rawBasalData else BasalGraphData(emptyList(), emptyList(), 0.0)
+    // autoISF build: the basal band, IOB and COB are layers of the BG graph the user switches on. Off, they get empty
+    // data, so the layers stay and the chart is not rebuilt.
+    val basalData = if (SeriesType.BASAL in bgOverlays) rawBasalData else BasalGraphData(emptyList(), emptyList(), 0.0)
+    val iobGraph by viewModel.iobGraphFlow.collectAsStateWithLifecycle()
+    val cobGraph by viewModel.cobGraphFlow.collectAsStateWithLifecycle()
+    val iobData = if (SeriesType.IOB in bgOverlays) iobGraph.iob else emptyList()
+    val cobData = if (SeriesType.COB in bgOverlays) cobGraph.cob else emptyList()
+    // autoISF build: the readings as one line instead of dots
+    val bgAsLine = SeriesType.BG_LINE in bgOverlays
     val epsPoints by viewModel.epsGraphFlow.collectAsStateWithLifecycle()
     val showActivity = SeriesType.ACTIVITY in bgOverlays
     val activityData by viewModel.activityGraphFlow.collectAsStateWithLifecycle()
@@ -253,7 +274,7 @@ fun BgGraphCompose(
     // it as a repeat, and the lines stayed like that. Same as in SecondaryGraphCompose.
     val modelInput = BgModelInput(
         bgReadings, bucketedData, predictions, basalData, targetData, epsPoints, activityData, showActivity, chartConfig,
-        minTimestamp, maxX, visibleTimeRange, treatmentData, predictionHeadroom, bgParabola
+        minTimestamp, maxX, visibleTimeRange, treatmentData, predictionHeadroom, bgParabola, iobData, cobData
     )
     val latestModelInput by rememberUpdatedState(modelInput)
     LaunchedEffect(modelProducer) {
@@ -267,8 +288,8 @@ fun BgGraphCompose(
         bucketedData.associateBy { timestampToX(it.timestamp, minTimestamp) }
     }
 
-    val bucketedPointProvider = remember(bucketedLookup, lowColor, inRangeColor, highColor) {
-        BucketedPointProvider(bucketedLookup, lowColor, inRangeColor, highColor)
+    val bucketedPointProvider = remember(bucketedLookup, lowColor, inRangeColor, highColor, bgAsLine) {
+        BucketedPointProvider(bucketedLookup, lowColor, inRangeColor, highColor, lowOnly = bgAsLine)
     }
 
     // Time formatter and axis configuration
@@ -297,11 +318,27 @@ fun BgGraphCompose(
         )
     }
 
-    val bucketedLine = remember(bucketedPointProvider) {
+    // autoISF build: as a line, in the colour of the range above the high mark and in the in-range colour below it.
+    // A low reading keeps its dot (see BucketedPointProvider.lowOnly), so a low is still seen at once.
+    val highMarkForLine = chartConfig.highMark
+    val bucketedLine = remember(bucketedPointProvider, bgAsLine, highMarkForLine, inRangeColor, highColor) {
         LineCartesianLayer.Line(
-            fill = LineCartesianLayer.LineFill.single(Fill(Color.Transparent)),
+            fill = if (bgAsLine) LineCartesianLayer.LineFill.double(
+                topFill = Fill(highColor),
+                bottomFill = Fill(inRangeColor),
+                splitY = { highMarkForLine }
+            ) else LineCartesianLayer.LineFill.single(Fill(Color.Transparent)),
+            stroke = LineCartesianLayer.LineStroke.Continuous(thickness = if (bgAsLine) 2.5.dp else 1.dp),
             areaFill = null,
             pointProvider = bucketedPointProvider
+        )
+    }
+    // In line mode the raw readings are the line when there are no bucketed ones, else they are left out
+    val rawAsLine = remember(bgAsLine, inRangeColor) {
+        LineCartesianLayer.Line(
+            fill = LineCartesianLayer.LineFill.single(Fill(if (bgAsLine) inRangeColor else Color.Transparent)),
+            stroke = LineCartesianLayer.LineStroke.Continuous(thickness = 2.5.dp),
+            areaFill = null
         )
     }
 
@@ -315,9 +352,15 @@ fun BgGraphCompose(
     val ztPredLine = remember(ztPredColor) { createPredictionLine(ztPredColor) }
 
     val activeSeries by activeSeriesState
-    val bgLines = remember(activeSeries, regularLine, bucketedLine, iobPredLine, cobPredLine, aCobPredLine, uamPredLine, ztPredLine, normalizerLine) {
+    val bgLines = remember(activeSeries, regularLine, rawAsLine, bgAsLine, bucketedLine, iobPredLine, cobPredLine, aCobPredLine, uamPredLine, ztPredLine, normalizerLine) {
         buildList {
-            if (SERIES_REGULAR in activeSeries) add(regularLine)
+            if (SERIES_REGULAR in activeSeries) add(
+                when {
+                    !bgAsLine                       -> regularLine
+                    SERIES_BUCKETED in activeSeries -> LINE_HIDDEN
+                    else                            -> rawAsLine
+                }
+            )
             if (SERIES_BUCKETED in activeSeries) add(bucketedLine)
             if (SERIES_PRED_IOB in activeSeries) add(iobPredLine)
             if (SERIES_PRED_COB in activeSeries) add(cobPredLine)
@@ -325,6 +368,22 @@ fun BgGraphCompose(
             if (SERIES_PRED_UAM in activeSeries) add(uamPredLine)
             if (SERIES_PRED_ZT in activeSeries) add(ztPredLine)
             add(normalizerLine)
+        }
+    }
+
+    // =========================================================================
+    // autoISF build: IOB and COB areas (therapy layer, drawn first) — always 2 lines: [iob, cob]
+    // =========================================================================
+
+    val iobAreaColor = AapsTheme.generalColors.iobPrediction
+    val cobAreaColor = AapsTheme.generalColors.cobPrediction
+    val therapyLines = remember(iobAreaColor, cobAreaColor) {
+        listOf(iobAreaColor, cobAreaColor).map { color ->
+            LineCartesianLayer.Line(
+                fill = LineCartesianLayer.LineFill.single(Fill(color)),
+                stroke = LineCartesianLayer.LineStroke.Continuous(thickness = 1.5.dp),
+                areaFill = LineCartesianLayer.AreaFill.single(Fill(color.copy(alpha = 0.25f)), splitY = { it.getOrNull(BG_FLOOR_KEY) ?: 0.0 })
+            )
         }
     }
 
@@ -480,9 +539,10 @@ fun BgGraphCompose(
         }
     }
 
-    // Basal Y-axis range: maxBasal / BASAL_HEIGHT_FRACTION so basal occupies that fraction of chart height
+    // autoISF build: the basal band hangs from the top. The values are negative (see block 2) and the range ends at 0, so
+    // the highest basal reaches BG_BASAL_BAND_FRACTION of the height down from the top and its area is filled up to 0.
     val basalMaxY = remember(basalData.maxBasal) {
-        if (basalData.maxBasal > 0.0) basalData.maxBasal / BASAL_HEIGHT_FRACTION else 1.0
+        if (basalData.maxBasal > 0.0) basalData.maxBasal / BG_BASAL_BAND_FRACTION else 1.0
     }
 
     // =========================================================================
@@ -505,8 +565,10 @@ fun BgGraphCompose(
     val inspectLine = rememberInspectLine(inspect, dotOnReading = true)
 
     val clockChanges = rememberClockChangeDecoration(minTimestamp, maxTimestamp, bgReadings, showIcon = true)
-    val decorations = remember(inRangeBox, nowLine, clockChanges, inspectLine) {
-        listOfNotNull(inRangeBox, nowLine, clockChanges, inspectLine)
+    // autoISF build: the low and the high mark as dashed lines with their value on the right, as in the user's xdripswift
+    val thresholds = rememberThresholdLines(lowMark, highMark, LocalProfileUtil.current.units)
+    val decorations = remember(inRangeBox, thresholds, nowLine, clockChanges, inspectLine) {
+        listOfNotNull(inRangeBox, nowLine, clockChanges, inspectLine) + thresholds
     }
 
     // =========================================================================
@@ -516,7 +578,7 @@ fun BgGraphCompose(
     // startAxisRangeProvider (BG axis) is created once, further up, and mutated in place — see
     // MutableYRangeProvider and submitBgModel.
     val endAxisRangeProvider = remember(maxX, basalMaxY) {
-        CartesianLayerRangeProvider.fixed(minX = 0.0, maxX = maxX, minY = 0.0, maxY = basalMaxY)
+        CartesianLayerRangeProvider.fixed(minX = 0.0, maxX = maxX, minY = -basalMaxY, maxY = 0.0)
     }
 
     // =========================================================================
@@ -525,6 +587,12 @@ fun BgGraphCompose(
 
     CartesianChartHost(
         chart = rememberCartesianChart(
+            // autoISF build: IOB and COB areas first, so the readings are drawn over them (start axis, see block 0)
+            rememberLineCartesianLayer(
+                lineProvider = LineCartesianLayer.LineProvider.series(therapyLines),
+                rangeProvider = startAxisRangeProvider,
+                verticalAxisPosition = Axis.Position.Vertical.Start
+            ),
             // Layer 0: BG (start axis, visible)
             rememberLineCartesianLayer(
                 lineProvider = LineCartesianLayer.LineProvider.series(bgLines),
@@ -615,7 +683,10 @@ private data class BgModelInput(
     /** How far a prediction may widen the top of the axis above the real data, in the units of the graph */
     val predictionHeadroom: Double,
     /** autoISF: the BG parabola, empty when it is not shown */
-    val bgParabola: BgParabolaData
+    val bgParabola: BgParabolaData,
+    /** autoISF build: IOB and COB for their areas at the bottom, empty when they are not shown */
+    val iob: List<GraphDataPoint>,
+    val cob: List<GraphDataPoint>
 )
 
 /**
@@ -718,6 +789,27 @@ private suspend fun submitBgModel(
     // matching the COB graph. The per-layer logic below already handles empty series.
 
     modelProducer.runTransaction {
+        // Block 0 → autoISF build: IOB and COB areas (therapy layer, start axis). Each is scaled to its own maximum in
+        // the visible window, so it reaches BG_THERAPY_FRACTION of the height from the floor. Negative IOB stays on the
+        // floor: the area shows insulin that still acts, the exact value is in the inspect card.
+        lineModel {
+            fun therapySeries(points: List<GraphDataPoint>) {
+                val windowed = points.filter { inWindow(it.timestamp) }.ifEmpty { points }
+                val max = windowed.maxOfOrNull { it.value } ?: 0.0
+                if (points.size < 2 || max <= 0.0) {
+                    series(x = listOf(0.0, 1.0), y = MARKER_EMPTY_Y)
+                    return
+                }
+                val height = (niceBgScale.max - niceBgScale.min) * BG_THERAPY_FRACTION
+                val pts = points
+                    .map { timestampToX(it.timestamp, minTimestamp) to niceBgScale.min + height * it.value.coerceAtLeast(0.0) / max }
+                    .sortedBy { it.first }
+                series(x = pts.map { it.first }, y = pts.map { it.second })
+            }
+            therapySeries(input.iob)
+            therapySeries(input.cob)
+        }
+
         // Block 1 → BG layer (layer 0, start axis)
         lineModel {
             val withData = mutableListOf<String>()
@@ -756,11 +848,11 @@ private suspend fun submitBgModel(
             activeSeries.value = withData.toList()
         }
 
-        // Block 2 → Basal layer (layer 1, end axis)
+        // Block 2 → Basal layer (layer 1, end axis). Negative values: the band hangs from the top, see basalMaxY.
         lineModel {
             if (input.basalData.profileBasal.size >= 2) {
                 val pts = input.basalData.profileBasal
-                    .map { timestampToX(it.timestamp, minTimestamp) to it.value }
+                    .map { timestampToX(it.timestamp, minTimestamp) to -it.value }
                     .sortedBy { it.first }
                 series(x = pts.map { it.first }, y = pts.map { it.second })
             } else {
@@ -770,7 +862,7 @@ private suspend fun submitBgModel(
 
             if (input.basalData.actualBasal.size >= 2) {
                 val pts = input.basalData.actualBasal
-                    .map { timestampToX(it.timestamp, minTimestamp) to it.value }
+                    .map { timestampToX(it.timestamp, minTimestamp) to -it.value }
                     .sortedBy { it.first }
                 series(x = pts.map { it.first }, y = pts.map { it.second })
             } else {
@@ -880,7 +972,10 @@ private suspend fun submitBgModel(
         // identical to last time (see BG_VISIBLE_RANGE_KEY doc) — otherwise scrolling/zooming
         // would re-submit the same partials and get silently skipped, never picking up the
         // updated startAxisRangeProvider.
-        extras { it[BG_VISIBLE_RANGE_KEY] = visibleTimeRange?.first to visibleTimeRange?.second }
+        extras {
+            it[BG_VISIBLE_RANGE_KEY] = visibleTimeRange?.first to visibleTimeRange?.second
+            it[BG_FLOOR_KEY] = niceBgScale.min
+        }
     }
 }
 
@@ -928,6 +1023,41 @@ private data class InRangeBand(private val low: Double, private val high: Double
                     size = Size(layerBounds.width, bottom - top)
                 )
             }
+        }
+    }
+}
+
+/** autoISF build: a line that draws nothing, for the raw readings in line mode when the bucketed ones are the line. */
+private val LINE_HIDDEN = LineCartesianLayer.Line(
+    fill = LineCartesianLayer.LineFill.single(Fill(Color.Transparent)),
+    areaFill = null
+)
+
+/**
+ * autoISF build: the low and the high mark as dashed lines, each with its value at the right end, as in the user's
+ * xdripswift. They draw over the in-range band, whose edges they are.
+ */
+@Composable
+private fun rememberThresholdLines(low: Double, high: Double, units: GlucoseUnit): List<Decoration> {
+    val color = MaterialTheme.colorScheme.onSurfaceVariant
+    val decimalFormatter = LocalDecimalFormatter.current
+    val label = rememberTextComponent(
+        style = TextStyle(color = color, fontSize = 10.sp),
+        margins = Insets(end = 2.dp, bottom = 1.dp)
+    )
+    return remember(low, high, units, color, label, decimalFormatter) {
+        val line = LineComponent(fill = Fill(color.copy(alpha = 0.6f)), thickness = 1.dp, shape = DashedShape(dashLength = 4.dp, gapLength = 4.dp))
+        listOf(low, high).map { value ->
+            val text = if (units == GlucoseUnit.MGDL) decimalFormatter.to0Decimal(value) else decimalFormatter.to1Decimal(value)
+            HorizontalLine(
+                y = { value },
+                line = line,
+                labelComponent = label,
+                label = { text },
+                horizontalLabelPosition = Position.Horizontal.End,
+                verticalLabelPosition = Position.Vertical.Top,
+                verticalAxisPosition = Axis.Position.Vertical.Start
+            )
         }
     }
 }

@@ -981,6 +981,7 @@ data class SeriesColors(
         SeriesType.PREDICTIONS     -> activity // unused — PREDICTIONS is a BG overlay flag, not a secondary series
         SeriesType.BG_PARABOLA     -> activity // unused — BG_PARABOLA is a BG overlay flag, not a secondary series
         SeriesType.BASAL           -> activity // unused — BASAL is a layer flag of the IOB graph, not a secondary series
+        SeriesType.BG_LINE         -> activity // unused — BG_LINE is a switch of the BG graph, not a secondary series
         SeriesType.AUTOISF         -> finalIsf // each factor has its own color, see autoIsf()
         SeriesType.IOB_TH          -> iobTh
     }

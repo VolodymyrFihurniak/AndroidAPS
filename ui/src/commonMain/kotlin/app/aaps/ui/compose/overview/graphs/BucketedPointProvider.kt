@@ -21,7 +21,9 @@ class BucketedPointProvider(
     private val dataLookup: Map<Double, BgDataPoint>,
     lowColor: Color,
     inRangeColor: Color,
-    highColor: Color
+    highColor: Color,
+    /** autoISF build: in line mode only a low reading gets a dot, the line itself shows the rest */
+    private val lowOnly: Boolean = false
 ) : LineCartesianLayer.PointProvider {
 
     // Pre-build point components for efficiency
@@ -41,7 +43,8 @@ class BucketedPointProvider(
         entry: LineCartesianLayerModel.Entry,
         extraStore: ExtraStore
     ): LineCartesianLayer.Point? {
-        val dataPoint = dataLookup[entry.x] ?: return inRangePoint // fallback
+        val dataPoint = dataLookup[entry.x] ?: return if (lowOnly) null else inRangePoint // fallback
+        if (lowOnly) return if (dataPoint.range == BgRange.LOW) lowPoint else null
 
         return when (dataPoint.range) {
             BgRange.LOW      -> lowPoint

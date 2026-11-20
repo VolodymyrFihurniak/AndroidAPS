@@ -34,29 +34,30 @@ class GraphConfigRepositoryImplTest {
     @Test
     fun `the legacy shape, a bare array of series names, still reads`() {
         // Before secondary graphs had their own height, each entry was just the list of series.
-        val legacy = """{"secondaryGraphs":[["COB"]]}"""
+        // BGI, not COB: a graph with COB alone is moved into the BG graph (autoISF build, see below)
+        val legacy = """{"secondaryGraphs":[["BGI"]]}"""
 
         val restored = GraphConfigRepositoryImpl.fromJson(legacy)
 
         assertThat(restored.secondaryGraphs).hasSize(1)
-        assertThat(restored.secondaryGraphs.first().series).containsExactly(SeriesType.COB)
+        assertThat(restored.secondaryGraphs.first().series).containsExactly(SeriesType.BGI)
         assertThat(restored.secondaryGraphs.first().height).isEqualTo(GraphConfig.DEFAULT_GRAPH_HEIGHT_DP)
     }
 
     @Test
     fun `a series name this version does not know is skipped, not fatal`() {
         // Forward compatibility: a newer build may have written a series this one cannot name.
-        val restored = GraphConfigRepositoryImpl.fromJson("""{"secondaryGraphs":[{"series":["COB","NOT_A_SERIES"]}]}""")
+        val restored = GraphConfigRepositoryImpl.fromJson("""{"secondaryGraphs":[{"series":["BGI","NOT_A_SERIES"]}]}""")
 
-        assertThat(restored.secondaryGraphs.first().series).containsExactly(SeriesType.COB)
+        assertThat(restored.secondaryGraphs.first().series).containsExactly(SeriesType.BGI)
     }
 
     @Test
     fun `IOB is dropped from a configurable graph`() {
         // IOB has its own fixed graph now; an older document may still list it here.
-        val restored = GraphConfigRepositoryImpl.fromJson("""{"secondaryGraphs":[{"series":["IOB","COB"]}]}""")
+        val restored = GraphConfigRepositoryImpl.fromJson("""{"secondaryGraphs":[{"series":["IOB","BGI"]}]}""")
 
-        assertThat(restored.secondaryGraphs.first().series).containsExactly(SeriesType.COB)
+        assertThat(restored.secondaryGraphs.first().series).containsExactly(SeriesType.BGI)
     }
 
     @Test
@@ -87,7 +88,7 @@ class GraphConfigRepositoryImplTest {
     fun `missing overlays fall back to the defaults`() {
         val restored = GraphConfigRepositoryImpl.fromJson("{}")
 
-        assertThat(restored.bgOverlays).containsExactly(SeriesType.ACTIVITY, SeriesType.PREDICTIONS, SeriesType.BG_PARABOLA).inOrder()
+        assertThat(restored.bgOverlays).containsExactlyElementsIn(GraphConfig.DEFAULT_BG_OVERLAYS).inOrder()
         assertThat(restored.iobOverlays).containsExactly(SeriesType.ACTIVITY, SeriesType.BASAL)
     }
 
@@ -115,8 +116,47 @@ class GraphConfigRepositoryImplTest {
     @Test
     fun `an empty overlay list is kept empty, not replaced by the default`() {
         // Written explicitly means the user turned them all off - that is not the same as absent.
-        val restored = GraphConfigRepositoryImpl.fromJson("""{"bgOverlays":[]}""")
+        val restored = GraphConfigRepositoryImpl.fromJson("""{"bgLayers":[]}""")
 
         assertThat(restored.bgOverlays).isEmpty()
+    }
+
+    // autoISF build: IOB, COB, the basal and the line became layers of the BG graph
+
+    @Test
+    fun `a config saved before the BG layers gets IOB, COB and the basal in the BG graph`() {
+        val restored = GraphConfigRepositoryImpl.fromJson("""{"bgOverlays":["PREDICTIONS"]}""")
+
+        assertThat(restored.bgOverlays).containsExactly(SeriesType.PREDICTIONS, SeriesType.IOB, SeriesType.COB, SeriesType.BASAL).inOrder()
+    }
+
+    @Test
+    fun `a config saved before the BG layers loses its graph with COB alone, and keeps the others`() {
+        val restored = GraphConfigRepositoryImpl.fromJson(
+            """{"secondaryGraphs":[{"series":["COB"]},{"series":["COB","DEVIATIONS"]},{"series":["BGI"]}]}"""
+        )
+
+        assertThat(restored.secondaryGraphs.map { it.series })
+            .containsExactly(listOf(SeriesType.COB, SeriesType.DEVIATIONS), listOf(SeriesType.BGI)).inOrder()
+    }
+
+    @Test
+    fun `the BG layers survive a round trip, and the old key holds none of them`() {
+        val config = GraphConfig(bgOverlays = listOf(SeriesType.PREDICTIONS, SeriesType.COB, SeriesType.BG_LINE))
+
+        val json = GraphConfigRepositoryImpl.toJson(config)
+        val restored = GraphConfigRepositoryImpl.fromJson(json)
+
+        assertThat(restored.bgOverlays).containsExactly(SeriesType.PREDICTIONS, SeriesType.COB, SeriesType.BG_LINE).inOrder()
+        assertThat(json).contains(""""bgOverlays":["PREDICTIONS"]""")
+    }
+
+    @Test
+    fun `a COB graph added after the BG layers stays`() {
+        val config = GraphConfig(secondaryGraphs = listOf(SecondaryGraph(listOf(SeriesType.COB))))
+
+        val restored = GraphConfigRepositoryImpl.fromJson(GraphConfigRepositoryImpl.toJson(config))
+
+        assertThat(restored.secondaryGraphs.map { it.series }).containsExactly(listOf(SeriesType.COB))
     }
 }

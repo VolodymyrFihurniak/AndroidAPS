@@ -43,7 +43,6 @@ internal fun GraphCardHeader(
     rangeMinutes: Double,
     onRangeSelected: (Double) -> Unit,
     bgOverlays: List<SeriesType>,
-    iobOverlays: List<SeriesType>,
     onOpenHistory: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
@@ -84,12 +83,15 @@ internal fun GraphCardHeader(
             .fillMaxWidth()
             .padding(vertical = AapsSpacing.small)
     ) {
-        LegendItem(AapsTheme.generalColors.bgInRange, LegendMark.DOT, stringResource(CoreUiStrings.glucose))
+        val glucoseMark = if (SeriesType.BG_LINE in bgOverlays) LegendMark.LINE else LegendMark.DOT
+        LegendItem(AapsTheme.generalColors.bgInRange, glucoseMark, stringResource(CoreUiStrings.glucose))
         if (SeriesType.PREDICTIONS in bgOverlays) LegendItem(AapsTheme.generalColors.iobPrediction, LegendMark.DASHED, stringResource(CoreUiStrings.predictions_shortname))
         if (SeriesType.BG_PARABOLA in bgOverlays) LegendItem(AapsTheme.generalColors.bgParabola, LegendMark.LINE, stringResource(CoreUiStrings.bg_parabola_shortname))
-        LegendItem(AapsTheme.elementColors.insulin, LegendMark.LINE, stringResource(CoreUiStrings.iob))
-        if (SeriesType.BASAL in iobOverlays) {
-            LegendItem(AapsTheme.elementColors.tempBasal, LegendMark.SQUARE, stringResource(UiStrings.basal_card))
+        // IOB and COB are areas at the bottom of the BG graph, the basal a band at its top
+        if (SeriesType.IOB in bgOverlays) LegendItem(AapsTheme.generalColors.iobPrediction, LegendMark.SQUARE, stringResource(CoreUiStrings.iob))
+        if (SeriesType.COB in bgOverlays) LegendItem(AapsTheme.generalColors.cobPrediction, LegendMark.SQUARE, stringResource(CoreUiStrings.cob))
+        if (SeriesType.BASAL in bgOverlays) {
+            LegendItem(AapsTheme.elementColors.tempBasal.copy(alpha = 0.5f), LegendMark.SQUARE, stringResource(UiStrings.basal_card))
             LegendItem(AapsTheme.elementColors.tempBasal, LegendMark.DASHED, stringResource(CoreUiStrings.profile))
         }
     }

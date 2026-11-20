@@ -34,8 +34,11 @@ enum class SeriesType {
     // autoISF: the parabola fitted to the last BG values, an overlay of the BG graph only
     BG_PARABOLA,
 
-    // autoISF build: the basal band (profile and given basal) at the top of the IOB graph, a layer of that graph only
-    BASAL
+    // autoISF build: the basal band (profile and given basal) at the top of the IOB graph or of the BG graph
+    BASAL,
+
+    // autoISF build: the BG readings drawn as one line instead of dots, a switch of the BG graph only
+    BG_LINE
 }
 
 /**
@@ -55,8 +58,9 @@ data class SecondaryGraph(
  * - IOB graph: IOB line with bolus markers + flipped basal overlay, with optional activity
  *   overlay (toggled via [iobOverlays]).
  *
- * @param bgOverlays       Overlay toggles for the BG graph: [SeriesType.ACTIVITY], [SeriesType.PREDICTIONS] and the
- *   autoISF [SeriesType.BG_PARABOLA].
+ * @param bgOverlays       Overlay toggles for the BG graph: [SeriesType.ACTIVITY], [SeriesType.PREDICTIONS], the
+ *   autoISF [SeriesType.BG_PARABOLA], and in the autoISF build [SeriesType.IOB] and [SeriesType.COB] as areas at the
+ *   bottom, [SeriesType.BASAL] as a band at the top and [SeriesType.BG_LINE] for a line instead of dots.
  * @param iobOverlays      Overlay toggles for the fixed IOB graph (currently only [SeriesType.ACTIVITY]).
  * @param secondaryGraphs  Ordered list of user-configurable secondary graph configurations.
  *   IOB cannot appear here (it has a dedicated fixed slot). Each graph is a List (not Set) to
@@ -65,16 +69,20 @@ data class SecondaryGraph(
  *   Max 2 series per graph. FIFO: adding a 3rd deselects the oldest.
  */
 data class GraphConfig(
-    val bgOverlays: List<SeriesType> = listOf(SeriesType.ACTIVITY, SeriesType.PREDICTIONS, SeriesType.BG_PARABOLA),
+    val bgOverlays: List<SeriesType> = DEFAULT_BG_OVERLAYS,
     val iobOverlays: List<SeriesType> = listOf(SeriesType.ACTIVITY, SeriesType.BASAL),
     val bgHeight: Int = DEFAULT_GRAPH_HEIGHT_DP,
     val iobHeight: Int = DEFAULT_GRAPH_HEIGHT_DP,
-    val secondaryGraphs: List<SecondaryGraph> = listOf(
-        SecondaryGraph(listOf(SeriesType.COB))
-    )
+    // autoISF build: COB is drawn in the BG graph, so there is no COB graph below it by default
+    val secondaryGraphs: List<SecondaryGraph> = emptyList()
 ) {
 
     companion object {
+
+        /** autoISF build: IOB, COB and the basal are drawn in the BG graph, as the user asked */
+        val DEFAULT_BG_OVERLAYS = listOf(
+            SeriesType.ACTIVITY, SeriesType.PREDICTIONS, SeriesType.BG_PARABOLA, SeriesType.IOB, SeriesType.COB, SeriesType.BASAL
+        )
 
         /** Maximum number of secondary graphs allowed */
         const val MAX_SECONDARY_GRAPHS = 5
