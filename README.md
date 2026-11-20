@@ -135,6 +135,12 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
   permissions). It holds at most 6 buttons: when more are needed, History, then Statistics, then
   Log, then Home give way (they are in the side menu too). The treatments themselves are on the
   *Bolus* card; the tablet layout, which has no such card, keeps a *Treatments* button.
+* **Who gave it**, in the treatment history: each bolus and each temp basal gets a small line
+  *Algorithm* (an SMB or a TBR of the loop), *Automation*, *Client: <device name>*, or *You* with the
+  screen it came from (*You · Bolus wizard*, *You · Wear*, ...). It is read from the user entry log,
+  no database change. From now on the master writes the device name of a paired client into the
+  user entry of each action it does for that client; older client actions, and records entered in
+  Nightscout, show *Client or Nightscout*. A bolus read from pump history has no line.
 * The strings this build adds (basal card, graph card, statistics, menu, AutoISF settings and
   automations) have a Ukrainian translation. Upstream strings still come from Crowdin.
 * **Basal card** next to IOB and COB, in their style: the basal given now in U/h, and under it the

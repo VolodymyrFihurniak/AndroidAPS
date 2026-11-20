@@ -466,7 +466,7 @@ class ClientControlReceiver(
     }
 
     /** This client as a [RemoteCaller]: what it prepares is kept for it only, and its role is checked again at commit. */
-    private val AuthorizedClient.caller: RemoteCaller get() = RemoteCaller(clientId, clientRole)
+    private val AuthorizedClient.caller: RemoteCaller get() = RemoteCaller(clientId, clientRole, name)
 
     private suspend fun onVerifiedHello(entry: AuthorizedClient, envelope: SignedEnvelope, now: Long) {
         when (entry.state) {

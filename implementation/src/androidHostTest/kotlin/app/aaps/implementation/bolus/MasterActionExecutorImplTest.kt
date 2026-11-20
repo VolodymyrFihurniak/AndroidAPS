@@ -342,6 +342,39 @@ class MasterActionExecutorImplTest : TestBaseWithProfile() {
         assertThat(executor.confirm(prepared.bolusId, Sources.NSClient, { }, caller = caller)).isEqualTo(MasterActionExecutor.ConfirmResult.Delivered)
     }
 
+    // autoISF build: the treatment history tells which client gave a bolus, from its user entry
+
+    @Test
+    fun confirm_byANamedClient_writesTheDeviceNameIntoTheUserEntry() = runTest {
+        whenever(runningModeGuard.rejectionMessage(any())).thenReturn(null)
+        whenever(commandQueue.bolus(anyOrNull())).thenReturn(pumpEnactResultProvider().success(true))
+        stubPassthroughConstraints()
+        val executor = create()
+        val caller = RemoteCaller("a", ClientRole.MealAssistant, "Pixel 7")
+        val prepared = executor.prepareBatch(listOf(bolusAction), caller) as MasterActionExecutor.PrepareResult.Preview
+
+        executor.confirm(prepared.bolusId, Sources.NSClient, { }, caller = caller)
+
+        val uelValues = argumentCaptor<List<ValueWithUnit>>()
+        verify(uel).log(any(), eq(Sources.NSClient), anyOrNull(), uelValues.capture())
+        assertThat(uelValues.firstValue).contains(ValueWithUnit.SimpleString("Pixel 7"))
+    }
+
+    @Test
+    fun confirm_onTheMaster_writesNoDeviceName() = runTest {
+        whenever(runningModeGuard.rejectionMessage(any())).thenReturn(null)
+        whenever(commandQueue.bolus(anyOrNull())).thenReturn(pumpEnactResultProvider().success(true))
+        stubPassthroughConstraints()
+        val executor = create()
+        val prepared = executor.prepareBatch(listOf(bolusAction)) as MasterActionExecutor.PrepareResult.Preview
+
+        executor.confirm(prepared.bolusId, Sources.InsulinDialog, { })
+
+        val uelValues = argumentCaptor<List<ValueWithUnit>>()
+        verify(uel).log(any(), eq(Sources.InsulinDialog), anyOrNull(), uelValues.capture())
+        assertThat(uelValues.firstValue.filterIsInstance<ValueWithUnit.SimpleString>()).isEmpty()
+    }
+
     @Test
     fun confirm_afterTheRoleWasLowered_isNotAllowed_andAppliesNothing() = runTest {
         whenever(runningModeGuard.rejectionMessage(any())).thenReturn(null)

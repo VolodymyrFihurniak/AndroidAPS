@@ -67,7 +67,11 @@ import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.coroutines.AbstractCoroutineContextElement
+import kotlin.coroutines.CoroutineContext
 import kotlin.math.abs
 import kotlin.math.ceil
 
@@ -642,6 +646,20 @@ class MasterActionExecutorImpl(
         correctionU: Double,
         caller: RemoteCaller?,
         onSuccess: () -> Unit
+    ): MasterActionExecutor.ConfirmResult =
+        // autoISF build: for a client, its device name rides along to the user entries written below (see clientTagged)
+        if (caller != null && caller.name.isNotBlank())
+            withContext(ClientName(caller.name)) { confirmFor(bolusId, source, onError, asAdvisor, correctionU, caller, onSuccess) }
+        else confirmFor(bolusId, source, onError, asAdvisor, correctionU, caller, onSuccess)
+
+    private suspend fun confirmFor(
+        bolusId: Long,
+        source: Sources,
+        onError: (MasterActionExecutor.Failure) -> Unit,
+        asAdvisor: Boolean,
+        correctionU: Double,
+        caller: RemoteCaller?,
+        onSuccess: () -> Unit
     ): MasterActionExecutor.ConfirmResult {
         // Atomic consume-once: the parked dose is returned and removed in one step, so two concurrent commits of the
         // same id can't both deliver (the loser gets null → NoPending). A non-matching id, or a dose prepared for
@@ -1147,10 +1165,10 @@ class MasterActionExecutorImpl(
     private suspend fun applyTempBasal(tb: BatchAction.TempBasal, source: Sources, onError: (MasterActionExecutor.Failure) -> Unit): Boolean {
         val profile = profileFunction.getProfile() ?: return false
         val result = if (tb.isPercent) {
-            uel.log(action = Action.TEMP_BASAL, source = source, listValues = listOf(ValueWithUnit.Percent(tb.rate.toInt()), ValueWithUnit.Minute(tb.durationMinutes)))
+            uel.log(action = Action.TEMP_BASAL, source = source, listValues = clientTagged(listOf(ValueWithUnit.Percent(tb.rate.toInt()), ValueWithUnit.Minute(tb.durationMinutes))))
             commandQueue.tempBasalPercent(tb.rate.toInt(), tb.durationMinutes, true, profile, PumpSync.TemporaryBasalType.NORMAL)
         } else {
-            uel.log(action = Action.TEMP_BASAL, source = source, listValues = listOf(ValueWithUnit.Insulin(tb.rate), ValueWithUnit.Minute(tb.durationMinutes)))
+            uel.log(action = Action.TEMP_BASAL, source = source, listValues = clientTagged(listOf(ValueWithUnit.Insulin(tb.rate), ValueWithUnit.Minute(tb.durationMinutes))))
             commandQueue.tempBasalAbsolute(tb.rate, tb.durationMinutes, true, profile, PumpSync.TemporaryBasalType.NORMAL)
         }
         if (!result.success) onError(MasterActionExecutor.Failure(result.comment, result.cancelled))
@@ -1172,7 +1190,7 @@ class MasterActionExecutorImpl(
      * Returns true when the command was dropped from the queue on purpose (see `ConfirmResult.Cancelled`).
      */
     private suspend fun applyExtendedBolus(eb: BatchAction.ExtendedBolus, source: Sources, onError: (MasterActionExecutor.Failure) -> Unit): Boolean {
-        uel.log(action = Action.EXTENDED_BOLUS, source = source, listValues = listOf(ValueWithUnit.Insulin(eb.insulin), ValueWithUnit.Minute(eb.durationMinutes)))
+        uel.log(action = Action.EXTENDED_BOLUS, source = source, listValues = clientTagged(listOf(ValueWithUnit.Insulin(eb.insulin), ValueWithUnit.Minute(eb.durationMinutes))))
         val result = commandQueue.extendedBolus(eb.insulin, eb.durationMinutes)
         if (!result.success) onError(MasterActionExecutor.Failure(result.comment, result.cancelled))
         return result.cancelled
@@ -1189,7 +1207,7 @@ class MasterActionExecutorImpl(
 
     /** Cancel a running temp basal on the master's pump. Returns true when the command was dropped on purpose. */
     private suspend fun applyCancelTempBasal(source: Sources, onError: (MasterActionExecutor.Failure) -> Unit): Boolean {
-        uel.log(action = Action.CANCEL_TEMP_BASAL, source = source)
+        uel.log(action = Action.CANCEL_TEMP_BASAL, source = source, listValues = clientTagged(emptyList()))
         val result = commandQueue.cancelTempBasal(enforceNew = true)
         if (!result.success) onError(MasterActionExecutor.Failure(result.comment, result.cancelled))
         return result.cancelled
@@ -1197,7 +1215,7 @@ class MasterActionExecutorImpl(
 
     /** Cancel a running extended bolus on the master's pump. Returns true when the command was dropped on purpose. */
     private suspend fun applyCancelExtendedBolus(source: Sources, onError: (MasterActionExecutor.Failure) -> Unit): Boolean {
-        uel.log(action = Action.CANCEL_EXTENDED_BOLUS, source = source)
+        uel.log(action = Action.CANCEL_EXTENDED_BOLUS, source = source, listValues = clientTagged(emptyList()))
         val result = commandQueue.cancelExtended()
         if (!result.success) onError(MasterActionExecutor.Failure(result.comment, result.cancelled))
         return result.cancelled
@@ -1551,7 +1569,7 @@ class MasterActionExecutorImpl(
                 return
             }
         }
-        uel.log(action = action, source = source, note = note, listValues = uelValues)
+        uel.log(action = action, source = source, note = note, listValues = clientTagged(uelValues))
         appScope.launch {
             val result = commandQueue.bolus(detailedBolusInfo)
             if (!result.success && !bolusProgressData.isStopPressed) {
@@ -1628,3 +1646,21 @@ class MasterActionExecutorImpl(
         }
     }
 }
+
+/**
+ * autoISF build: the device name of the client a confirmed action came from. It is put on the coroutine of
+ * [MasterActionExecutorImpl.confirm], so every user entry written while that action runs can carry it, without a new
+ * parameter on each delivery path.
+ */
+private class ClientName(val name: String) : AbstractCoroutineContextElement(ClientName) {
+
+    companion object Key : CoroutineContext.Key<ClientName>
+}
+
+/**
+ * autoISF build: [values] with the client's device name added as a text value, when the action came from a client.
+ * The treatment history reads it from there (`bolusSourceOf`), and the user entry log shows it.
+ */
+private suspend fun clientTagged(values: List<ValueWithUnit>): List<ValueWithUnit> =
+    currentCoroutineContext()[ClientName]?.let { values + ValueWithUnit.SimpleString(it.name) } ?: values
+

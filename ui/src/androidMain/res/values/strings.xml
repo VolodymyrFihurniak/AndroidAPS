@@ -434,4 +434,9 @@
     <string name="bolus_advice_loop_covers" comment="Bolus card, under the advised dose in closed loop: the loop may give this insulin by itself as SMB">Loop may give it as SMB</string>
     <string name="bolus_advice_carbs" comment="Bolus card, under the grams: BG goes below the target, so carbs are needed, not insulin">Carbs needed</string>
     <string name="bolus_advice_calculator" comment="Bolus card, under 'No bolus': this is what the bolus calculator says">By the calculator</string>
+    <string name="treatment_source_algorithm" comment="Treatment history: the bolus or temp basal was given by the loop">Algorithm</string>
+    <string name="treatment_source_client" comment="Treatment history: given by a paired AAPSClient. %1$s=its device name. Example: Client: Pixel 7">Client: %1$s</string>
+    <string name="treatment_source_client_or_ns" comment="Treatment history: given by a client whose name is not known, or entered in Nightscout">Client or Nightscout</string>
+    <string name="treatment_source_user" comment="Treatment history: given by the user of this phone">You</string>
+    <string name="treatment_source_user_via" comment="Treatment history: given by the user of this phone, with the screen it came from. %1$s=screen. Example: You · Bolus wizard">You · %1$s</string>
 </resources>

@@ -1347,7 +1347,7 @@ internal class ClientControlReceiverTest {
         sendBatch(clientId, secret, listOf(bolusAction))
 
         // The caller travels with the prepare, so only this client can commit it, and with its role re-checked.
-        verify(masterActionExecutor).prepareBatch(any(), eq(RemoteCaller(clientId, ClientRole.MealAssistant)))
+        verify(masterActionExecutor).prepareBatch(any(), eq(RemoteCaller(clientId, ClientRole.MealAssistant, "phone")))
     }
 
     @Test

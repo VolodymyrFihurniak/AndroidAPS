@@ -402,4 +402,9 @@
     <string name="bolus_advice_loop_covers">Петля може дати SMB</string>
     <string name="bolus_advice_carbs">Потрібні вуглеводи</string>
     <string name="bolus_advice_calculator">За калькулятором</string>
+    <string name="treatment_source_algorithm">Алгоритм</string>
+    <string name="treatment_source_client">Клієнт: %1$s</string>
+    <string name="treatment_source_client_or_ns">Клієнт або Nightscout</string>
+    <string name="treatment_source_user">Ви</string>
+    <string name="treatment_source_user_via">Ви · %1$s</string>
 </resources>

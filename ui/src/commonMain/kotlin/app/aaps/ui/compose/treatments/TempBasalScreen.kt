@@ -105,6 +105,7 @@ fun TempBasalScreen(
                     itemContent = { tb ->
                         TempBasalItem(
                             tempBasal = tb,
+                            source = uiState.sources[tb.timestamp],
                             isActive = tb.isInProgress(viewModel.dateUtil),
                             isFuture = tb.timestamp > viewModel.dateUtil.now(),
                             isRemovingMode = uiState.isRemovingMode,
@@ -138,6 +139,8 @@ fun TempBasalScreen(
 @Composable
 private fun TempBasalItem(
     tempBasal: TB,
+    /** autoISF build: who set it */
+    source: TreatmentSource?,
     isActive: Boolean,
     isFuture: Boolean,
     isRemovingMode: Boolean,
@@ -299,5 +302,7 @@ private fun TempBasalItem(
                 )
             }
         }
+        // autoISF build: who set it
+        source?.let { TreatmentSourceLine(it, Modifier.padding(start = 8.dp, bottom = 5.dp)) }
     }
 }

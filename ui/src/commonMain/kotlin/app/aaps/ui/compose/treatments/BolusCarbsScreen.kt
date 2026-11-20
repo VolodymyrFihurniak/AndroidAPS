@@ -151,7 +151,9 @@ fun BolusCarbsScreen(
 data class MealLink(
     val bolus: BS? = null,
     val carbs: CA? = null,
-    val bolusCalculatorResult: BCR? = null
+    val bolusCalculatorResult: BCR? = null,
+    /** autoISF build: who gave [bolus], see [TreatmentSources] */
+    val source: TreatmentSource? = null
 ) {
 
     fun isValid(): Boolean {
@@ -349,6 +351,8 @@ private fun MealLinkItem(
                             )
                         }
                     }
+                    // autoISF build: who gave it
+                    mealLink.source?.let { TreatmentSourceLine(it, Modifier.padding(start = 8.dp, bottom = 3.dp)) }
                 }
             }
 

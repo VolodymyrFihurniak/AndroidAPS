@@ -26,6 +26,7 @@ import app.aaps.core.ui.clientcontrol.RecordRemoval
 import app.aaps.core.ui.compose.SelectableListToolbar
 import app.aaps.core.ui.compose.ToolbarConfig
 import app.aaps.ui.compose.treatments.MealLink
+import app.aaps.ui.compose.treatments.TreatmentSources
 import app.aaps.ui.compose.treatments.viewmodels.TreatmentConstants.TREATMENT_HISTORY_DAYS
 import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.FlowPreview
@@ -78,13 +79,17 @@ class BolusCarbsViewModel(
             try {
                 val now = dateUtil.now()
                 val millsToThePast = T.days(TREATMENT_HISTORY_DAYS).msecs()
+                // autoISF build: who gave each bolus, from the user entry log
+                val sources = runCatching { TreatmentSources(persistenceLayer.getUserEntryDataFromTime(now - millsToThePast)) }
+                    // Extra information only: when the log cannot be read, the history is shown without it
+                    .getOrElse { TreatmentSources(emptyList()) }
 
                 val boluses = if (currentState.showInvalidated) {
                     persistenceLayer.getBolusesFromTimeIncludingInvalid(now - millsToThePast, false)
-                        .map { MealLink(bolus = it) }
+                        .map { MealLink(bolus = it, source = sources.ofBolus(it)) }
                 } else {
                     persistenceLayer.getBolusesFromTime(now - millsToThePast, false)
-                        .map { MealLink(bolus = it) }
+                        .map { MealLink(bolus = it, source = sources.ofBolus(it)) }
                 }
 
                 val carbs = if (currentState.showInvalidated) {

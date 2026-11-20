@@ -25,6 +25,8 @@ import app.aaps.core.objects.extensions.toTemporaryBasal
 import app.aaps.core.ui.clientcontrol.RecordRemoval
 import app.aaps.core.ui.compose.SelectableListToolbar
 import app.aaps.core.ui.compose.ToolbarConfig
+import app.aaps.ui.compose.treatments.TreatmentSource
+import app.aaps.ui.compose.treatments.TreatmentSources
 import app.aaps.ui.compose.treatments.viewmodels.TreatmentConstants.TREATMENT_HISTORY_DAYS
 import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.FlowPreview
@@ -106,9 +108,16 @@ class TempBasalViewModel(
                     tempBasalsList.sortedByDescending { it.timestamp }
                 }
 
+                // autoISF build: who set each temp basal, from the user entry log
+                val sources = runCatching { TreatmentSources(persistenceLayer.getUserEntryDataFromTime(now - millsToThePast)) }
+                    // Extra information only: when the log cannot be read, the history is shown without it
+                    .getOrElse { TreatmentSources(emptyList()) }
+                val sourceByTime = tempBasals.mapNotNull { tb -> sources.ofTempBasal(tb.timestamp)?.let { tb.timestamp to it } }.toMap()
+
                 _uiState.update {
                     it.copy(
                         tempBasals = tempBasals,
+                        sources = sourceByTime,
                         isLoading = false
                     )
                 }
@@ -232,6 +241,8 @@ class TempBasalViewModel(
 @Immutable
 data class TempBasalUiState(
     val tempBasals: List<TB> = emptyList(),
+    /** autoISF build: who set each temp basal, by its start time; missing when the log does not say */
+    val sources: Map<Long, TreatmentSource> = emptyMap(),
     val isLoading: Boolean = true,
     val showInvalidated: Boolean = false,
     val isRemovingMode: Boolean = false,

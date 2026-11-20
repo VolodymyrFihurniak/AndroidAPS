@@ -8,8 +8,11 @@ import app.aaps.core.keys.interfaces.ClientRole
  *
  * A prepared action is kept for its caller only: a commit from anyone else finds nothing. The caller's role is
  * checked again at commit, so a role that was lowered in between is honoured.
+ *
+ * autoISF build: [name] is the device name the client was paired with. The master writes it into the user entry of
+ * what it did for this client, so the treatment history can tell which client gave a bolus.
  */
-data class RemoteCaller(val clientId: String, val role: ClientRole)
+data class RemoteCaller(val clientId: String, val role: ClientRole, val name: String = "")
 
 /**
  * The lowest client role that may run this action: insulin and carbs ([BatchAction.Bolus], eCarbs and a
