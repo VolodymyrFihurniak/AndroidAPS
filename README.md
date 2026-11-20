@@ -107,8 +107,13 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
 * On a phone the top of the overview follows the user's concept. On top a card with what the user
   sets: the profile, the temp target and the exercise button. Under it the main card with the BG value
   in the colour of its range, its unit, the trend in words, the age of the reading, the changes over
-  5, 15 and 40 minutes, and IOB and COB on the right. Then the cards *Basal*, *Sensitivity* and
-  *Loop* (running mode and when the loop last ran, in the warning colour after 15 minutes). The
+  5, 15 and 40 minutes, and IOB and COB on the right. Then the cards *Basal*, *Bolus* and *Loop*
+  (running mode, when the loop last ran, in the warning colour after 15 minutes, and the autosens
+  ratio, which opens the sensitivity details). The *Bolus* card shows what the bolus calculator
+  says for now with no new carbs: a correction dose, carbs when BG goes below the target, or *No
+  bolus*; in closed loop it says the loop may give the dose as SMB. It never gives insulin itself:
+  a tap opens the bolus wizard to check and confirm, and the icon beside its title opens all the
+  treatments (insulin, carbs, quick wizard, notes). The
   graphs sit in one card *Glucose and insulin*: a button to the history, the ranges 3 h, 6 h, 12 h
   and 24 h, a legend of what is shown, and the BG graph. On a phone the BG graph holds IOB and COB
   as areas at the bottom (each up to a quarter of the height, scaled to its own highest value in
@@ -125,10 +130,11 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
   it with the finger. The BG graph grows to fill the screen, with at least 200 dp. Under the graphs: the statistics of today (time in the
   overview's range, CV and the average, each with a bar; tap opens the statistics). Tablets and
   landscape keep the BG circle with the chips beside it.
-* The bottom menu: *Home*, *Treatments*, *Statistics*, *History*, *Scenes* and *Manage*, and the
-  buttons that need the user (pump setup, BG source, objectives, loop request, permissions). It holds
-  at most 6 buttons: when more are needed, History, then Statistics, then Home give way (they are in
-  the side menu too).
+* The bottom menu: *Home*, *Log* (the treatment history), *Statistics*, *History*, *Scenes* and
+  *Manage*, and the buttons that need the user (pump setup, BG source, objectives, loop request,
+  permissions). It holds at most 6 buttons: when more are needed, History, then Statistics, then
+  Log, then Home give way (they are in the side menu too). The treatments themselves are on the
+  *Bolus* card; the tablet layout, which has no such card, keeps a *Treatments* button.
 * The strings this build adds (basal card, graph card, statistics, menu, AutoISF settings and
   automations) have a Ukrainian translation. Upstream strings still come from Crowdin.
 * **Basal card** next to IOB and COB, in their style: the basal given now in U/h, and under it the

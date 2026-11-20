@@ -67,6 +67,7 @@ fun OverviewScreenStacked(
     statusLightsDef: PreferenceSubScreenDef,
     onNavigate: (NavigationRequest) -> Unit,
     onIobChipClick: () -> Unit,
+    onOpenTreatments: () -> Unit = {},
     paddingValues: PaddingValues,
     activeSceneState: ActiveSceneState? = null,
     sceneExpired: Boolean = false,
@@ -91,6 +92,7 @@ fun OverviewScreenStacked(
     // autoISF build: the basal card next to IOB and COB
     val basalUiState by chipsViewModel.basalUiState.collectAsStateWithLifecycle()
     val loopUiState by chipsViewModel.loopUiState.collectAsStateWithLifecycle()
+    val bolusAdviceUiState by chipsViewModel.bolusAdviceUiState.collectAsStateWithLifecycle()
     val todayStatsUiState by chipsViewModel.todayStatsUiState.collectAsStateWithLifecycle()
     val statusState by statusViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -177,11 +179,13 @@ fun OverviewScreenStacked(
                     OverviewCardRow(
                         basalUiState = basalUiState,
                         sensitivityUiState = sensitivityUiState,
+                        bolusAdviceUiState = bolusAdviceUiState,
                         loopUiState = loopUiState,
                         runningMode = runningMode,
                         runningModeText = runningModeText,
                         commandsAllowed = commandsAllowed,
-                        onNavigate = onNavigate
+                        onNavigate = onNavigate,
+                        onOpenTreatments = onOpenTreatments
                     )
                 }
 

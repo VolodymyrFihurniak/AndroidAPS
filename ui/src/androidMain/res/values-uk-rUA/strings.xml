@@ -395,4 +395,11 @@
     <string name="insulin_brand_preset">%1$s (%2$s)</string>
     <string name="graph_mini_map">Увесь проміжок графіка. Торкніться або потягніть, щоб пересунути графік туди.</string>
     <string name="inspect_forecast">прогноз</string>
+    <string name="nav_treatments_log">Журнал</string>
+    <string name="bolus_card">Болюс</string>
+    <string name="bolus_advice_none">Не потрібен</string>
+    <string name="bolus_advice_correction">Корекція зараз</string>
+    <string name="bolus_advice_loop_covers">Петля може дати SMB</string>
+    <string name="bolus_advice_carbs">Потрібні вуглеводи</string>
+    <string name="bolus_advice_calculator">За калькулятором</string>
 </resources>

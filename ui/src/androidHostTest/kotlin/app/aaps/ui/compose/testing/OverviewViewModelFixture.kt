@@ -201,7 +201,7 @@ internal class OverviewViewModelFixture(private val screen: AapsScreenFixture) {
 
     val chipsViewModel: ChipsViewModel by lazy {
         // The real English texts: the basal card resolves strings of this module, which the mocked rh does not know
-        ChipsViewModel(cache, iobCobCalculator, loop, screen.config, persistenceLayer, sensitivityOverview, generatedTextResolver(rh, "ui" to UiStringsValues::textOf), decimalFormatter, rxBus, screen.preferences, activePlugin, mock(), mock(), mock(), mock(), screen.dateUtil, mock())
+        ChipsViewModel(cache, iobCobCalculator, loop, screen.config, persistenceLayer, sensitivityOverview, generatedTextResolver(rh, "ui" to UiStringsValues::textOf), decimalFormatter, rxBus, screen.preferences, activePlugin, mock(), mock(), mock(), mock(), screen.dateUtil, mock(), { error("no bolus wizard in these tests") })
     }
 
     val statusViewModel: StatusViewModel by lazy {

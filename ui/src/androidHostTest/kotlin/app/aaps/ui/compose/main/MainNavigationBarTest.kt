@@ -69,7 +69,6 @@ class MainNavigationBarTest {
             MaterialTheme {
                 MainNavigationBar(
                     onManageClick = {},
-                    onTreatmentClick = {},
                     objectivesSetupPlugin = objectivesPlugin(),
                     objectivesProgressText = "9/10",
                     objectivesProgressDescription = objectivesProgress
@@ -84,7 +83,8 @@ class MainNavigationBarTest {
     fun aCountingBadgeIsSpokenAsAStateOnTheItem() {
         compose.setContent {
             MaterialTheme {
-                MainNavigationBar(onManageClick = {}, onTreatmentClick = {}, quickWizardCount = 3)
+                // autoISF build: the treatments button left the bar, Scenes carries a counting badge too
+                MainNavigationBar(onManageClick = {}, automationTotal = 3, automationCount = 3)
             }
         }
 
@@ -95,11 +95,11 @@ class MainNavigationBarTest {
     fun anItemWithoutABadgeGetsNoState() {
         compose.setContent {
             MaterialTheme {
-                MainNavigationBar(onManageClick = {}, onTreatmentClick = {}, quickWizardCount = 0)
+                MainNavigationBar(onManageClick = {}, automationTotal = 3, automationCount = 0)
             }
         }
 
-        // Treatments has no badge at a count of zero, and Manage never has one. A state on either
+        // Scenes has no badge at a count of zero, and Manage never has one. A state on either
         // would be read out on every pass over the bar for no reason.
         val availableZero = RuntimeEnvironment.getApplication().getString(R.string.a11y_badge_available, 0)
         compose.onAllNodes(hasStateDescription(availableZero)).assertCountEquals(0)

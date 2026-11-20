@@ -427,4 +427,11 @@
     <string name="insulin_brand_preset" comment="Chip that loads the peak for an insulin by its trade name. %1$s=trade name, %2$s=peak with unit. Example: Fiasp (55 min)">%1$s (%2$s)</string>
     <string name="graph_mini_map" comment="Spoken name of the small strip under the BG graph that shows the whole range">Whole range of the graph. Tap or drag to move the graph there.</string>
     <string name="inspect_forecast" comment="Beside the time in the graph card when that time is after now, so the values there are a forecast">forecast</string>
+    <string name="nav_treatments_log" comment="Bottom menu: opens the history of treatments (boluses, carbs, temp basals). Keep it short.">Log</string>
+    <string name="bolus_card" comment="Name of the overview card that shows the bolus advice and opens the bolus wizard">Bolus</string>
+    <string name="bolus_advice_none" comment="Bolus card: the calculator says no insulin is needed now">No bolus</string>
+    <string name="bolus_advice_correction" comment="Bolus card, under the advised dose: it is a correction for now, with no new carbs">Correction now</string>
+    <string name="bolus_advice_loop_covers" comment="Bolus card, under the advised dose in closed loop: the loop may give this insulin by itself as SMB">Loop may give it as SMB</string>
+    <string name="bolus_advice_carbs" comment="Bolus card, under the grams: BG goes below the target, so carbs are needed, not insulin">Carbs needed</string>
+    <string name="bolus_advice_calculator" comment="Bolus card, under 'No bolus': this is what the bolus calculator says">By the calculator</string>
 </resources>

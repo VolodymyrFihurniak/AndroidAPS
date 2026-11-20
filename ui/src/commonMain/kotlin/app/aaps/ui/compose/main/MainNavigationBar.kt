@@ -3,7 +3,6 @@ package app.aaps.ui.compose.main
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.GppMaybe
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ManageAccounts
@@ -39,11 +38,16 @@ import app.aaps.ui.UiStrings
 @Composable
 fun MainNavigationBar(
     onManageClick: () -> Unit,
-    onTreatmentClick: () -> Unit,
     modifier: Modifier = Modifier,
-    /** On a client, hide the mutating nav buttons (Treatments + Scenes) until paired. Always true on master. */
+    /** On a client, hide the mutating nav button (Scenes) until paired. Always true on master. */
     masterOrPairedClient: Boolean = true,
-    quickWizardCount: Int = 0,
+    /** autoISF build: the treatment history needs a profile, as in the side menu */
+    treatmentsHistoryEnabled: Boolean = true,
+    /**
+     * autoISF build: the button that opens the treatments sheet, only where the overview has no Bolus card (the tablet
+     * layout). Null leaves it out: on a phone the Bolus card opens the sheet.
+     */
+    onTreatmentClick: (() -> Unit)? = null,
     onAutomationClick: () -> Unit = {},
     /** Total scenes + automation items defined — drives whether the nav button is shown at all. */
     automationTotal: Int = 0,
@@ -84,11 +88,14 @@ fun MainNavigationBar(
         windowInsets = WindowInsets(0),
         modifier = modifier
     ) {
-        // autoISF build: the places of the user's concept: Home, Treatments, Statistics, History, then Scenes and Manage.
+        // autoISF build: the places of the user's concept: Home, the treatment history ("Log"), Statistics, History, then
+        // Scenes and Manage. The treatments themselves (bolus, carbs, wizard) are on the Bolus card of the overview.
         // The buttons that need the user (setup, warnings, loop request) come first: with too many buttons the
-        // labels are cut, so History, then Statistics, then Home give way. All of them are in the side menu too.
+        // labels are cut, so History, then Statistics, then the log, then Home give way. All of them are in the side
+        // menu too.
+        val showTreatmentsSheet = onTreatmentClick != null && masterOrPairedClient && role.allows(ElementType.TREATMENT.role)
         val otherItems = listOf(
-            masterOrPairedClient && role.allows(ElementType.TREATMENT.role),
+            showTreatmentsSheet,
             masterOrPairedClient && role.allows(ElementType.SCENE.role) && automationTotal > 0,
             true, // Manage
             pumpSetupPlugin != null,
@@ -97,7 +104,7 @@ fun MainNavigationBar(
             loopActionAvailable,
             permissionsMissing
         ).count { it }
-        val fixedItems = (MAX_BAR_ITEMS - otherItems).coerceIn(0, 3)
+        val fixedItems = (MAX_BAR_ITEMS - otherItems).coerceIn(0, 4)
         if (fixedItems >= 1) NavigationBarItem(
             // The screen this bar belongs to, so it is always the selected place and a tap does nothing
             selected = true,
@@ -106,43 +113,21 @@ fun MainNavigationBar(
             label = { Text(text = stringResource(UiStrings.nav_home), textAlign = TextAlign.Center, maxLines = 1) },
             colors = navColors
         )
-        // Treatment action button (opens bottom sheet) — hidden on an unpaired client (its bolus/carbs
-        // ride the Client-Control channel and would be dropped); always shown on a master.
-        if (masterOrPairedClient && role.allows(ElementType.TREATMENT.role)) {
-            NavigationBarItem(
-                selected = false,
-                modifier = Modifier.badgeState(
-                    if (quickWizardCount > 0) stringResource(UiStrings.a11y_badge_available, quickWizardCount) else null
-                ),
-                onClick = onTreatmentClick,
-                icon = {
-                    BadgedBox(
-                        badge = {
-                            if (quickWizardCount > 0) {
-                                Badge(containerColor = AapsTheme.generalColors.statusNormal, contentColor = Color.Black) {
-                                    Text(text = quickWizardCount.toString())
-                                }
-                            }
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Fastfood,
-                            contentDescription = stringResource(CoreUiStrings.treatments),
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                },
-                label = { Text(text = stringResource(CoreUiStrings.treatments), textAlign = TextAlign.Center) },
-                colors = navColors
-            )
-        }
-
+        if (showTreatmentsSheet && onTreatmentClick != null) NavigationBarItem(
+            selected = false,
+            onClick = onTreatmentClick,
+            icon = { Icon(imageVector = ElementType.TREATMENT.icon(), contentDescription = null, modifier = Modifier.size(24.dp)) },
+            label = { Text(text = stringResource(CoreUiStrings.treatments), textAlign = TextAlign.Center, maxLines = 1) },
+            colors = navColors
+        )
         for ((element, label) in listOf(
+            ElementType.TREATMENTS to UiStrings.nav_treatments_log,
             ElementType.STATISTICS to CoreUiStrings.statistics,
             ElementType.HISTORY_BROWSER to UiStrings.nav_history
         ).take((fixedItems - 1).coerceAtLeast(0))) {
             NavigationBarItem(
                 selected = false,
+                enabled = element != ElementType.TREATMENTS || treatmentsHistoryEnabled,
                 onClick = { onNavigate(NavigationRequest.Element(element)) },
                 icon = { Icon(imageVector = element.icon(), contentDescription = null, modifier = Modifier.size(24.dp)) },
                 label = { Text(text = stringResource(label), textAlign = TextAlign.Center, maxLines = 1) },
