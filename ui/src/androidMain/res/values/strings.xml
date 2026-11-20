@@ -421,4 +421,8 @@
     <string name="today_percent_one_decimal" comment="%1$.1f=percent with one decimal. Example: 39.5%">%1$.1f%%</string>
     <string name="quick_action_more" comment="Button that opens all the treatments, beside the quick actions on the overview">More</string>
     <string name="quick_action_temp_target" comment="Short label of the quick action that opens the temporary targets, on a small button">Temp target</string>
+    <string name="graph_card_title">Glucose and insulin</string>
+    <string name="graph_card_history" comment="Spoken name of the button that opens the history browser from the graph card">History</string>
+    <string name="graph_range_hours" comment="Button that shows the last hours on the graph. %1$d=hours. Example: 6 h">%1$d h</string>
+    <string name="graph_card_hint">Hold and move to see the values</string>
 </resources>

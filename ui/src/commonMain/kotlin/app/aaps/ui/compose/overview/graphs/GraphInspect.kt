@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -350,7 +351,8 @@ fun GraphInspectOverlay(
     graphViewModel: GraphViewModel,
     bgReadings: List<BgDataPoint>,
     minTimestamp: Long?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    cardStyle: Boolean = false
 ) {
     val iobGraph by graphViewModel.iobGraphFlow.collectAsStateWithLifecycle()
     val cobGraph by graphViewModel.cobGraphFlow.collectAsStateWithLifecycle()
@@ -405,7 +407,7 @@ fun GraphInspectOverlay(
     val data = inspect.pill
     val dotColor = data?.bg?.range?.inspectColor() ?: Color.Unspecified
     SideEffect { inspect.dotColor = dotColor }
-    if (data != null) GraphInspectPill(data = data, modifier = modifier)
+    if (data != null) GraphInspectPill(data = data, modifier = modifier, cardStyle = cardStyle)
 }
 
 /** The values at one reading. Null means no data near that time. */
@@ -516,22 +518,32 @@ internal fun BgRange.inspectColor(): Color = when (this) {
     BgRange.LOW      -> AapsTheme.generalColors.bgLow
 }
 
-/** Time, glucose, IOB, COB, basal rate and treatments at the shown reading. */
+/**
+ * Time, glucose, IOB, COB, basal rate and treatments at the shown reading.
+ *
+ * autoISF build: with [cardStyle] (the graph card on a phone) the same items stand one under the other in a small
+ * card, as in the user's concept, with the time as its title. Without it they flow in one pill, as before.
+ */
 @Composable
 fun GraphInspectPill(
     data: InspectData,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    cardStyle: Boolean = false
 ) {
-    val dateUtil = LocalDateUtil.current
-    val profileUtil = LocalProfileUtil.current
-    val decimalFormatter = LocalDecimalFormatter.current
     Surface(
-        shape = RoundedCornerShape(percent = 50),
+        shape = if (cardStyle) RoundedCornerShape(AapsSpacing.large) else RoundedCornerShape(percent = 50),
         color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.95f),
         shadowElevation = 2.dp,
         modifier = modifier
     ) {
-        Row(
+        if (cardStyle) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(AapsSpacing.extraSmall),
+                modifier = Modifier.padding(horizontal = AapsSpacing.large, vertical = AapsSpacing.medium)
+            ) {
+                InspectItems(data)
+            }
+        } else Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = AapsSpacing.large)
         ) {
@@ -540,45 +552,54 @@ fun GraphInspectPill(
                 verticalArrangement = Arrangement.spacedBy(AapsSpacing.extraSmall),
                 modifier = Modifier.padding(vertical = AapsSpacing.small)
             ) {
-                PillText(dateUtil.timeString(data.timestamp), MaterialTheme.colorScheme.onSurfaceVariant)
-                data.bg?.let { bg ->
-                    val text = if (profileUtil.units == GlucoseUnit.MGDL) decimalFormatter.to0Decimal(bg.value) else decimalFormatter.to1Decimal(bg.value)
-                    PillText(text, bg.range.inspectColor())
-                }
-                data.iob?.let {
-                    PillItem(ElementType.INSULIN.icon(), stringResource(InterfacesStrings.format_insulin_units, it), ElementType.INSULIN.color())
-                }
-                shownCob(data.cob)?.let {
-                    PillItem(ElementType.COB.icon(), stringResource(InterfacesStrings.format_carbs, it), ElementType.COB.color(), iconSize = PILL_COB_ICON_SIZE)
-                }
-                data.basal?.let {
-                    val rate = stringResource(CoreUiStrings.pump_base_basal_rate, it)
-                    // autoISF build: the profile basal of the same minute, when the given basal is not the profile
-                    val profile = data.profileBasal?.takeIf { p -> data.tbrState != TbrState.NONE && p >= 0.0 }
-                    val text = if (profile != null) stringResource(UiStrings.basal_inspect_with_profile, rate, stringResource(CoreUiStrings.pump_base_basal_rate, profile)) else rate
-                    PillItem(data.tbrState.toIcon(), text, ElementType.TEMP_BASAL.color())
-                }
-                // Same triangles as the BG and IOB graphs: a manual bolus down, an SMB up, carbs up
-                data.boluses.forEach { bolus ->
-                    PillTriangleItem(pointsUp = bolus.bolusType == BolusType.SMB, text = bolus.label, color = ElementType.INSULIN.color())
-                }
-                data.carbs.forEach { carbs -> PillTriangleItem(pointsUp = true, text = carbs.label, color = ElementType.CARBS.color()) }
-                // Calibration or BG check, same icon as on the BG graph
-                data.measured.forEach { label ->
-                    PillItem(IcBgCheck, label, AapsTheme.elementColors.bgCheck)
-                }
-                // The treatment belt's items, same icons and colours as on the belt
-                data.runningMode?.let { mode ->
-                    PillItem(mode.toIcon(), mode.label(), mode.beltColor(AapsTheme.elementColors))
-                }
-                data.events.forEach { event ->
-                    PillItem(
-                        event.eventType.beltIcon(), event.label, event.eventType.beltColor(AapsTheme.elementColors),
-                        maxLines = PILL_EVENT_MAX_LINES
-                    )
-                }
+                InspectItems(data)
             }
         }
+    }
+}
+
+/** The items of [GraphInspectPill], in the layout of the caller. */
+@Composable
+private fun InspectItems(data: InspectData) {
+    val dateUtil = LocalDateUtil.current
+    val profileUtil = LocalProfileUtil.current
+    val decimalFormatter = LocalDecimalFormatter.current
+    PillText(dateUtil.timeString(data.timestamp), MaterialTheme.colorScheme.onSurfaceVariant)
+    data.bg?.let { bg ->
+        val text = if (profileUtil.units == GlucoseUnit.MGDL) decimalFormatter.to0Decimal(bg.value) else decimalFormatter.to1Decimal(bg.value)
+        PillText(text, bg.range.inspectColor())
+    }
+    data.iob?.let {
+        PillItem(ElementType.INSULIN.icon(), stringResource(InterfacesStrings.format_insulin_units, it), ElementType.INSULIN.color())
+    }
+    shownCob(data.cob)?.let {
+        PillItem(ElementType.COB.icon(), stringResource(InterfacesStrings.format_carbs, it), ElementType.COB.color(), iconSize = PILL_COB_ICON_SIZE)
+    }
+    data.basal?.let {
+        val rate = stringResource(CoreUiStrings.pump_base_basal_rate, it)
+        // autoISF build: the profile basal of the same minute, when the given basal is not the profile
+        val profile = data.profileBasal?.takeIf { p -> data.tbrState != TbrState.NONE && p >= 0.0 }
+        val text = if (profile != null) stringResource(UiStrings.basal_inspect_with_profile, rate, stringResource(CoreUiStrings.pump_base_basal_rate, profile)) else rate
+        PillItem(data.tbrState.toIcon(), text, ElementType.TEMP_BASAL.color())
+    }
+    // Same triangles as the BG and IOB graphs: a manual bolus down, an SMB up, carbs up
+    data.boluses.forEach { bolus ->
+        PillTriangleItem(pointsUp = bolus.bolusType == BolusType.SMB, text = bolus.label, color = ElementType.INSULIN.color())
+    }
+    data.carbs.forEach { carbs -> PillTriangleItem(pointsUp = true, text = carbs.label, color = ElementType.CARBS.color()) }
+    // Calibration or BG check, same icon as on the BG graph
+    data.measured.forEach { label ->
+        PillItem(IcBgCheck, label, AapsTheme.elementColors.bgCheck)
+    }
+    // The treatment belt's items, same icons and colours as on the belt
+    data.runningMode?.let { mode ->
+        PillItem(mode.toIcon(), mode.label(), mode.beltColor(AapsTheme.elementColors))
+    }
+    data.events.forEach { event ->
+        PillItem(
+            event.eventType.beltIcon(), event.label, event.eventType.beltColor(AapsTheme.elementColors),
+            maxLines = PILL_EVENT_MAX_LINES
+        )
     }
 }
 

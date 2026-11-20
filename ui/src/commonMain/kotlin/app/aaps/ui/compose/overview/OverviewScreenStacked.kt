@@ -214,6 +214,8 @@ fun OverviewScreenStacked(
                     graphViewModel = graphViewModel, isSimpleMode = isSimpleMode, iobText = iobUiState.text, cobText = cobUiState.text,
                     overlaidBarsHeight = overlaidBarsHeight,
                     bgExtraHeight = bgExtraHeight,
+                    cardStyle = true,
+                    onOpenHistory = { onNavigate(NavigationRequest.Element(ElementType.HISTORY_BROWSER)) },
                     footer = {
                         // autoISF build: the statistics of today and the quick actions of the user's concept
                         Column(

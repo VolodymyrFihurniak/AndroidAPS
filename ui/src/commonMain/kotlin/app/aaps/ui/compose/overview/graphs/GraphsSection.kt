@@ -1,5 +1,6 @@
 package app.aaps.ui.compose.overview.graphs
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -44,12 +46,14 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.max
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.aaps.core.data.configuration.Constants
 import app.aaps.core.data.model.GlucoseUnit
@@ -61,6 +65,7 @@ import app.aaps.core.interfaces.overview.graph.SecondaryGraph
 import app.aaps.core.interfaces.overview.graph.SeriesType
 import app.aaps.core.keys.interfaces.TextRef
 import app.aaps.core.ui.CoreUiStrings
+import app.aaps.core.ui.compose.AapsSpacing
 import app.aaps.core.ui.compose.LocalDateUtil
 import app.aaps.core.ui.compose.LocalDecimalFormatter
 import app.aaps.core.ui.compose.LocalProfileUtil
@@ -72,13 +77,13 @@ import com.patrykandpatrick.vico.compose.cartesian.Scroll
 import com.patrykandpatrick.vico.compose.cartesian.Zoom
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
+import kotlin.math.abs
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
-import kotlin.math.abs
 
 /**
  * Overview graphs section using Vico charts.
@@ -128,6 +133,9 @@ private val INSPECT_PILL_OFFSET = (-32).dp
  * plot keeps its size and the whole section gets shorter.
  */
 private val REMOVED_TIME_LABELS_HEIGHT = 10.dp
+
+/** autoISF build: the lowest height of the BG graph in the graph card. Below it the page scrolls. */
+private val CARD_BG_MIN_HEIGHT = 200.dp
 
 /** Size of the edit button (pencil) on a graph. The icon in it is 16 dp. */
 private val GRAPH_EDIT_BUTTON_SIZE = 28.dp
@@ -234,7 +242,14 @@ fun GraphsSection(
     /** autoISF build: added to the BG graph height, so on a phone the BG graph fills the screen below it. */
     bgExtraHeight: Dp = 0.dp,
     /** autoISF build: shown under the graphs, above the room kept for the toolbar (the phone's statistics and actions). */
-    footer: @Composable () -> Unit = {}
+    footer: @Composable () -> Unit = {},
+    /**
+     * autoISF build: the graphs in one card with a title, buttons for the time range, a legend and a hint, from the
+     * user's concept. The phone overview uses it.
+     */
+    cardStyle: Boolean = false,
+    /** autoISF build: the calendar button of the card, opens the history browser. */
+    onOpenHistory: (() -> Unit)? = null
 ) {
     val dateUtil = LocalDateUtil.current
     val savedGraphConfig by graphViewModel.graphConfigFlow.collectAsStateWithLifecycle()
@@ -257,8 +272,12 @@ fun GraphsSection(
     // starts fully zoomed out, which is exactly the day, because the view model spans the axis over
     // the whole window in that mode. Both pick one of the zoom objects above rather than allocating
     // a new one - see the note above on why a fresh Zoom instance tears the state down.
-    val startZoom = if (fitWholeWindow) bgMinZoom else defaultZoom
-    val startWindowMinutes = if (fitWholeWindow) Constants.GRAPH_TIME_RANGE_HOURS * 60.0 else DEFAULT_GRAPH_ZOOM_MINUTES
+    // autoISF build: the time range chosen with the buttons of the graph card. A new range recreates the BG states
+    // with that zoom (see bgViewportResetTrigger below), as Vico's own first placement does.
+    var rangeMinutes by rememberSaveable { mutableStateOf(DEFAULT_GRAPH_ZOOM_MINUTES) }
+    val rangeZoom = remember(rangeMinutes) { if (rangeMinutes == DEFAULT_GRAPH_ZOOM_MINUTES) defaultZoom else Zoom.x(rangeMinutes) }
+    val startZoom = if (fitWholeWindow) bgMinZoom else rangeZoom
+    val startWindowMinutes = if (fitWholeWindow) Constants.GRAPH_TIME_RANGE_HOURS * 60.0 else rangeMinutes
 
     // BG graph - primary interactive.
     // Wrapped in key(bgViewportResetTrigger) so bumping the trigger tears down and recreates both
@@ -478,13 +497,33 @@ fun GraphsSection(
     // Set by the BG graph, read by every graph
     val inspect = remember { GraphInspectState() }
 
+    Column(modifier = modifier.fillMaxWidth()) {
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
+            .then(
+                if (cardStyle) Modifier
+                    .clip(RoundedCornerShape(AapsSpacing.large))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .padding(AapsSpacing.large)
+                else Modifier
+            )
             .stopsBgFling(bgScrollForwarder)
             .closesInspectPillOnTouch(inspect)
     ) {
+        if (cardStyle) {
+            GraphCardHeader(
+                rangeMinutes = rangeMinutes,
+                onRangeSelected = { minutes ->
+                    rangeMinutes = minutes
+                    bgViewportResetTrigger++
+                },
+                bgOverlays = graphConfig.bgOverlays,
+                iobOverlays = graphConfig.iobOverlays,
+                onOpenHistory = onOpenHistory
+            )
+        }
         // Treatment Belt Graph - running mode background + therapy events. A hold or a tap shows the pill.
         TreatmentBeltGraphCompose(
             viewModel = graphViewModel,
@@ -582,7 +621,12 @@ fun GraphsSection(
                 inspect = inspect,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(graphConfig.bgHeight.dp + bgExtraHeight)
+                    .height(
+                        // autoISF build: the card's title, ranges and legend take the place the graph had, so a
+                        // phone kept only a strip of BG. In the card the BG graph has a usable minimum height.
+                        if (cardStyle) max(graphConfig.bgHeight.dp + bgExtraHeight, CARD_BG_MIN_HEIGHT)
+                        else graphConfig.bgHeight.dp + bgExtraHeight
+                    )
                     .onScrollOrZoomGesture(graphViewModel::onGraphInteraction)
                     .then(
                         // Merging, not a bare semantics block: a described node is reached by linear
@@ -615,7 +659,8 @@ fun GraphsSection(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .offset(y = INSPECT_PILL_OFFSET)
-                    .padding(top = 2.dp, start = 36.dp, end = 36.dp)
+                    .padding(top = 2.dp, start = 36.dp, end = 36.dp),
+                cardStyle = cardStyle
             )
         }
         // A node of its own rather than more text on the graph above, so a listener reaches the
@@ -820,6 +865,8 @@ fun GraphsSection(
                 }
             )
         }
+        if (cardStyle) GraphCardHint()
+    }
         footer()
         // Spacer so the last graph / Add button isn't covered by QuickLaunch toolbar
         Spacer(Modifier.height(48.dp + overlaidBarsHeight))
