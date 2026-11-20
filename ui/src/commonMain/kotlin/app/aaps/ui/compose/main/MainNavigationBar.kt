@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.GppMaybe
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.Badge
@@ -31,6 +32,7 @@ import app.aaps.core.ui.compose.LocalClientRole
 import app.aaps.core.ui.compose.icons.IcAutomation
 import app.aaps.core.ui.compose.icons.Pump
 import app.aaps.core.ui.compose.navigation.NavigationRequest
+import app.aaps.core.ui.compose.navigation.icon
 import app.aaps.core.ui.compose.stringResource
 import app.aaps.ui.UiStrings
 
@@ -64,7 +66,12 @@ fun MainNavigationBar(
     permissionsMissing: Boolean = false,
     onPermissionsClick: () -> Unit = {},
     loopActionAvailable: Boolean = false,
-    onLoopActionClick: () -> Unit = {}
+    onLoopActionClick: () -> Unit = {},
+    /**
+     * autoISF build: false where the overview has its own quick actions (a phone), which open the same treatments
+     * sheet with *More*. The tablet overview has none, so there the bar keeps the button.
+     */
+    showTreatments: Boolean = true
 ) {
     val navColors = NavigationBarItemDefaults.colors(
         selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -82,9 +89,44 @@ fun MainNavigationBar(
         windowInsets = WindowInsets(0),
         modifier = modifier
     ) {
+        // autoISF build: the fixed places of the user's concept: Home, Statistics, History. Manage follows below.
+        // The buttons that need the user (setup, warnings, loop request) come first: with too many buttons the
+        // labels are cut, so History, then Statistics, then Home give way. All of them are in the side menu too.
+        val otherItems = listOf(
+            showTreatments && masterOrPairedClient && role.allows(ElementType.TREATMENT.role),
+            masterOrPairedClient && role.allows(ElementType.SCENE.role) && automationTotal > 0,
+            true, // Manage
+            pumpSetupPlugin != null,
+            bgSetupPlugin?.pluginDescription?.icon != null,
+            objectivesSetupPlugin?.pluginDescription?.icon != null,
+            loopActionAvailable,
+            permissionsMissing
+        ).count { it }
+        val fixedItems = (MAX_BAR_ITEMS - otherItems).coerceIn(0, 3)
+        if (fixedItems >= 1) NavigationBarItem(
+            // The screen this bar belongs to, so it is always the selected place and a tap does nothing
+            selected = true,
+            onClick = {},
+            icon = { Icon(imageVector = Icons.Default.Home, contentDescription = null, modifier = Modifier.size(24.dp)) },
+            label = { Text(text = stringResource(UiStrings.nav_home), textAlign = TextAlign.Center, maxLines = 1) },
+            colors = navColors
+        )
+        for ((element, label) in listOf(
+            ElementType.STATISTICS to CoreUiStrings.statistics,
+            ElementType.HISTORY_BROWSER to UiStrings.nav_history
+        ).take((fixedItems - 1).coerceAtLeast(0))) {
+            NavigationBarItem(
+                selected = false,
+                onClick = { onNavigate(NavigationRequest.Element(element)) },
+                icon = { Icon(imageVector = element.icon(), contentDescription = null, modifier = Modifier.size(24.dp)) },
+                label = { Text(text = stringResource(label), textAlign = TextAlign.Center, maxLines = 1) },
+                colors = navColors
+            )
+        }
+
         // Treatment action button (opens bottom sheet) — hidden on an unpaired client (its bolus/carbs
         // ride the Client-Control channel and would be dropped); always shown on a master.
-        if (masterOrPairedClient && role.allows(ElementType.TREATMENT.role)) {
+        if (showTreatments && masterOrPairedClient && role.allows(ElementType.TREATMENT.role)) {
             NavigationBarItem(
                 selected = false,
                 modifier = Modifier.badgeState(
@@ -331,3 +373,6 @@ fun MainNavigationBar(
  */
 private fun Modifier.badgeState(state: String?): Modifier =
     if (state != null) semantics { stateDescription = state } else this
+
+/** autoISF build: more buttons than this make the labels too narrow on a phone (seen at 411 dp with eight). */
+private const val MAX_BAR_ITEMS = 6

@@ -420,6 +420,8 @@
     <string name="today_percent_whole" comment="%1$d=percent. Example: 51%">%1$d%%</string>
     <string name="today_percent_one_decimal" comment="%1$.1f=percent with one decimal. Example: 39.5%">%1$.1f%%</string>
     <string name="quick_action_more" comment="Button that opens all the treatments, beside the quick actions on the overview">More</string>
+    <string name="nav_home" comment="Bottom menu: the main screen. Keep it short.">Home</string>
+    <string name="nav_history" comment="Bottom menu: opens the history browser. Keep it short.">History</string>
     <string name="quick_action_temp_target" comment="Short label of the quick action that opens the temporary targets, on a small button">Temp target</string>
     <string name="graph_card_title">Glucose and insulin</string>
     <string name="graph_card_history" comment="Spoken name of the button that opens the history browser from the graph card">History</string>

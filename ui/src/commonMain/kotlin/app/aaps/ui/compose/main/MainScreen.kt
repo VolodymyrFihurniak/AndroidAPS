@@ -51,6 +51,12 @@ import app.aaps.core.interfaces.pump.BolusProgressState
 import app.aaps.core.ui.CoreUiStrings
 import app.aaps.core.ui.compose.LocalDateUtil
 import app.aaps.core.ui.compose.LocalSnackbarHostState
+import app.aaps.core.ui.compose.StatusLevel
+import app.aaps.core.ui.compose.TABLET_MIN_SW_DP
+import app.aaps.core.ui.compose.icons.IcGenericCgm
+import app.aaps.core.ui.compose.icons.Pump
+import app.aaps.core.ui.compose.isLandscape
+import app.aaps.core.ui.compose.smallestScreenWidthDp
 import app.aaps.core.ui.compose.dialogs.OkCancelDialog
 import app.aaps.core.ui.compose.dialogs.ThreeButtonDialog
 import app.aaps.core.ui.compose.navigation.NavigationRequest
@@ -128,6 +134,9 @@ fun MainScreen(
     pumpSetupPlugin: PluginBase? = null,
     // BG source shortcut
     bgSetupPlugin: PluginBase? = null,
+    // autoISF build: the pump and the BG source of the top bar icons, null hides an icon
+    topBarPumpPlugin: PluginBase? = null,
+    topBarBgSourcePlugin: PluginBase? = null,
     bgQualityBadgeIcon: ImageVector? = null,
     bgQualityBadgeTint: Color = Color.Unspecified,
     bgQualityBadgeDescription: String? = null,
@@ -402,8 +411,44 @@ fun MainScreen(
                             .align(Alignment.TopCenter)
                             .padding(top = scaffoldPadding.calculateTopPadding())
                     ) {
+                        val statusState by statusViewModel.uiState.collectAsStateWithLifecycle()
+                        val devices = buildList {
+                            topBarPumpPlugin?.let { pump ->
+                                // A pump that is not ready (the setup button in the bottom bar) is critical
+                                val level = if (pumpSetupPlugin != null) StatusLevel.CRITICAL
+                                else worstStatusLevel(
+                                    statusState.insulinStatus?.ageStatus, statusState.insulinStatus?.levelStatus,
+                                    statusState.cannulaStatus?.ageStatus, statusState.cannulaStatus?.levelStatus,
+                                    statusState.batteryStatus?.ageStatus, statusState.batteryStatus?.levelStatus
+                                )
+                                add(
+                                    TopBarDevice(
+                                        icon = pump.pluginDescription.icon ?: Pump,
+                                        label = pump.pluginDescription.pluginName?.let { stringResource(it) } ?: pump.name,
+                                        level = level,
+                                        onClick = { onNavigate(NavigationRequest.Plugin(pump::class.simpleName.orEmpty())) }
+                                    )
+                                )
+                            }
+                            topBarBgSourcePlugin?.let { source ->
+                                // A flat or doubled BG (the BG source button in the bottom bar) is a warning
+                                val level = worstStatusLevel(
+                                    statusState.sensorStatus?.ageStatus, statusState.sensorStatus?.levelStatus,
+                                    if (bgSetupPlugin != null) StatusLevel.WARNING else null
+                                )
+                                add(
+                                    TopBarDevice(
+                                        icon = statusState.sensorStatus?.icon ?: source.pluginDescription.icon ?: IcGenericCgm,
+                                        label = source.pluginDescription.pluginName?.let { stringResource(it) } ?: source.name,
+                                        level = level,
+                                        onClick = { onNavigate(NavigationRequest.Plugin(source::class.simpleName.orEmpty())) }
+                                    )
+                                )
+                            }
+                        }
                         MainTopBar(
                             searchUiState = searchUiState,
+                            devices = devices,
                             onMenuClick = {
                                 scope.launch {
                                     drawerState.open()
@@ -465,6 +510,8 @@ fun MainScreen(
                             onPermissionsClick = onPermissionsClick,
                             loopActionAvailable = loopActionState.actionAvailable,
                             onLoopActionClick = { showLoopActionSheet = true },
+                            // autoISF build: the phone overview has the quick actions with "More" for this
+                            showTreatments = isLandscape() && smallestScreenWidthDp() >= TABLET_MIN_SW_DP,
                             modifier = Modifier.onSizeChanged {
                                 if (it.height > 0 && it.height != bottomBarHeightPx) bottomBarHeightPx = it.height
                             }
