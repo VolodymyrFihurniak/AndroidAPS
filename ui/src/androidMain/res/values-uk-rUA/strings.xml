@@ -393,4 +393,6 @@
     <string name="graph_card_history">Історія</string>
     <string name="graph_range_hours">%1$d год</string>
     <string name="insulin_brand_preset">%1$s (%2$s)</string>
+    <string name="graph_mini_map">Увесь проміжок графіка. Торкніться або потягніть, щоб пересунути графік туди.</string>
+    <string name="inspect_forecast">прогноз</string>
 </resources>

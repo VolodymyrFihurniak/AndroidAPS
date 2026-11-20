@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -352,7 +353,9 @@ fun GraphInspectOverlay(
     bgReadings: List<BgDataPoint>,
     minTimestamp: Long?,
     modifier: Modifier = Modifier,
-    cardStyle: Boolean = false
+    cardStyle: Boolean = false,
+    /** autoISF build: the visible window, so the card can stand on the side away from the finger */
+    window: () -> Pair<Double, Double>? = { null }
 ) {
     val iobGraph by graphViewModel.iobGraphFlow.collectAsStateWithLifecycle()
     val cobGraph by graphViewModel.cobGraphFlow.collectAsStateWithLifecycle()
@@ -407,7 +410,20 @@ fun GraphInspectOverlay(
     val data = inspect.pill
     val dotColor = data?.bg?.range?.inspectColor() ?: Color.Unspecified
     SideEffect { inspect.dotColor = dotColor }
-    if (data != null) GraphInspectPill(data = data, modifier = modifier, cardStyle = cardStyle)
+    if (data == null) return
+    if (!cardStyle) {
+        GraphInspectPill(data = data, modifier = modifier)
+        return
+    }
+    // autoISF build: as in xdripswift, the card stands at the top on the side away from the finger
+    val fingerOnRight = window()?.let { (start, end) -> inspect.shownX?.let { it > (start + end) / 2 } } ?: false
+    Box(modifier = modifier.fillMaxWidth()) {
+        GraphInspectPill(
+            data = data,
+            cardStyle = true,
+            modifier = Modifier.align(if (fingerOnRight) Alignment.TopStart else Alignment.TopEnd)
+        )
+    }
 }
 
 /** The values at one reading. Null means no data near that time. */
@@ -541,7 +557,7 @@ fun GraphInspectPill(
                 verticalArrangement = Arrangement.spacedBy(AapsSpacing.extraSmall),
                 modifier = Modifier.padding(horizontal = AapsSpacing.large, vertical = AapsSpacing.medium)
             ) {
-                InspectItems(data)
+                InspectCardItems(data)
             }
         } else Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -555,6 +571,75 @@ fun GraphInspectPill(
                 InspectItems(data)
             }
         }
+    }
+}
+
+/**
+ * autoISF build: the items of the card, as in the user's xdripswift: the time (with "forecast" after now), the glucose
+ * large with its unit, then one line per value with its name. Treatments and belt events as in the pill.
+ */
+@Composable
+private fun InspectCardItems(data: InspectData) {
+    val dateUtil = LocalDateUtil.current
+    val profileUtil = LocalProfileUtil.current
+    val decimalFormatter = LocalDecimalFormatter.current
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(dateUtil.timeString(data.timestamp), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+        if (data.timestamp > dateUtil.now()) {
+            Text(
+                stringResource(UiStrings.inspect_forecast),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = AapsSpacing.small)
+            )
+        }
+    }
+    data.bg?.let { bg ->
+        val mgdl = profileUtil.units == GlucoseUnit.MGDL
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                if (mgdl) decimalFormatter.to0Decimal(bg.value) else decimalFormatter.to1Decimal(bg.value),
+                style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = bg.range.inspectColor()
+            )
+            Text(
+                stringResource(if (mgdl) CoreUiStrings.mgdl else CoreUiStrings.mmol),
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = AapsSpacing.small, bottom = AapsSpacing.extraSmall)
+            )
+        }
+    }
+    data.iob?.let {
+        CardValueRow(ElementType.INSULIN.icon(), stringResource(CoreUiStrings.iob), stringResource(InterfacesStrings.format_insulin_units, it), ElementType.INSULIN.color())
+    }
+    shownCob(data.cob)?.let {
+        CardValueRow(ElementType.COB.icon(), stringResource(CoreUiStrings.cob), stringResource(InterfacesStrings.format_carbs, it), ElementType.COB.color(), PILL_COB_ICON_SIZE)
+    }
+    data.basal?.let {
+        val rate = stringResource(CoreUiStrings.pump_base_basal_rate, it)
+        val profile = data.profileBasal?.takeIf { p -> data.tbrState != TbrState.NONE && p >= 0.0 }
+        val text = if (profile != null) stringResource(UiStrings.basal_inspect_with_profile, rate, stringResource(CoreUiStrings.pump_base_basal_rate, profile)) else rate
+        CardValueRow(data.tbrState.toIcon(), stringResource(UiStrings.basal_card), text, ElementType.TEMP_BASAL.color())
+    }
+    data.boluses.forEach { bolus ->
+        PillTriangleItem(pointsUp = bolus.bolusType == BolusType.SMB, text = bolus.label, color = ElementType.INSULIN.color())
+    }
+    data.carbs.forEach { carbs -> PillTriangleItem(pointsUp = true, text = carbs.label, color = ElementType.CARBS.color()) }
+    data.measured.forEach { label -> PillItem(IcBgCheck, label, AapsTheme.elementColors.bgCheck) }
+    data.runningMode?.let { mode -> PillItem(mode.toIcon(), mode.label(), mode.beltColor(AapsTheme.elementColors)) }
+    data.events.forEach { event ->
+        PillItem(event.eventType.beltIcon(), event.label, event.eventType.beltColor(AapsTheme.elementColors), maxLines = PILL_EVENT_MAX_LINES)
+    }
+}
+
+/** One line of the card: icon, name, value. */
+@Composable
+private fun CardValueRow(icon: ImageVector, label: String, value: String, color: Color, iconSize: Dp = PILL_ICON_SIZE) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(AapsSpacing.small)) {
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(PILL_ICON_SIZE)) {
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(iconSize))
+        }
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = color)
     }
 }
 

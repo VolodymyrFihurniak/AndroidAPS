@@ -118,8 +118,11 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
   readings as a line instead of dots (above the high mark in the high colour; a low reading keeps
   its red dot). The low and the high mark are dashed lines with their value on the right. A config
   saved before gets IOB, COB and the basal in the BG graph, and a graph with COB alone below it is
-  removed. A hold on the graphs shows the values of that time in a small card, one value per line.
-  The BG graph grows to fill the screen, with at least 200 dp. Under the graphs: the statistics of today (time in the
+  removed. A hold on the graphs shows the values of that time in a card, as in xdripswift: the time
+  (with *forecast* after now), the glucose large with its unit, then IOB, COB and basal with their
+  names. The card stands at the top on the side away from the finger. Under the BG graph a strip
+  shows the whole loaded range with the shown part framed; a tap moves the graph there, a drag moves
+  it with the finger. The BG graph grows to fill the screen, with at least 200 dp. Under the graphs: the statistics of today (time in the
   overview's range, CV and the average, each with a bar; tap opens the statistics). Tablets and
   landscape keep the BG circle with the chips beside it.
 * The bottom menu: *Home*, *Treatments*, *Statistics*, *History*, *Scenes* and *Manage*, and the

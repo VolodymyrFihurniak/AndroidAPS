@@ -39,6 +39,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -84,6 +85,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.launch
 
 /**
  * Overview graphs section using Vico charts.
@@ -133,6 +135,9 @@ private val INSPECT_PILL_OFFSET = (-32).dp
  * plot keeps its size and the whole section gets shorter.
  */
 private val REMOVED_TIME_LABELS_HEIGHT = 10.dp
+
+/** autoISF build: the mini map starts where the plot of the BG graph starts, after its Y axis labels. */
+private val MINI_MAP_START_PADDING = 30.dp
 
 /** autoISF build: the lowest height of the BG graph in the graph card. Below it the page scrolls. */
 private val CARD_BG_MIN_HEIGHT = 200.dp
@@ -665,7 +670,8 @@ fun GraphsSection(
                     .align(Alignment.TopCenter)
                     .offset(y = INSPECT_PILL_OFFSET)
                     .padding(top = 2.dp, start = 36.dp, end = 36.dp),
-                cardStyle = cardStyle
+                cardStyle = cardStyle,
+                window = { windowRange }
             )
         }
         // A node of its own rather than more text on the graph above, so a listener reaches the
@@ -678,6 +684,27 @@ fun GraphsSection(
                     .fillMaxWidth()
                     .height(1.dp)
                     .semantics { contentDescription = description }
+            )
+        }
+        // autoISF build: the whole range in a strip under the BG graph, with the shown part framed, as in xdripswift
+        if (cardStyle) {
+            val bucketed by graphViewModel.bucketedDataFlow.collectAsStateWithLifecycle()
+            val chartConfig by graphViewModel.chartConfigFlow.collectAsStateWithLifecycle()
+            val miniMapScope = rememberCoroutineScope()
+            GraphMiniMap(
+                readings = bucketed.ifEmpty { bgReadings },
+                timeRange = derivedTimeRange,
+                window = { windowRange },
+                lowMark = chartConfig.lowMark,
+                highMark = chartConfig.highMark,
+                onCenterAt = { x, animate ->
+                    graphViewModel.onGraphInteraction()
+                    miniMapScope.launch {
+                        val target = Scroll.Absolute.x(x, bias = 0.5f)
+                        if (animate) bgScrollState.animateScroll(target) else bgScrollState.scroll(target)
+                    }
+                },
+                modifier = Modifier.padding(start = MINI_MAP_START_PADDING, top = AapsSpacing.small, bottom = AapsSpacing.medium)
             )
         }
         if (editingBgOverlays) {
