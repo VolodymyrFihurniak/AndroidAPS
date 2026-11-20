@@ -206,6 +206,9 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      # 4 workers, not 8: the runner has 4 cores, and with the Kotlin compiler in-process every parallel compile
+      # shares the 8 GB heap of the Gradle daemon. A change in a core module recompiles most of the project, and 8
+      # compiles at once ran out of heap (run 44738237640, OutOfMemoryError in plugins/configuration).
       - name: Build APKs
         run: |
               ./gradlew :app:assemble${{ env.BUILD_VARIANT }} :wear:assemble${{ env.BUILD_VARIANT }} \
@@ -213,7 +216,7 @@ jobs:
               -Dkotlin.daemon.jvm.options="-Xmx2g" \
               -Dkotlin.compiler.execution.strategy="in-process" \
               -Dorg.gradle.daemon=true \
-              -Dorg.gradle.workers.max=8 \
+              -Dorg.gradle.workers.max=4 \
               -Dorg.gradle.caching=true \
               -Pandroid.injected.signing.store.file="$RUNNER_TEMP/keystore/keystore.jks" \
               -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
