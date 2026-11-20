@@ -98,4 +98,8 @@
     <!--    autoISF -->
     <string name="autoISF_settings_title">Налаштування AutoISF</string>
     <string name="smb_delivery_settings_title">Налаштування подачі SMB</string>
+    <string name="activity_monitor_title">Активність змінює чутливість</string>
+    <string name="libre_special_settings_title">Спеціальні налаштування Libre</string>
+    <string name="permission_activity_title">Фізична активність</string>
+    <string name="need_step_count_permission">AutoISF потрібен дозвіл на фізичну активність, щоб читати кроки, які рахує телефон.</string>
 </resources>

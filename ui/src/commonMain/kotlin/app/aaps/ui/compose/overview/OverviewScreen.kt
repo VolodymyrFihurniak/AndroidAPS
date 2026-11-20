@@ -73,8 +73,6 @@ fun OverviewScreen(
     statusLightsDef: PreferenceSubScreenDef,
     onNavigate: (NavigationRequest) -> Unit,
     onIobChipClick: () -> Unit,
-    /** autoISF build: the "More" quick action of the phone overview, opens all the treatments. */
-    onMoreActionsClick: () -> Unit = {},
     notifications: List<AapsNotification>,
     onDismissNotification: (AapsNotification) -> Unit,
     onNotificationActionClick: (AapsNotification) -> Unit,
@@ -249,7 +247,6 @@ fun OverviewScreen(
                     statusLightsDef = statusLightsDef,
                     onNavigate = onNavigate,
                     onIobChipClick = onIobChipClick,
-                    onMoreActionsClick = onMoreActionsClick,
                     paddingValues = paddingValues,
                     activeSceneState = activeSceneState,
                     sceneExpired = sceneExpired,

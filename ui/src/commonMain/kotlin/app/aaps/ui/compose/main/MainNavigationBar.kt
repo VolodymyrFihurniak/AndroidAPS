@@ -66,12 +66,7 @@ fun MainNavigationBar(
     permissionsMissing: Boolean = false,
     onPermissionsClick: () -> Unit = {},
     loopActionAvailable: Boolean = false,
-    onLoopActionClick: () -> Unit = {},
-    /**
-     * autoISF build: false where the overview has its own quick actions (a phone), which open the same treatments
-     * sheet with *More*. The tablet overview has none, so there the bar keeps the button.
-     */
-    showTreatments: Boolean = true
+    onLoopActionClick: () -> Unit = {}
 ) {
     val navColors = NavigationBarItemDefaults.colors(
         selectedIconColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -89,11 +84,11 @@ fun MainNavigationBar(
         windowInsets = WindowInsets(0),
         modifier = modifier
     ) {
-        // autoISF build: the fixed places of the user's concept: Home, Statistics, History. Manage follows below.
+        // autoISF build: the places of the user's concept: Home, Treatments, Statistics, History, then Scenes and Manage.
         // The buttons that need the user (setup, warnings, loop request) come first: with too many buttons the
         // labels are cut, so History, then Statistics, then Home give way. All of them are in the side menu too.
         val otherItems = listOf(
-            showTreatments && masterOrPairedClient && role.allows(ElementType.TREATMENT.role),
+            masterOrPairedClient && role.allows(ElementType.TREATMENT.role),
             masterOrPairedClient && role.allows(ElementType.SCENE.role) && automationTotal > 0,
             true, // Manage
             pumpSetupPlugin != null,
@@ -111,22 +106,9 @@ fun MainNavigationBar(
             label = { Text(text = stringResource(UiStrings.nav_home), textAlign = TextAlign.Center, maxLines = 1) },
             colors = navColors
         )
-        for ((element, label) in listOf(
-            ElementType.STATISTICS to CoreUiStrings.statistics,
-            ElementType.HISTORY_BROWSER to UiStrings.nav_history
-        ).take((fixedItems - 1).coerceAtLeast(0))) {
-            NavigationBarItem(
-                selected = false,
-                onClick = { onNavigate(NavigationRequest.Element(element)) },
-                icon = { Icon(imageVector = element.icon(), contentDescription = null, modifier = Modifier.size(24.dp)) },
-                label = { Text(text = stringResource(label), textAlign = TextAlign.Center, maxLines = 1) },
-                colors = navColors
-            )
-        }
-
         // Treatment action button (opens bottom sheet) — hidden on an unpaired client (its bolus/carbs
         // ride the Client-Control channel and would be dropped); always shown on a master.
-        if (showTreatments && masterOrPairedClient && role.allows(ElementType.TREATMENT.role)) {
+        if (masterOrPairedClient && role.allows(ElementType.TREATMENT.role)) {
             NavigationBarItem(
                 selected = false,
                 modifier = Modifier.badgeState(
@@ -151,6 +133,19 @@ fun MainNavigationBar(
                     }
                 },
                 label = { Text(text = stringResource(CoreUiStrings.treatments), textAlign = TextAlign.Center) },
+                colors = navColors
+            )
+        }
+
+        for ((element, label) in listOf(
+            ElementType.STATISTICS to CoreUiStrings.statistics,
+            ElementType.HISTORY_BROWSER to UiStrings.nav_history
+        ).take((fixedItems - 1).coerceAtLeast(0))) {
+            NavigationBarItem(
+                selected = false,
+                onClick = { onNavigate(NavigationRequest.Element(element)) },
+                icon = { Icon(imageVector = element.icon(), contentDescription = null, modifier = Modifier.size(24.dp)) },
+                label = { Text(text = stringResource(label), textAlign = TextAlign.Center, maxLines = 1) },
                 colors = navColors
             )
         }

@@ -25,6 +25,7 @@ import app.aaps.core.data.model.ActiveSceneState
 import app.aaps.core.data.model.RM
 import app.aaps.core.data.model.TT
 import app.aaps.core.interfaces.navigation.ElementType
+import app.aaps.core.ui.compose.AapsCard
 import app.aaps.core.ui.compose.AapsSpacing
 import app.aaps.core.ui.compose.AapsTheme
 import app.aaps.core.ui.compose.LocalConfig
@@ -35,7 +36,6 @@ import app.aaps.ui.compose.manageSheet.ManageViewModel
 import app.aaps.ui.compose.overview.aapsClient.AapsClientStatusCard
 import app.aaps.ui.compose.overview.chips.ChipsViewModel
 import app.aaps.ui.compose.overview.chips.OverviewCardRow
-import app.aaps.ui.compose.overview.chips.QuickActionsRow
 import app.aaps.ui.compose.overview.chips.TodayStatsRow
 import app.aaps.ui.compose.overview.graphs.GraphViewModel
 import app.aaps.ui.compose.overview.graphs.GraphsSection
@@ -67,8 +67,6 @@ fun OverviewScreenStacked(
     statusLightsDef: PreferenceSubScreenDef,
     onNavigate: (NavigationRequest) -> Unit,
     onIobChipClick: () -> Unit,
-    /** autoISF build: the "More" quick action, opens all the treatments. */
-    onMoreActionsClick: () -> Unit = {},
     paddingValues: PaddingValues,
     activeSceneState: ActiveSceneState? = null,
     sceneExpired: Boolean = false,
@@ -129,48 +127,52 @@ fun OverviewScreenStacked(
                     formatDuration = formatDuration
                 )
                 eatReminderBanner()
-                // autoISF build: the main screen of the user's concept. The main BG card with IOB and COB, the chips
-                // that set something (profile, temp target, exercise), and the cards basal, sensitivity and loop.
+                // autoISF build: the main screen of the user's concept. On top a card with what the user sets (profile,
+                // temp target, exercise), then the main BG card with IOB and COB, and the cards basal, sensitivity and loop.
                 Column(
                     verticalArrangement = Arrangement.spacedBy(AapsSpacing.medium),
                     modifier = Modifier.padding(horizontal = AapsSpacing.large, vertical = AapsSpacing.medium)
                 ) {
+                    AapsCard(modifier = Modifier.fillMaxWidth()) {
+                        OverviewChipsColumn(
+                            runningMode = runningMode,
+                            runningModeText = runningModeText,
+                            runningModeRemaining = runningModeRemaining,
+                            runningModeProgress = runningModeProgress,
+                            runningModeSceneManaged = runningModeSceneManaged,
+                            smbEnabled = smbEnabled,
+                            profileName = profileName,
+                            isProfileModified = isProfileModified,
+                            profileProgress = profileProgress,
+                            profileSceneManaged = profileSceneManaged,
+                            tempTargetText = tempTargetText,
+                            tempTargetState = tempTargetState,
+                            tempTargetProgress = tempTargetProgress,
+                            tempTargetReason = tempTargetReason,
+                            tempTargetSceneManaged = tempTargetSceneManaged,
+                            basalUiState = basalUiState,
+                            iobUiState = iobUiState,
+                            cobUiState = cobUiState,
+                            sensitivityUiState = sensitivityUiState,
+                            onNavigate = onNavigate,
+                            onIobChipClick = onIobChipClick,
+                            commandsAllowed = commandsAllowed,
+                            exerciseModeUiState = exerciseModeUiState,
+                            onExerciseModeClick = chipsViewModel::toggleExerciseMode,
+                            // In the cards: IOB and COB in the main card, the rest and the running mode in the card row
+                            showMetrics = false,
+                            showRunningMode = false,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = AapsSpacing.small, vertical = AapsSpacing.small)
+                        )
+                    }
                     MainBgCard(
                         bgInfo = bgInfoState.bgInfo,
                         timeAgoText = bgInfoState.timeAgoText,
                         iobText = iobUiState.text,
                         cobText = cobUiState.text,
                         onIobClick = onIobChipClick
-                    )
-                    OverviewChipsColumn(
-                        runningMode = runningMode,
-                        runningModeText = runningModeText,
-                        runningModeRemaining = runningModeRemaining,
-                        runningModeProgress = runningModeProgress,
-                        runningModeSceneManaged = runningModeSceneManaged,
-                        smbEnabled = smbEnabled,
-                        profileName = profileName,
-                        isProfileModified = isProfileModified,
-                        profileProgress = profileProgress,
-                        profileSceneManaged = profileSceneManaged,
-                        tempTargetText = tempTargetText,
-                        tempTargetState = tempTargetState,
-                        tempTargetProgress = tempTargetProgress,
-                        tempTargetReason = tempTargetReason,
-                        tempTargetSceneManaged = tempTargetSceneManaged,
-                        basalUiState = basalUiState,
-                        iobUiState = iobUiState,
-                        cobUiState = cobUiState,
-                        sensitivityUiState = sensitivityUiState,
-                        onNavigate = onNavigate,
-                        onIobChipClick = onIobChipClick,
-                        commandsAllowed = commandsAllowed,
-                        exerciseModeUiState = exerciseModeUiState,
-                        onExerciseModeClick = chipsViewModel::toggleExerciseMode,
-                        // In the cards: IOB and COB in the main card, the rest and the running mode in the card row
-                        showMetrics = false,
-                        showRunningMode = false,
-                        modifier = Modifier.fillMaxWidth()
                     )
                     OverviewCardRow(
                         basalUiState = basalUiState,
@@ -217,17 +219,12 @@ fun OverviewScreenStacked(
                     cardStyle = true,
                     onOpenHistory = { onNavigate(NavigationRequest.Element(ElementType.HISTORY_BROWSER)) },
                     footer = {
-                        // autoISF build: the statistics of today and the quick actions of the user's concept
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(AapsSpacing.large),
+                        // autoISF build: the statistics of today of the user's concept. The treatments are in the bottom menu.
+                        TodayStatsRow(
+                            state = todayStatsUiState,
+                            onOpenStatistics = { onNavigate(NavigationRequest.Element(ElementType.STATISTICS)) },
                             modifier = Modifier.padding(horizontal = AapsSpacing.large, vertical = AapsSpacing.medium)
-                        ) {
-                            TodayStatsRow(
-                                state = todayStatsUiState,
-                                onOpenStatistics = { onNavigate(NavigationRequest.Element(ElementType.STATISTICS)) }
-                            )
-                            QuickActionsRow(commandsAllowed = commandsAllowed, onNavigate = onNavigate, onMore = onMoreActionsClick)
-                        }
+                        )
                     }
                 )
             }

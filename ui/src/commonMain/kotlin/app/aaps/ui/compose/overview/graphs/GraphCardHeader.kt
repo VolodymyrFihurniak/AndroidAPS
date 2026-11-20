@@ -5,15 +5,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ShowChart
-import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -95,25 +92,6 @@ internal fun GraphCardHeader(
             LegendItem(AapsTheme.elementColors.tempBasal, LegendMark.SQUARE, stringResource(UiStrings.basal_card))
             LegendItem(AapsTheme.elementColors.tempBasal, LegendMark.DASHED, stringResource(CoreUiStrings.profile))
         }
-    }
-}
-
-/** The line under the graphs that says how to see the values. */
-@Composable
-internal fun GraphCardHint(modifier: Modifier = Modifier) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier.padding(vertical = AapsSpacing.small)) {
-        Icon(
-            imageVector = Icons.Filled.TouchApp,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(AapsSpacing.chipIconSize)
-        )
-        Spacer(Modifier.width(AapsSpacing.small))
-        Text(
-            text = stringResource(UiStrings.graph_card_hint),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 

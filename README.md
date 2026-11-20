@@ -99,28 +99,24 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
   they work too, but UAM is off unless Oref1 is chosen.
 
 ### Basal card on the main screen
-* On a phone the top of the overview follows the user's concept: a main card with the BG value in
-  the colour of its range, its unit, the trend in words, the age of the reading, the changes over 5,
-  15 and 40 minutes, and IOB and COB on the right. Under it one row with the profile, the temp
-  target and the exercise button, and the cards *Basal*, *Sensitivity* and *Loop* (running mode and
-  when the loop last ran, in the warning colour after 15 minutes). The graphs sit in one card
-  *Glucose and insulin*: a button to the history, the ranges 3 h, 6 h, 12 h and 24 h, a legend of
-  what is shown (glucose, predictions, parabola, IOB, basal and profile basal), the BG graph with the
-  IOB and basal graph right under it on the same time axis, and a hint how to see the values. A hold
-  on the graphs shows the values of that time in a small card, one value per line. The BG graph grows
-  to fill the screen, with at least 200 dp. Under the graphs: the statistics of today (time in the overview's range, CV and
-  the average, each with a bar; tap opens the statistics) and the quick actions *Carbs*, *Bolus*,
-  *Temp target* and *More* (all the treatments). Tablets and landscape keep the BG circle with the
-  chips beside it.
-* The top bar has a pump icon and a sensor icon beside the settings. Each is in the colour of the
-  worst state of its device (reservoir, cannula, pump battery; sensor age and level, flat or doubled
-  BG; a pump that is not ready is critical). Tap opens the pump or the BG source screen. A client
-  has no pump icon.
-* The bottom menu starts with *Home*, *Statistics* and *History* and keeps *Scenes*, *Manage* and the
+* On a phone the top of the overview follows the user's concept. On top a card with what the user
+  sets: the profile, the temp target and the exercise button. Under it the main card with the BG value
+  in the colour of its range, its unit, the trend in words, the age of the reading, the changes over
+  5, 15 and 40 minutes, and IOB and COB on the right. Then the cards *Basal*, *Sensitivity* and
+  *Loop* (running mode and when the loop last ran, in the warning colour after 15 minutes). The
+  graphs sit in one card *Glucose and insulin*: a button to the history, the ranges 3 h, 6 h, 12 h
+  and 24 h, a legend of what is shown (glucose, predictions, parabola, IOB, basal and profile basal),
+  and the BG graph with the IOB and basal graph right under it on the same time axis. A hold on the
+  graphs shows the values of that time in a small card, one value per line. The BG graph grows to
+  fill the screen, with at least 200 dp. Under the graphs: the statistics of today (time in the
+  overview's range, CV and the average, each with a bar; tap opens the statistics). Tablets and
+  landscape keep the BG circle with the chips beside it.
+* The bottom menu: *Home*, *Treatments*, *Statistics*, *History*, *Scenes* and *Manage*, and the
   buttons that need the user (pump setup, BG source, objectives, loop request, permissions). It holds
   at most 6 buttons: when more are needed, History, then Statistics, then Home give way (they are in
-  the side menu too). On a phone *Treatments* left the menu, because the quick actions on the
-  overview have *More*; tablets keep it.
+  the side menu too).
+* The strings this build adds (basal card, graph card, statistics, menu, AutoISF settings and
+  automations) have a Ukrainian translation. Upstream strings still come from Crowdin.
 * **Basal card** next to IOB and COB, in their style: the basal given now in U/h, and under it the
   percent of the active profile and the state: *By profile*, *TBR · 12 min left*, *PS 110%* while a
   profile switch is active, or *Asked 0.90 U/h* while the loop asked for a temp basal the pump has

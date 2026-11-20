@@ -1213,4 +1213,15 @@
     <string name="units_years">р.</string>
     <string name="prefs_range_title">Діапазон для візуалізації</string>
     <string name="secrets_not_protected">На цьому комп’ютері не знайдено системного сховища ключів. Ключі, що захищають ваші налаштування та спарювання з основним пристроєм, зберігаються у файлах поруч із даними, тому кожен, хто отримає копію ваших файлів, отримає і ці ключі. На Linux встановіть і запустіть сховище ключів (наприклад, GNOME Keyring або KWallet), а потім знову запустіть AAPS.</string>
+    <string name="aisf_algorithm">Алгоритм</string>
+    <string name="uel_autoisf_enabled">AUTOISF УВІМКНЕНО</string>
+    <string name="uel_autoisf_disabled">AUTOISF ВИМКНЕНО</string>
+    <string name="uel_iobth_set">IOBTH ВСТАНОВЛЕНО</string>
+    <string name="uel_acce_weight_set">ВАГУ ACCE ВСТАНОВЛЕНО</string>
+    <string name="cleanup_db_confirm_days">Очистити базу даних?\nБуде видалено відстежені зміни та історичні дані, старші за %1$d днів.</string>
+    <string name="graph_series_autoisf">Коефіцієнти AutoISF (acce, bg, pp, dura, final)</string>
+    <string name="graph_series_iob_threshold">Поріг IOB (autoISF)</string>
+    <string name="graph_series_bg_parabola">Парабола глюкози (autoISF)</string>
+    <string name="graph_series_basal">Базал (профіль і поданий)</string>
+    <string name="bg_parabola_shortname">ПАРАБ</string>
 </resources>

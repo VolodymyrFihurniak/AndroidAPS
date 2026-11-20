@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -20,19 +18,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import app.aaps.core.interfaces.InterfacesStrings
 import app.aaps.core.interfaces.navigation.ElementType
 import app.aaps.core.ui.CoreUiStrings
 import app.aaps.core.ui.compose.AapsCard
 import app.aaps.core.ui.compose.AapsSpacing
 import app.aaps.core.ui.compose.AapsTheme
-import app.aaps.core.ui.compose.LocalClientRole
-import app.aaps.core.ui.compose.navigation.NavigationRequest
-import app.aaps.core.ui.compose.navigation.color
 import app.aaps.core.ui.compose.navigation.icon
 import app.aaps.core.ui.compose.stringResource
 import app.aaps.ui.UiStrings
@@ -119,68 +110,6 @@ private fun StatCard(title: String, value: String, fraction: Float, color: Color
                 trackColor = color.copy(alpha = 0.2f),
                 strokeCap = StrokeCap.Round,
                 modifier = Modifier.fillMaxWidth()
-            )
-        }
-    }
-}
-
-/**
- * autoISF build: the quick actions of the overview, from the user's concept: carbs, bolus, temp target and "more",
- * which opens all the treatments. They open the same dialogs as the treatments sheet, with its protection and its
- * role rules (they go through the same navigation). Not clickable on a client that is not paired.
- */
-@Composable
-fun QuickActionsRow(commandsAllowed: Boolean, onNavigate: (NavigationRequest) -> Unit, onMore: () -> Unit, modifier: Modifier = Modifier) {
-    val role = LocalClientRole.current
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(AapsSpacing.medium),
-        modifier = modifier
-            .fillMaxWidth()
-            .height(IntrinsicSize.Min)
-    ) {
-        for ((element, label) in listOf(
-            ElementType.CARBS to InterfacesStrings.carbs,
-            ElementType.INSULIN to InterfacesStrings.bolus,
-            ElementType.TEMP_TARGET_MANAGEMENT to UiStrings.quick_action_temp_target
-        )) {
-            ActionCard(
-                icon = element.icon(),
-                color = element.color(),
-                label = stringResource(label),
-                enabled = commandsAllowed && role.allows(element.role),
-                onClick = { onNavigate(NavigationRequest.Element(element)) },
-                modifier = Modifier.weight(1f)
-            )
-        }
-        ActionCard(
-            icon = Icons.Filled.MoreHoriz,
-            color = MaterialTheme.colorScheme.primary,
-            label = stringResource(UiStrings.quick_action_more),
-            enabled = commandsAllowed,
-            onClick = onMore,
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@Composable
-private fun ActionCard(icon: ImageVector, color: Color, label: String, enabled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    AapsCard(modifier = modifier.fillMaxHeight(), onClick = if (enabled) onClick else null) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(AapsSpacing.small, Alignment.CenterVertically),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = AapsSpacing.large, horizontal = AapsSpacing.small)
-        ) {
-            Icon(imageVector = icon, contentDescription = null, tint = if (enabled) color else color.copy(alpha = 0.4f), modifier = Modifier.size(AapsSpacing.chipIconSize))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
             )
         }
     }

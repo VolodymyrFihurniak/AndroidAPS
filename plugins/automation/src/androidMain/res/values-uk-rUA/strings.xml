@@ -167,4 +167,40 @@
     <string name="permission_location_title">Розташування</string>
     <string name="permission_location_description">Потрібно для тригерів автоматизації за розташуванням і для визначення мережі Wi-Fi</string>
     <string name="permission_background_location_description">Потрібно, щоб тригери автоматизації працювали, коли застосунок у фоні</string>
+    <string name="autoisf_alreadyenabled">AutoISF вже увімкнено</string>
+    <string name="autoisf_enabled">AutoISF увімкнено</string>
+    <string name="autoisf_alreadydisabled">AutoISF вже вимкнено</string>
+    <string name="autoisf_disabled">AutoISF вимкнено</string>
+    <string name="weight_new">нове значення</string>
+    <string name="weight_old">як раніше</string>
+    <string name="automate_set_acce_weight">Встановити bgAccel_ISF_weight на %1$.2f</string>
+    <string name="automate_set_iobTH_percent">Встановити iobTH на %1$d%%</string>
+    <string name="autoisf_acce_weight">Вага BgAccel</string>
+    <string name="autoisf_iobTH_percent">Відсоток iobTH</string>
+    <string name="acceweightcompared">вага acce %1$s %2$s</string>
+    <string name="iobTHpercentcompared">відсоток iobTH %1$s %2$s</string>
+    <string name="disableautoisf">Вимкнути ваги ISF за глюкозою (autoISF)</string>
+    <string name="enableautoisf">Увімкнути ваги ISF за глюкозою (autoISF)</string>
+    <string name="set_state">Встановити стан автоматизації</string>
+    <string name="set_state_description">Встановити стан автоматизації %1$s=%2$s</string>
+    <string name="check_state_name">Перевірити стан автоматизації</string>
+    <string name="check_state_description">Перевірити стан автоматизації %1$s=%2$s</string>
+    <string name="state_name_label">Назва стану</string>
+    <string name="state_value_label">Значення стану</string>
+    <string name="no_automation_states">Станів автоматизації ще немає. Додайте їх у плагіні «Стани автоматизації».</string>
+    <string name="automation_state_unknown">Цього стану автоматизації або значення більше не існує</string>
+    <string name="automation_states">Стани автоматизації</string>
+    <string name="description_automation_states">Перегляд і зміна станів автоматизації, наприклад \"Sleeping\". Автоматизації можуть встановлювати і перевіряти їх, а AutoISF читає стан \"Sleeping\".</string>
+    <string name="add_automation_state">Додати стан автоматизації</string>
+    <string name="edit_automation_state">Змінити стан автоматизації</string>
+    <string name="no_automation_states_plugin">Станів автоматизації ще немає. Натисніть +, щоб додати стан з можливими значеннями.</string>
+    <string name="state_values_one_per_line">Можливі значення, по одному в рядку</string>
+    <string name="delete_state">Видалити стан</string>
+    <string name="delete_state_confirmation">Справді видалити цей стан?</string>
+    <string name="aisf_example_night_iobth">Приклад AutoISF: ніч, iobTH 80%</string>
+    <string name="aisf_example_day_iobth">Приклад AutoISF: день, iobTH 100%</string>
+    <string name="aisf_example_sport">Приклад AutoISF: спорт, висока тимчасова ціль</string>
+    <string name="aisf_example_meal">Приклад AutoISF: їжа, вага bgAccel вгору</string>
+    <string name="aisf_example_after_meal">Приклад AutoISF: після їжі, вага bgAccel назад</string>
+    <string name="aisf_daily_settings_export">Щоденний експорт налаштувань</string>
 </resources>

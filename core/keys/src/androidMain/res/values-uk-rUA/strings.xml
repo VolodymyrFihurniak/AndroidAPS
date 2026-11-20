@@ -380,4 +380,30 @@
     <string name="lgs_threshold_summary">Рівень ГК, нижче якого інсулін призупиняється. За замовчуванням використовується стандартна модель цілі. Користувач може встановити значення від 60 мг/дл (3,3 ммоль/л) до 100 мг/дл (5,5 ммоль/л). Значення нижче 65/3,6 використовують модель за замовчуванням</string>
     <!-- IntentKey preferences -->
     <!--    Appearance preferences-->
+    <string name="activity_monitor_title">Активність змінює чутливість</string>
+    <string name="activity_monitor_summary">Активність визначається за кроками, які рахує телефон. Вона не замінює тимчасову ціль для спорту, це лише невелика додаткова допомога.</string>
+    <string name="ignore_inactivity_overnight_title">Вимкнути визначення неактивності під час сну</string>
+    <string name="ignore_inactivity_overnight_summary">Без адаптації до неактивності в години сну. Типово увімкнено.\nЯкщо вимкнено, під час коротких перерв залишайте телефон біля ліжка, щоб монітор лишався вимкненим.</string>
+    <string name="steps_graph_from_smartphone_title">Графік кроків з датчика телефона</string>
+    <string name="steps_graph_from_smartphone_summary">Типово: увімкнено. Коли вимкнено, показуються кроки з годинника.</string>
+    <string name="activity_scale_factor_title">Коефіцієнт для активності</string>
+    <string name="activity_scale_factor_summary">Типово: 1.0\nКоли виявлено активність, її звичайний вплив 15%% або 30%% збільшується чи зменшується на цей коефіцієнт.\n0.0 вимикає вплив активності.</string>
+    <string name="inactivity_scale_factor_title">Коефіцієнт для неактивності</string>
+    <string name="inactivity_scale_factor_summary">Типово: 1.0\nКоли виявлено неактивність, її звичайний вплив 10%% або 20%% збільшується чи зменшується на цей коефіцієнт.\n0.0 вимикає вплив неактивності.</string>
+    <string name="inactivity_idle_start_title">Година початку сну</string>
+    <string name="inactivity_idle_start_summary">Година (0 - 23), коли визначення неактивності вимикається на ніч. Типово: 22</string>
+    <string name="inactivity_idle_end_title">Година кінця сну</string>
+    <string name="inactivity_idle_end_summary">Година (0 - 23), коли визначення неактивності знову вмикається. Типово: 6</string>
+    <string name="calibration_stops_smb_title">Зупинити SMB і ваги AutoISF на 20 хвилин після нової калібровки</string>
+    <string name="calibration_stops_smb_summary">Увімкніть це один раз перед тим, як змінити налаштування калібровки</string>
+    <string name="calibration_enable_smb_title">Знову дозволити SMB і ваги AutoISF зараз</string>
+    <string name="calibration_enable_smb_summary">Увімкніть це, коли зупинка більше не потрібна, бо зміна калібровки була плавною</string>
+    <string name="fslCal_Offset_title">Зсув калібровки Libre</string>
+    <string name="fslCal_Offset_summary">OFFSET у формулі, як у xDrip+:\nLibre калібрований = OFFSET + slope × Libre raw</string>
+    <string name="fslCal_Slope_title">Нахил калібровки Libre</string>
+    <string name="fslCal_Slope_summary">SLOPE у формулі, як у xDrip+:\nLibre калібрований = offset + SLOPE × Libre raw</string>
+    <string name="fsl_exp1_factor_title">Коефіцієнт згладжування Libre</string>
+    <string name="fsl_exp1_factor_summary">Експоненційне згладжування хвилинних значень Libre, коли xDrip+ їх не згладжує.\n0.1: сильне згладжування\n1.0: без згладжування</string>
+    <string name="MaintenanceCleanupDays_title">Скільки днів зберігати під час очищення бази даних</string>
+    <string name="MaintenanceCleanupDays_summary">З хвилинним CGM (Libre) коротший час, наприклад 15 днів, робить застосунок швидшим.\nТипово в AAPS: 93 дні</string>
 </resources>

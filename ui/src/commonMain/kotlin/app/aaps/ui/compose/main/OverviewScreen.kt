@@ -230,8 +230,6 @@ fun OverviewScreen(
         onAutoShowConsumed = onAutoShowConsumed,
         pumpSetupPlugin = pumpSetupPlugin,
         bgSetupPlugin = bgSetupPlugin,
-        topBarPumpPlugin = pumpPlugin?.takeIf { !config.AAPSCLIENT && it.hasComposeContent() },
-        topBarBgSourcePlugin = bgSourcePlugin?.takeIf { it.hasComposeContent() },
         bgQualityBadgeIcon = bgQualityBadgeIcon,
         bgQualityBadgeTint = bgQualityBadgeTint,
         bgQualityBadgeDescription = bgQualityBadgeDescription,

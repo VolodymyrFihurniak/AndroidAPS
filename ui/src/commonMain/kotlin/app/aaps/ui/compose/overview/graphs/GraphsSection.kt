@@ -865,7 +865,6 @@ fun GraphsSection(
                 }
             )
         }
-        if (cardStyle) GraphCardHint()
     }
         footer()
         // Spacer so the last graph / Add button isn't covered by QuickLaunch toolbar
