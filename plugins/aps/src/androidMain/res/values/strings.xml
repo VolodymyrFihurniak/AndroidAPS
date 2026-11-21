@@ -8,6 +8,25 @@
     <string name="learned_prediction">Personal prediction</string>
     <string name="learned_prediction_description">Experimental. Learns from your history and predicts BG for the next 2 hours. Does not change insulin delivery.</string>
     <string name="learned_window_days">Days of history to learn from</string>
+    <string name="learned_state_no_model">No model yet. It learns when there is enough history (about 2 weeks or more).</string>
+    <string name="learned_state_training">Learning…</string>
+    <string name="learned_state_ready">Ready: better than AutoISF on the test days</string>
+    <string name="learned_state_not_ready">Not better than AutoISF yet, so it gives no dose</string>
+    <string name="learned_last_training" comment="%1$s=date and time. Example: Last training: 21.11. 10:45">Last training: %1$s</string>
+    <string name="learned_trained_on" comment="%1$d=days of history, %2$d=number of 5-minute samples. Example: 180 days, 48000 samples">%1$d days, %2$d samples</string>
+    <string name="learned_errors_title">Mean error on the last 14 days</string>
+    <string name="learned_row_model">Model</string>
+    <string name="learned_row_naive" comment="Row of a table: the error of a guess that BG does not change">BG stays the same</string>
+    <string name="learned_learned_title">What it learned</string>
+    <string name="learned_part_night">At night (3:00)</string>
+    <string name="learned_part_morning">In the morning (9:00)</string>
+    <string name="learned_part_day">By day (15:00)</string>
+    <string name="learned_part_evening">In the evening (21:00)</string>
+    <string name="learned_part_line" comment="%1$s=time of day, %2$d=percent, %3$s=BG change with units. Example: At night (3:00): ISF 92 % of the profile, BG on its own 4 mg/dl per hour">%1$s: ISF %2$d %% of the profile, BG on its own %3$s per hour</string>
+    <string name="learned_carbs_line" comment="%1$d=percent, %2$d=hours. Example: Carbs: 110 % of the profile effect, mostly within 2 h">Carbs: %1$d %% of the profile effect, mostly within %2$d h</string>
+    <string name="learned_train_now">Train now</string>
+    <string name="learned_stop">Stop</string>
+    <string name="learned_reset">Reset model</string>
     <string name="openapsma_disabled">Plugin is disabled</string>
     <string name="openapsma_no_glucose_data">No glucose data available</string>
     <string name="openaps_no_as_data">No autosens data available</string>
