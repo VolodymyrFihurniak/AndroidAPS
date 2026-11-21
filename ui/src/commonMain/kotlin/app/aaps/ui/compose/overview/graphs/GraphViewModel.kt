@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.aaps.core.data.configuration.Constants
 import app.aaps.core.interfaces.aps.LearnedForecast
+import app.aaps.core.interfaces.aps.LearnedPoint
 import app.aaps.core.interfaces.aps.LearnedPrediction
 import app.aaps.core.interfaces.logging.AAPSLogger
 import app.aaps.core.interfaces.logging.LTag
@@ -156,8 +157,9 @@ class GraphViewModel(
         if (fullWindow) MutableStateFlow(false) else learnedPrediction.enabled
 
     /**
-     * autoISF build: the personal prediction in the units of the graph, with a band of its typical error. Null when
-     * the plugin is off, has no forecast, the forecast is older than [LEARNED_MAX_AGE_MS], or in a history window.
+     * autoISF build: the two curves of the personal prediction in the units of the graph, the expected one with a band
+     * of its typical error. Null when the plugin is off, has no forecast, the forecast is older than
+     * [LEARNED_MAX_AGE_MS], or in a history window.
      */
     val learnedCurveFlow: StateFlow<LearnedCurve?> =
         if (fullWindow) MutableStateFlow(null)
@@ -167,13 +169,19 @@ class GraphViewModel(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private fun LearnedForecast.toCurve(): LearnedCurve {
-        fun units(mgdl: Double) = profileUtil.fromMgdlToUnits(mgdl)
-        val start = GraphDataPoint(timestamp, units(bgMgdl))
+        val start = GraphDataPoint(timestamp, profileUtil.fromMgdlToUnits(bgMgdl))
+        // From BG now, each point moved by shift(k) mg/dl; empty without points
+        fun curve(points: List<LearnedPoint>, shift: (Int) -> Double = { 0.0 }): List<GraphDataPoint> =
+            if (points.isEmpty()) emptyList()
+            else listOf(start) + points.mapIndexed { k, p -> GraphDataPoint(p.timestamp, profileUtil.fromMgdlToUnits(p.mgdl + shift(k))) }
+        val error = { k: Int -> expectedTypicalErrorMgdl.getOrElse(k) { 0.0 } }
         return LearnedCurve(
-            center = listOf(start) + points.map { GraphDataPoint(it.timestamp, units(it.mgdl)) },
-            upper = listOf(start) + points.mapIndexed { k, p -> GraphDataPoint(p.timestamp, units(p.mgdl + typicalErrorMgdl.getOrElse(k) { 0.0 })) },
-            lower = listOf(start) + points.mapIndexed { k, p -> GraphDataPoint(p.timestamp, units(p.mgdl - typicalErrorMgdl.getOrElse(k) { 0.0 })) },
-            ready = ready
+            noInsulin = curve(points),
+            noInsulinReady = ready,
+            expected = curve(expectedPoints),
+            expectedUpper = curve(expectedPoints) { error(it) },
+            expectedLower = curve(expectedPoints) { -error(it) },
+            expectedReady = expectedReady
         )
     }
 

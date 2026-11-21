@@ -89,11 +89,15 @@ class GraphConfigRepositoryImpl(
         private const val KEY_BG_LAYERS = "bgLayers"
 
         /** autoISF build: BG layers an older version does not know, left out of the old key */
-        private val NEW_BG_LAYERS = listOf(SeriesType.IOB, SeriesType.COB, SeriesType.BASAL, SeriesType.BG_LINE, SeriesType.LEARNED_PREDICTION)
+        private val NEW_BG_LAYERS =
+            listOf(SeriesType.IOB, SeriesType.COB, SeriesType.BASAL, SeriesType.BG_LINE, SeriesType.LEARNED_PREDICTION, SeriesType.LEARNED_EXPECTED)
 
         // autoISF build: whether the personal prediction layer is on. A key of its own, so a config saved before the
         // layer existed shows it (absent = on), and one where the user switched it off keeps it off.
         private const val KEY_MODEL_LAYER = "modelLayer"
+
+        // v2: the same for the expected curve of the personal prediction
+        private const val KEY_EXPECTED_LAYER = "expectedLayer"
         private const val KEY_BG_HEIGHT = "bgHeight"
         private const val KEY_IOB_HEIGHT = "iobHeight"
         private const val KEY_SERIES = "series"
@@ -123,6 +127,7 @@ class GraphConfigRepositoryImpl(
                 put(KEY_BG_OVERLAYS, overlaysToJson(config.bgOverlays - NEW_BG_LAYERS.toSet()))
                 put(KEY_BG_LAYERS, overlaysToJson(config.bgOverlays))
                 put(KEY_MODEL_LAYER, SeriesType.LEARNED_PREDICTION in config.bgOverlays)
+                put(KEY_EXPECTED_LAYER, SeriesType.LEARNED_EXPECTED in config.bgOverlays)
                 // The old key without BASAL, for a version that does not know it
                 put(KEY_IOB_OVERLAYS, overlaysToJson(config.iobOverlays - SeriesType.BASAL))
                 put(KEY_IOB_LAYERS, overlaysToJson(config.iobOverlays))
@@ -161,8 +166,10 @@ class GraphConfigRepositoryImpl(
             val savedBgOverlays = bgLayers?.let { overlaysFromJson(it, emptyList()) }
                 ?: if (beforeBgLayers) (overlaysFromJson(obj.array(KEY_BG_OVERLAYS), OLD_DEFAULT_BG_OVERLAYS) + SeriesType.IOB + SeriesType.COB + SeriesType.BASAL).distinct()
                 else GraphConfig.DEFAULT_BG_OVERLAYS
-            val modelLayer = (obj[KEY_MODEL_LAYER] as? JsonPrimitive)?.booleanOrNull ?: true
-            val bgOverlays = if (modelLayer) (savedBgOverlays + SeriesType.LEARNED_PREDICTION).distinct() else savedBgOverlays - SeriesType.LEARNED_PREDICTION
+            // Absent = on, see KEY_MODEL_LAYER
+            fun layer(key: String, type: SeriesType, overlays: List<SeriesType>): List<SeriesType> =
+                if ((obj[key] as? JsonPrimitive)?.booleanOrNull ?: true) (overlays + type).distinct() else overlays - type
+            val bgOverlays = layer(KEY_EXPECTED_LAYER, SeriesType.LEARNED_EXPECTED, layer(KEY_MODEL_LAYER, SeriesType.LEARNED_PREDICTION, savedBgOverlays))
             val iobOverlays = obj.array(KEY_IOB_LAYERS)?.let { overlaysFromJson(it, emptyList()) }
                 ?: (overlaysFromJson(obj.array(KEY_IOB_OVERLAYS), listOf(SeriesType.ACTIVITY)) + SeriesType.BASAL).distinct()
             val bgHeight = obj.height(KEY_BG_HEIGHT)

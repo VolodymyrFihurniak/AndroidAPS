@@ -45,7 +45,7 @@ internal fun GraphCardHeader(
     bgOverlays: List<SeriesType>,
     onOpenHistory: (() -> Unit)?,
     modifier: Modifier = Modifier,
-    /** autoISF build: the personal prediction when it is drawn, for its legend entry */
+    /** autoISF build: the curves of the personal prediction that are drawn, for their legend entries */
     learned: LearnedCurve? = null
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier.fillMaxWidth()) {
@@ -89,10 +89,16 @@ internal fun GraphCardHeader(
         LegendItem(AapsTheme.generalColors.bgInRange, glucoseMark, stringResource(CoreUiStrings.glucose))
         if (SeriesType.PREDICTIONS in bgOverlays) LegendItem(AapsTheme.generalColors.iobPrediction, LegendMark.DASHED, stringResource(CoreUiStrings.predictions_shortname))
         if (SeriesType.BG_PARABOLA in bgOverlays) LegendItem(AapsTheme.generalColors.bgParabola, LegendMark.LINE, stringResource(CoreUiStrings.bg_parabola_shortname))
-        if (learned != null && SeriesType.LEARNED_PREDICTION in bgOverlays) {
+        if (learned != null && learned.expected.isNotEmpty()) {
             LegendItem(
                 AapsTheme.generalColors.learnedPrediction, LegendMark.LINE,
-                stringResource(if (learned.ready) CoreUiStrings.learned_shortname else CoreUiStrings.learned_not_ready_legend)
+                stringResource(if (learned.expectedReady) CoreUiStrings.learned_expected_shortname else CoreUiStrings.learned_expected_not_ready_legend)
+            )
+        }
+        if (learned != null && learned.noInsulin.isNotEmpty()) {
+            LegendItem(
+                AapsTheme.generalColors.learnedPrediction, LegendMark.DASHED,
+                stringResource(if (learned.noInsulinReady) CoreUiStrings.learned_no_insulin_shortname else CoreUiStrings.learned_no_insulin_not_ready_legend)
             )
         }
         // IOB and COB are areas at the bottom of the BG graph, the basal a band at its top

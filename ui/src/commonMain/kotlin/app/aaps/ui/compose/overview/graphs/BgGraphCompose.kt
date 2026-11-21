@@ -219,9 +219,9 @@ fun BgGraphCompose(
         else            -> rawParabola.copy(extrapolation = emptyList())
     }
     val chartConfig by viewModel.chartConfigFlow.collectAsStateWithLifecycle()
-    // autoISF build: the personal prediction, a layer of its own
+    // autoISF build: the two curves of the personal prediction, a layer each
     val rawLearned by viewModel.learnedCurveFlow.collectAsStateWithLifecycle()
-    val learned = if (SeriesType.LEARNED_PREDICTION in bgOverlays) rawLearned else null
+    val learned = rawLearned?.shownIn(bgOverlays)
 
     // Use derived time range or fall back to default (last GRAPH_TIME_RANGE_HOURS hours)
     val (minTimestamp, maxTimestamp) = derivedTimeRange ?: run {
@@ -515,7 +515,8 @@ fun BgGraphCompose(
     }
 
     // =========================================================================
-    // autoISF build: personal prediction lines (layer 5b) — the curve, then the band of its typical error
+    // autoISF build: personal prediction lines (layer 5b) — "no more insulin" dashed, "expected" solid, then the band
+    // of the expected curve's typical error. Order must match block 6b in submitBgModel.
     // =========================================================================
 
     val learnedLines = remember(learnedColor) {
@@ -525,6 +526,11 @@ fun BgGraphCompose(
             areaFill = null
         )
         listOf(
+            LineCartesianLayer.Line(
+                fill = LineCartesianLayer.LineFill.single(Fill(learnedColor)),
+                stroke = LineCartesianLayer.LineStroke.Dashed(thickness = 2.dp, cap = StrokeCap.Round, dashLength = 6.dp, gapLength = 4.dp),
+                areaFill = null
+            ),
             LineCartesianLayer.Line(
                 fill = LineCartesianLayer.LineFill.single(Fill(learnedColor)),
                 stroke = LineCartesianLayer.LineStroke.Continuous(thickness = 2.dp),
@@ -718,7 +724,7 @@ private data class BgModelInput(
     /** autoISF build: IOB and COB for their areas at the bottom, empty when they are not shown */
     val iob: List<GraphDataPoint>,
     val cob: List<GraphDataPoint>,
-    /** autoISF build: the personal prediction, null when it is not shown */
+    /** autoISF build: the curves of the personal prediction that are shown, null when none is */
     val learned: LearnedCurve?
 )
 
@@ -772,7 +778,8 @@ private suspend fun submitBgModel(
     // far above the real data, see bgAxisTop. The window fallback is decided for both together.
     val realPoints = (input.bgReadings + input.bucketedData).map { it.timestamp to it.value } + measuredPoints
     val predictionPoints = input.predictions.map { it.timestamp to it.value } +
-        input.learned?.center.orEmpty().map { it.timestamp to it.value }
+        input.learned?.noInsulin.orEmpty().map { it.timestamp to it.value } +
+        input.learned?.expected.orEmpty().map { it.timestamp to it.value }
     val windowHasData = (realPoints + predictionPoints).any { inWindow(it.first) }
     fun List<Pair<Long, Double>>.axisValues() = if (windowHasData) filter { inWindow(it.first) }.map { it.second } else map { it.second }
     val realValues = realPoints.axisValues()
@@ -981,15 +988,17 @@ private suspend fun submitBgModel(
         }
 
         // Block 6b → autoISF build: the personal prediction (layer 5b, start axis, already in the units of the graph).
-        // Always three series - the curve, the top and the bottom of its band - with dummies when it is not shown.
+        // Always four series - "no more insulin", "expected", the top and the bottom of the expected band - with
+        // dummies for a curve that is not shown.
         lineModel {
             fun learnedSeries(points: List<GraphDataPoint>?) {
                 if (points == null || points.size < 2) series(x = listOf(0.0, 1.0), y = MARKER_EMPTY_Y)
                 else series(x = points.map { timestampToX(it.timestamp, minTimestamp) }, y = points.map { it.value })
             }
-            learnedSeries(input.learned?.center)
-            learnedSeries(input.learned?.upper)
-            learnedSeries(input.learned?.lower)
+            learnedSeries(input.learned?.noInsulin)
+            learnedSeries(input.learned?.expected)
+            learnedSeries(input.learned?.expectedUpper)
+            learnedSeries(input.learned?.expectedLower)
         }
 
         // Block 7 → Treatment markers (layer 6, start axis — drawn at the glucose value of the

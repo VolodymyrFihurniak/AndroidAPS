@@ -393,7 +393,8 @@ fun GraphInspectOverlay(
                 calibrations = treatmentGraph.calibrations,
                 therapyEvents = treatmentGraph.therapyEvents,
                 runningModes = runningModeGraph.segments,
-                learned = learnedCurve?.center?.drop(1).orEmpty()
+                learnedNoInsulin = learnedCurve?.noInsulin?.drop(1).orEmpty(),
+                learnedExpected = learnedCurve?.expected?.drop(1).orEmpty()
             )
             if (fingerDown && data.timestamp != inspect.pill?.timestamp) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             inspect.shownX = timestampToX(data.timestamp, min)
@@ -450,8 +451,9 @@ data class InspectData(
     val runningMode: RM.Mode? = null,
     /** The treatment belt's events at that time: notes, exercise, announcements. */
     val events: List<TherapyEventGraphPoint> = emptyList(),
-    /** autoISF build: the personal prediction at that time, in the units of the graph */
-    val model: Double? = null
+    /** autoISF build: the two curves of the personal prediction at that time, in the units of the graph */
+    val modelNoInsulin: Double? = null,
+    val modelExpected: Double? = null
 )
 
 /** The nearest reading to [timestamp], with the values and treatments at its time. */
@@ -468,15 +470,16 @@ fun inspectDataAt(
     calibrations: List<CalibrationGraphPoint>,
     therapyEvents: List<TherapyEventGraphPoint>,
     runningModes: List<RunningModeSegment> = emptyList(),
-    /** autoISF build: the points of the personal prediction after now, in the units of the graph */
-    learned: List<GraphDataPoint> = emptyList()
+    /** autoISF build: the points of the two curves of the personal prediction after now, in the units of the graph */
+    learnedNoInsulin: List<GraphDataPoint> = emptyList(),
+    learnedExpected: List<GraphDataPoint> = emptyList()
 ): InspectData {
     // The time snaps to a reading or, after the last reading, to a prediction point. So a hold on
     // any graph steps through the same times as a hold on the BG graph, in steps of a reading, not
     // of a pixel. Only a reading has a glucose value to show.
     val bg = bgReadings.nearest(timestamp) { it.timestamp }
     val time = bg?.timestamp ?: predictions.nearest(timestamp) { it.timestamp }?.timestamp
-        ?: learned.nearest(timestamp) { it.timestamp }?.timestamp ?: timestamp
+        ?: (learnedExpected + learnedNoInsulin).nearest(timestamp) { it.timestamp }?.timestamp ?: timestamp
     // A treatment belongs to the nearest reading, see INSPECT_TREATMENT_MS
     fun belongsHere(at: Long): Boolean =
         if (bg != null) bgReadings.nearest(at) { it.timestamp }?.timestamp == time
@@ -507,7 +510,8 @@ fun inspectDataAt(
             event.isOnBelt() &&
                 (belongsHere(event.timestamp) || event.duration > 0 && time in event.timestamp..endOf(event.timestamp, event.duration))
         },
-        model = learned.nearest(time) { it.timestamp }?.takeIf { abs(it.timestamp - time) <= LEARNED_MATCH_MS }?.value
+        modelNoInsulin = learnedNoInsulin.nearest(time) { it.timestamp }?.takeIf { abs(it.timestamp - time) <= LEARNED_MATCH_MS }?.value,
+        modelExpected = learnedExpected.nearest(time) { it.timestamp }?.takeIf { abs(it.timestamp - time) <= LEARNED_MATCH_MS }?.value
     )
 }
 
@@ -621,9 +625,15 @@ private fun InspectCardItems(data: InspectData) {
             )
         }
     }
-    data.model?.let {
+    data.modelExpected?.let {
         CardValueRow(
-            Icons.Default.Science, stringResource(CoreUiStrings.learned_shortname),
+            Icons.Default.Science, stringResource(CoreUiStrings.learned_expected_shortname),
+            profileUtil.fromMgdlToStringWithUnits(profileUtil.convertToMgdl(it, profileUtil.units)), AapsTheme.generalColors.learnedPrediction
+        )
+    }
+    data.modelNoInsulin?.let {
+        CardValueRow(
+            Icons.Default.Science, stringResource(CoreUiStrings.learned_no_insulin_shortname),
             profileUtil.fromMgdlToStringWithUnits(profileUtil.convertToMgdl(it, profileUtil.units)), AapsTheme.generalColors.learnedPrediction
         )
     }

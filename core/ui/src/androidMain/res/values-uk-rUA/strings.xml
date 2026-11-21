@@ -1228,7 +1228,10 @@
     <string name="bg_parabola_shortname">ПАРАБ</string>
     <string name="graph_series_bg_line">Глюкоза лінією</string>
     <string name="bg_line_shortname">ЛІНІЯ</string>
-    <string name="graph_series_learned">Персональний прогноз (експериментально)</string>
-    <string name="learned_shortname">Модель</string>
-    <string name="learned_not_ready_legend">Модель: ще не краща за AutoISF</string>
+    <string name="graph_series_learned">Персональний прогноз: без додаткового інсуліну (експериментально)</string>
+    <string name="graph_series_learned_expected">Персональний прогноз: очікувано (експериментально)</string>
+    <string name="learned_expected_shortname">Модель: очікувано</string>
+    <string name="learned_no_insulin_shortname">Модель: без інсуліну</string>
+    <string name="learned_expected_not_ready_legend">Модель: очікувано, ще не краща за AutoISF</string>
+    <string name="learned_no_insulin_not_ready_legend">Модель: без інсуліну, ще не краща за AutoISF</string>
 </resources>
