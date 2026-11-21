@@ -113,7 +113,7 @@ object Samples {
     }
 
     /** Net insulin of step [i] as a part of the profile basal, kept in -2..10 */
-    private fun tempBasalRatio(grid: HistoryGrid, i: Int): Float {
+    fun tempBasalRatio(grid: HistoryGrid, i: Int): Float {
         val basal = grid.basal[i]
         if (basal.isNaN() || basal <= 0.0) return 0f
         val perHour = grid.insulin.sumOf { it[i] } * 12.0
