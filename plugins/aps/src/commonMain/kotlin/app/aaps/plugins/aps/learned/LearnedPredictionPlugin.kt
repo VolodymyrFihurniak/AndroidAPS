@@ -25,6 +25,7 @@ import app.aaps.plugins.aps.learned.compose.LearnedPredictionScreen
 import app.aaps.plugins.aps.learned.grid.HistoryGrid
 import app.aaps.plugins.aps.learned.grid.HistoryGridBuilder
 import app.aaps.plugins.aps.learned.grid.HistoryInput
+import app.aaps.plugins.aps.learned.grid.Phases
 import app.aaps.plugins.aps.learned.grid.STEP_MS
 import app.aaps.plugins.aps.learned.keys.LearnedIntKey
 import app.aaps.plugins.aps.learned.keys.LearnedStringKey
@@ -50,7 +51,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.yield
 import kotlinx.datetime.TimeZone
+import kotlin.math.max
 import kotlin.math.roundToInt
 
 /** autoISF build, personal prediction: what the plugin screen shows */
@@ -171,8 +174,10 @@ class LearnedPredictionPlugin(
         return try {
             val now = dateUtil.now()
             val input = historyReader.readLive(now)
-            val grid = HistoryGridBuilder.build(input, now - LIVE_BACK_MS, now + LIVE_AHEAD_MS, TimeZone.currentSystemDefault())
-            val index = Forecaster.liveIndex(grid, input.bg.maxOfOrNull { it.timestamp }, now) ?: return null
+            val newest = input.bg.maxOfOrNull { it.timestamp } ?: return null
+            if (now - newest > Forecaster.MAX_BG_AGE_MS) return null
+            val grid = Forecaster.liveGrid(input, newest, TimeZone.currentSystemDefault())
+            val index = Forecaster.liveIndex(grid, newest, now) ?: return null
             Forecaster.forecast(current, grid, index)?.also { logPrediction(it) }
         } catch (e: CancellationException) {
             throw e
@@ -185,10 +190,11 @@ class LearnedPredictionPlugin(
     private fun logPrediction(forecast: LearnedForecast) {
         if (forecast.timestamp - lastPredictionLog < PREDICTION_LOG_MS) return
         lastPredictionLog = forecast.timestamp
-        val values = listOf(30, 60, 120).joinToString(", ") { minutes ->
-            "$minutes min ${forecast.at(minutes)?.let { profileUtil.fromMgdlToStringWithUnits(it) } ?: "-"}"
+        fun line(at: (Int) -> Double?) = listOf(30, 60, 120).joinToString(", ") { minutes ->
+            "$minutes min ${at(minutes)?.let { profileUtil.fromMgdlToStringWithUnits(it) } ?: "-"}"
         }
-        log.add("Prediction ${dateUtil.timeString(forecast.timestamp)}", values)
+        if (forecast.expectedPoints.isNotEmpty()) log.add("Expected ${dateUtil.timeString(forecast.timestamp)}", line(forecast::expectedAt))
+        log.add("No more insulin ${dateUtil.timeString(forecast.timestamp)}", line(forecast::at))
     }
 
     private fun startTraining() {
@@ -229,15 +235,30 @@ class LearnedPredictionPlugin(
         val bgDays = input.bg.map { it.timestamp / DAY_MS }.distinct().size
         val firstBg = input.bg.minOfOrNull { it.timestamp }
         log.add("History", if (firstBg == null) "no BG" else "BG from ${dateUtil.dateString(firstBg)}, on $bgDays of $days days")
-        val grid = HistoryGridBuilder.build(input, from, now, TimeZone.currentSystemDefault())
-        logInsulinPerDay(input, grid, days)
+        progress("Building the history")
+        val grids = phaseGrids(input, from, now)
+        logInsulinPerDay(input, grids.first(), days)
         val runs = historyReader.storedRuns(now - Samples.TEST_DAYS * DAY_MS, now)
         val trainer = Trainer(
             log = { log.add(it) },
             progress = { progress(it) },
             bg = { profileUtil.fromMgdlToStringWithUnits(it) }
         )
-        return trainer.train(grid, now, days, runs)
+        return trainer.train(grids, now, days, runs)
+    }
+
+    /**
+     * One grid per 1-minute phase ([Phases]), phase 0 first. Phase 0 covers the whole window; the shifted ones cover at
+     * most the last [Phases.MAX_DAYS] days, so a long window does not need 5 times the memory.
+     */
+    private suspend fun phaseGrids(input: HistoryInput, from: Long, now: Long): List<HistoryGrid> {
+        val timeZone = TimeZone.currentSystemDefault()
+        val start = from.floorDiv(STEP_MS) * STEP_MS
+        val shiftedStart = max(start, (now - Phases.MAX_DAYS * DAY_MS - LIVE_BACK_MS).floorDiv(STEP_MS) * STEP_MS)
+        return Phases.offsets(input.bg).map { offset ->
+            yield()
+            HistoryGridBuilder.build(input, (if (offset == 0L) start else shiftedStart) + offset, now, timeZone, alignToStep = false)
+        }
     }
 
     /**
@@ -274,7 +295,6 @@ class LearnedPredictionPlugin(
 
         const val DAY_MS = 86_400_000L
         const val LIVE_BACK_MS = 12 * 3_600_000L
-        const val LIVE_AHEAD_MS = 2 * 3_600_000L
         const val DEBOUNCE_MS = 5_000L
         const val PREDICTION_LOG_MS = 15 * 60_000L
     }

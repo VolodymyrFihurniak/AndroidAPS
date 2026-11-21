@@ -9,6 +9,12 @@ object Phases {
 
     private const val MINUTE_MS = 60_000L
 
+    /**
+     * The shifted phases cover at most this many of the last days. The expected curve keeps at most 100 000 samples
+     * anyway, and 5 grids of 2 years would need too much memory on a phone.
+     */
+    const val MAX_DAYS = 180
+
     /** The most gap between readings, as a median, that still counts as a 1-minute sensor */
     private const val ONE_MINUTE_MEDIAN_GAP_MS = 2 * MINUTE_MS
 

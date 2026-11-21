@@ -19,6 +19,8 @@ import app.aaps.plugins.aps.learned.train.StoredRun
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.yield
 import kotlin.math.min
 
@@ -36,11 +38,40 @@ class HistoryReader(private val persistenceLayer: PersistenceLayer) {
     suspend fun read(from: Long, to: Long): HistoryInput = read(from, to, liveAt = null)
 
     /**
-     * The last 12 hours before [now] and the next 2 hours, for a live forecast. Nothing after [now] is read, except
-     * the running temp basal, which keeps its planned end. The target of a running temp target replaces the profile
-     * target.
+     * The last 12 hours before [now], for a live forecast, and the BG of the 7 days before, for the context of the
+     * expected curve. Nothing after [now] is read, except the running temp basal, which keeps its planned end. The
+     * target of a running temp target replaces the profile target.
+     *
+     * The older BG is read again at most once an hour: with a 1-minute sensor a forecast is made every minute, and
+     * 7 days are about 10 000 readings.
      */
-    suspend fun readLive(now: Long): HistoryInput = read(now - LIVE_BACK_MS, now, liveAt = now)
+    suspend fun readLive(now: Long): HistoryInput {
+        val liveFrom = now - LIVE_BACK_MS
+        val input = read(liveFrom, now, liveAt = now)
+        return input.copy(bg = olderBg(now, liveFrom) + input.bg)
+    }
+
+    private val olderBgLock = Mutex()
+    private var olderBg: List<BgReading> = emptyList()
+    private var olderBgReadAt: Long? = null
+
+    /** BG from [CONTEXT_BACK_MS] before [now] up to [liveFrom] */
+    private suspend fun olderBg(now: Long, liveFrom: Long): List<BgReading> = olderBgLock.withLock {
+        val readAt = olderBgReadAt
+        if (readAt == null || now < readAt || now - readAt >= OLDER_BG_REFRESH_MS) {
+            // Up to the live part of an hour later, so the two parts meet until the next read
+            val readings = mutableListOf<BgReading>()
+            chunks(now - CONTEXT_BACK_MS, liveFrom + OLDER_BG_REFRESH_MS) { start, end ->
+                persistenceLayer.getBgReadingsDataFromTimeToTime(start, end, true)
+                    .filter { it.isValid }
+                    .mapTo(readings) { BgReading(it.timestamp, it.value) }
+            }
+            olderBg = readings.distinctBy { it.timestamp }
+            olderBgReadAt = now
+        }
+        val from = now - CONTEXT_BACK_MS
+        olderBg.filter { it.timestamp >= from && it.timestamp < liveFrom }
+    }
 
     /** The stored loop runs of [from]..[to], one day at a time, as [StoredRun] with their main curve */
     suspend fun storedRuns(from: Long, to: Long): List<StoredRun> {
@@ -156,6 +187,10 @@ class HistoryReader(private val persistenceLayer: PersistenceLayer) {
         const val DAY_MS = 86_400_000L
         const val CHUNK_MS = 7 * DAY_MS
         const val LIVE_BACK_MS = 12 * 3_600_000L
+
+        /** 7 days for the context of the expected curve, 2 hours more than the live grid needs */
+        const val CONTEXT_BACK_MS = 7 * DAY_MS + 3 * 3_600_000L
+        const val OLDER_BG_REFRESH_MS = 3_600_000L
 
         /** A sensor start or calibration just before the range still excludes the first steps of it */
         const val SENSOR_LOOK_BACK_MS = 3 * 3_600_000L

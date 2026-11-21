@@ -6,8 +6,9 @@ import kotlinx.coroutines.flow.StateFlow
 data class LearnedPoint(val timestamp: Long, val mgdl: Double)
 
 /**
- * autoISF build, personal prediction: what the model of the user's own history predicts from now on, if no more
- * insulin is given than what is given already (and the running temp basal until its end). All BG values in mg/dl.
+ * autoISF build, personal prediction: what the model of the user's own history predicts from now on. Two curves:
+ * [points] if no more insulin is given than what is given already (and the running temp basal until its end), and
+ * [expectedPoints], where BG really goes with the loop acting as it usually does. All BG values in mg/dl.
  */
 data class LearnedForecast(
     /** The time of the step the forecast starts at */
@@ -32,11 +33,20 @@ data class LearnedForecast(
     /** The profile ISF now, mg/dl per U. A dose advice never uses an ISF below it, see the Insulin dialog. */
     val profileIsfMgdl: Double = isfMgdl,
     /** BG change over the last 5 minutes, null when the reading before is missing */
-    val deltaMgdl: Double? = null
+    val deltaMgdl: Double? = null,
+    /** v2: the expected curve, one point every 5 minutes from +5 to +120 minutes. Empty when the model has none. */
+    val expectedPoints: List<LearnedPoint> = emptyList(),
+    /** Mean absolute error of the expected curve on the test days, one per point of [expectedPoints] */
+    val expectedTypicalErrorMgdl: List<Double> = emptyList(),
+    /** True when the expected curve was better than AutoISF on the test days */
+    val expectedReady: Boolean = false
 ) {
 
     /** The point [minutes] after [timestamp], for 5, 10, ... 120 */
     fun at(minutes: Int): Double? = points.getOrNull(minutes / 5 - 1)?.mgdl
+
+    /** The point of the expected curve [minutes] after [timestamp], null without that curve */
+    fun expectedAt(minutes: Int): Double? = expectedPoints.getOrNull(minutes / 5 - 1)?.mgdl
 }
 
 /**

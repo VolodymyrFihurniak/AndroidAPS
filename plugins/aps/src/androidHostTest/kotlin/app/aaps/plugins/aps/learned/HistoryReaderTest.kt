@@ -2,9 +2,12 @@ package app.aaps.plugins.aps.learned
 
 import app.aaps.core.data.model.BS
 import app.aaps.core.data.model.EPS
+import app.aaps.core.data.model.GV
 import app.aaps.core.data.model.GlucoseUnit
+import app.aaps.core.data.model.SourceSensor
 import app.aaps.core.data.model.ICfg
 import app.aaps.core.data.model.TB
+import app.aaps.core.data.model.TrendArrow
 import app.aaps.core.data.model.data.Block
 import app.aaps.core.data.model.data.TargetBlock
 import app.aaps.core.interfaces.aps.APSResult
@@ -15,8 +18,13 @@ import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.atLeast
+import org.mockito.kotlin.clearInvocations
+import org.mockito.kotlin.doAnswer
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
 
 class HistoryReaderTest {
 
@@ -40,9 +48,13 @@ class HistoryReaderTest {
         switches: List<EPS> = emptyList(),
         boluses: List<BS> = emptyList(),
         tempBasals: List<TB> = emptyList(),
-        runs: List<APSResult> = emptyList()
+        runs: List<APSResult> = emptyList(),
+        bg: List<GV> = emptyList()
     ): PersistenceLayer = mock {
-        on { getBgReadingsDataFromTimeToTime(any(), any(), any()) } doReturn emptyList()
+        // Both ends count, as in the database
+        on { getBgReadingsDataFromTimeToTime(any(), any(), any()) } doAnswer { call ->
+            bg.filter { it.timestamp >= call.getArgument<Long>(0) && it.timestamp <= call.getArgument<Long>(1) }
+        }
         on { getBolusesFromTimeToTime(any(), any(), any()) } doReturn boluses
         on { getTemporaryBasalsStartingFromTimeToTime(any(), any(), any()) } doReturn tempBasals
         on { getExtendedBolusesStartingFromTimeToTime(any(), any(), any()) } doReturn emptyList()
@@ -73,6 +85,33 @@ class HistoryReaderTest {
         val reader = HistoryReader(persistence(switches = listOf(eps(day0, 50.0)), tempBasals = listOf(running)))
         val input = reader.readLive(now)
         assertThat(input.tempBasals.single().end).isEqualTo(now + 20 * 60_000L)
+    }
+
+    @Test
+    fun `live read has 7 days of BG and reads the older part once an hour`() = runBlocking<Unit> {
+        val now = day0 + 8 * 24 * hour
+        val readings = (0..8 * 24 * 12).map { k ->
+            GV(timestamp = now - k * 5 * 60_000L, raw = null, value = 100.0, trendArrow = TrendArrow.FLAT, noise = null, sourceSensor = SourceSensor.UNKNOWN)
+        }
+        val persistence = persistence(switches = listOf(eps(day0, 50.0)), bg = readings)
+        val reader = HistoryReader(persistence)
+        val first = reader.readLive(now)
+        assertThat(first.bg.minOf { it.timestamp }).isAtMost(now - 7 * 24 * hour - hour)
+        assertThat(first.bg.map { it.timestamp }).containsNoDuplicates()
+
+        // 10 minutes later only the live part is read again
+        clearInvocations(persistence)
+        val later = reader.readLive(now + 10 * 60_000L)
+        verify(persistence, times(1)).getBgReadingsDataFromTimeToTime(any(), any(), any())
+        // No reading twice and none missing where the older part meets the live part
+        val times = later.bg.map { it.timestamp }.sorted()
+        assertThat(times.zipWithNext { a, b -> b - a }.distinct()).containsExactly(5 * 60_000L)
+        assertThat(times.last()).isEqualTo(now)
+
+        // After an hour the older part is read again
+        clearInvocations(persistence)
+        reader.readLive(now + hour)
+        verify(persistence, atLeast(2)).getBgReadingsDataFromTimeToTime(any(), any(), any())
     }
 
     @Test
