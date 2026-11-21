@@ -80,4 +80,22 @@ class ForecasterTest {
         Samples.networkInputs(live, Effects(live).atLive(j), linear, j, liveInputs)
         for (k in training.indices) assertEquals(training[k], liveInputs[k], 1e-3f, "input $k")
     }
+
+    @Test
+    fun `the forecast starts at the newest reading`() {
+        // A 5-minute sensor reading 3.5 minutes after each step: the step that holds "now" is matched to the reading
+        // before it, 5 minutes older than the newest one
+        val shifted = history.input.bg.map { it.copy(timestamp = it.timestamp + 210_000L) }
+        val newest = shifted.first { it.timestamp == history.start + 30 * hour + 210_000L }
+        val now = newest.timestamp + 60_000L
+        val grid = HistoryGridBuilder.build(
+            history.input.copy(bg = shifted.filter { it.timestamp <= now }), now - 12 * hour, now + 2 * hour, TimeZone.UTC
+        )
+        assertTrue(grid.bg[grid.indexOf(now)] != newest.mgdl)
+
+        val index = assertNotNull(Forecaster.liveIndex(grid, newestBg = newest.timestamp, now = now))
+        assertEquals(newest.mgdl, assertNotNull(Forecaster.forecast(model(), grid, index)).bgMgdl)
+        assertNull(Forecaster.liveIndex(grid, newestBg = now - 11 * 60_000L, now = now))
+        assertNull(Forecaster.liveIndex(grid, newestBg = null, now = now))
+    }
 }

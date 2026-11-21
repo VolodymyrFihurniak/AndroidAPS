@@ -25,6 +25,20 @@ object Forecaster {
     private const val MIN_BG = 39.0
     private const val MAX_BG = 400.0
 
+    /** A reading older than this gives no live forecast */
+    const val MAX_BG_AGE_MS = 10 * 60_000L
+
+    /**
+     * The step a live forecast starts at: the one nearest to the newest reading [newestBg], so that reading is the BG
+     * of the step whatever its offset to the 5-minute grid. The step that holds "now" would miss a 5-minute sensor
+     * that reads more than 3 minutes after a step. Null without a reading in the last [MAX_BG_AGE_MS].
+     */
+    fun liveIndex(grid: HistoryGrid, newestBg: Long?, now: Long): Int? {
+        if (newestBg == null || now - newestBg > MAX_BG_AGE_MS) return null
+        val index = ((newestBg - grid.start + STEP_MS / 2).floorDiv(STEP_MS)).toInt()
+        return index.takeIf { it in 0 until grid.size }
+    }
+
     /** Null when BG or the profile is missing at [liveIndex] */
     fun forecast(model: LearnedModel, grid: HistoryGrid, liveIndex: Int): LearnedForecast? {
         val i = liveIndex

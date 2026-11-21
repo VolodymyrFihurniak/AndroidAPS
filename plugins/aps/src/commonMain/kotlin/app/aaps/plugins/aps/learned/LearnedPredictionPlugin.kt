@@ -168,7 +168,8 @@ class LearnedPredictionPlugin(
             val now = dateUtil.now()
             val input = historyReader.readLive(now)
             val grid = HistoryGridBuilder.build(input, now - LIVE_BACK_MS, now + LIVE_AHEAD_MS, TimeZone.currentSystemDefault())
-            Forecaster.forecast(current, grid, grid.indexOf(now))?.also { logPrediction(it) }
+            val index = Forecaster.liveIndex(grid, input.bg.maxOfOrNull { it.timestamp }, now) ?: return null
+            Forecaster.forecast(current, grid, index)?.also { logPrediction(it) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

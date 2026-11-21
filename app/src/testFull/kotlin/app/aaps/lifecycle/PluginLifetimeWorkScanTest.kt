@@ -61,6 +61,9 @@ class PluginLifetimeWorkScanTest {
         "LoopPlugin#onStart" to "the two appScope collectors are kept in `collectors` and cancelled in onStop",
         "InsightPlugin#serviceConnection" to
             "the lastDataTime collector is held in lastDataTimeJob and cancelled in onStop and on service disconnect",
+        "LearnedPredictionPlugin#onStart" to "the forecast collector is held in liveJob and cancelled in onStop",
+        "LearnedPredictionPlugin#startTraining" to
+            "the training is held in trainingJob and cancelled in onStop; it only writes its own model preference, no pump command",
     )
 
     /**
