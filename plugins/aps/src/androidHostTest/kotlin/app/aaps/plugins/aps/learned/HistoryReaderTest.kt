@@ -40,17 +40,17 @@ class HistoryReaderTest {
         tempBasals: List<TB> = emptyList(),
         runs: List<APSResult> = emptyList()
     ): PersistenceLayer = mock {
-        onBlocking { getBgReadingsDataFromTimeToTime(any(), any(), any()) } doReturn emptyList()
-        onBlocking { getBolusesFromTimeToTime(any(), any(), any()) } doReturn emptyList()
-        onBlocking { getTemporaryBasalsStartingFromTimeToTime(any(), any(), any()) } doReturn tempBasals
-        onBlocking { getExtendedBolusesStartingFromTimeToTime(any(), any(), any()) } doReturn emptyList()
-        onBlocking { getCarbsFromTimeToTimeExpanded(any(), any(), any()) } doReturn emptyList()
-        onBlocking { getEffectiveProfileSwitchesFromTimeToTime(any(), any(), any()) } doReturn switches
-        onBlocking { getEffectiveProfileSwitchActiveAt(any()) } doReturn null
-        onBlocking { getTherapyEventDataFromToTime(any(), any()) } doReturn emptyList()
-        onBlocking { getValidCalibrationEntriesSince(any()) } doReturn emptyList()
-        onBlocking { getTemporaryTargetActiveAt(any()) } doReturn null
-        onBlocking { getApsResults(any(), any()) } doReturn runs
+        on { getBgReadingsDataFromTimeToTime(any(), any(), any()) } doReturn emptyList()
+        on { getBolusesFromTimeToTime(any(), any(), any()) } doReturn emptyList()
+        on { getTemporaryBasalsStartingFromTimeToTime(any(), any(), any()) } doReturn tempBasals
+        on { getExtendedBolusesStartingFromTimeToTime(any(), any(), any()) } doReturn emptyList()
+        on { getCarbsFromTimeToTimeExpanded(any(), any(), any()) } doReturn emptyList()
+        on { getEffectiveProfileSwitchesFromTimeToTime(any(), any(), any()) } doReturn switches
+        on { getEffectiveProfileSwitchActiveAt(any()) } doReturn null
+        on { getTherapyEventDataFromToTime(any(), any()) } doReturn emptyList()
+        on { getValidCalibrationEntriesSince(any()) } doReturn emptyList()
+        on { getTemporaryTargetActiveAt(any()) } doReturn null
+        on { getApsResults(any(), any()) } doReturn runs
     }
 
     @Test

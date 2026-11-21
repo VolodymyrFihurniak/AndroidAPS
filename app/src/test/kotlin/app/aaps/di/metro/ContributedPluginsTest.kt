@@ -39,6 +39,8 @@ class ContributedPluginsTest {
             200, 210, 220, 230, 240,
             // autoISF: Automation States, after Automation
             252,
+            // autoISF build: Personal prediction, the Experimental category
+            260,
             400, 410, 420, 430, 440, 450, 460, 470, 480, 490, 500, 510, 520, 530, 540, 550,
             // sync - the every-build part of the 300 block. SmsCommunicator 300 and Tidepool 320 are
             // @NotNSClient; 340 (OpenHumans) comes from its own graph extension.
