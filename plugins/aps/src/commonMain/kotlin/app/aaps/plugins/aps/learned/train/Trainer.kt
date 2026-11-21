@@ -340,8 +340,8 @@ class Trainer(
                 modelSum[h - 1] += modelError
                 naiveSum[h - 1] += naiveError
                 expectedSum[h - 1] += expectedError
-                // oref ends a curve early once it stops changing; past its end it stays at its last value
-                run?.mainCurve?.let { curve -> curve.getOrNull(h - 1) ?: curve.lastOrNull() }?.let {
+                // Only at 30, 60 and 120 minutes, the points of the metrics
+                run?.atStep(h)?.let {
                     autoIsfSum[h - 1] += abs(it - actual)
                     pairedModelSum[h - 1] += modelError
                     pairedNaiveSum[h - 1] += naiveError

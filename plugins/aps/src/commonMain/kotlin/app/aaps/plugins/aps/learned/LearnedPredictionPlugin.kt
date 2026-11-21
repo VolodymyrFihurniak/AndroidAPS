@@ -82,6 +82,7 @@ class LearnedPredictionPlugin(
     preferences: Preferences,
     notificationManager: NotificationManager,
     private val historyReader: HistoryReader,
+    private val runArchive: AutoIsfRunArchive,
     private val rxBus: RxBus,
     private val dateUtil: DateUtil,
     private val profileUtil: ProfileUtil,
@@ -144,6 +145,11 @@ class LearnedPredictionPlugin(
         trainingJob?.cancel()
         _enabled.value = false
         _forecast.value = null
+        try {
+            runArchive.save()
+        } catch (e: Exception) {
+            aapsLogger.error(LTag.APS, "Personal prediction: saving the AutoISF runs failed", e)
+        }
         super.onStop()
     }
 
@@ -172,6 +178,13 @@ class LearnedPredictionPlugin(
 
     private suspend fun refresh() {
         _forecast.value = computeForecast()
+        try {
+            runArchive.update(dateUtil.now())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            aapsLogger.error(LTag.APS, "Personal prediction: copying the AutoISF runs failed", e)
+        }
         if (TrainingSchedule.shouldStart(dateUtil.now(), model, lastAttempt, trainingJob?.isActive == true)) startTraining()
     }
 
@@ -244,9 +257,15 @@ class LearnedPredictionPlugin(
         progress("Building the history")
         val grids = phaseGrids(input, from, now)
         logInsulinPerDay(input, grids.first(), days)
-        val stored = historyReader.storedRuns(now - Samples.TEST_DAYS * DAY_MS, now)
-        log.add("AutoISF runs", "${stored.runs.size} with a prediction curve in the database on the test days, ${stored.withoutCurve} without one")
-        val runs = stored.runs
+        val testFrom = now - Samples.TEST_DAYS * DAY_MS
+        val stored = historyReader.storedRuns(testFrom, now)
+        val copied = runArchive.runs(testFrom, now)
+        log.add(
+            "AutoISF runs",
+            "${stored.runs.size} with a prediction curve in the database on the test days, ${stored.withoutCurve} without one, ${copied.size} in the copy of this plugin"
+        )
+        // The same run can be in both: one per minute is enough
+        val runs = (copied + stored.runs).distinctBy { it.timestamp / 60_000L }
         val trainer = Trainer(
             log = { log.add(it) },
             progress = { progress(it) },

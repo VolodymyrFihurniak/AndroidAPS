@@ -21,7 +21,10 @@ enum class LearnedIntKey(
     TrainingWindowDays("learned_prediction_window_days", 180, 30, 730, title = ApsStrings.learned_window_days),
 }
 
-/** autoISF build, personal prediction: the trained model. Not exported: it belongs to this phone's history. */
+/**
+ * autoISF build, personal prediction: the trained model, and a copy of the AutoISF predictions of the last 15 days to
+ * compare with. Not exported: they belong to this phone's history.
+ */
 enum class LearnedStringKey(
     override val key: String,
     override val defaultValue: String,
@@ -29,4 +32,5 @@ enum class LearnedStringKey(
 ) : StringNonPreferenceKey {
 
     ModelJson("learned_prediction_model", "", exportable = false),
+    AutoIsfRuns("learned_prediction_autoisf_runs", "", exportable = false),
 }

@@ -75,7 +75,7 @@ class TrainerTest {
     /** Stored "AutoISF" runs for the last 14 days that say BG stays where it is: easy to beat */
     private fun bgStaysRuns(history: SyntheticHistory.Result) = history.input.bg
         .filter { it.timestamp >= history.end - Samples.TEST_DAYS * 86_400_000L }
-        .map { StoredRun(it.timestamp, List(24) { _ -> it.mgdl }) }
+        .map { StoredRun(it.timestamp, it.mgdl, it.mgdl, it.mgdl) }
 
     @Test
     fun `no stored AutoISF runs means neither curve is ready`() = runTest(timeout = 10.minutes) {

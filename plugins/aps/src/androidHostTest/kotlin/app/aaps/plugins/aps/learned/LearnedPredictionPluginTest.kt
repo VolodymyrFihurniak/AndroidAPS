@@ -76,7 +76,7 @@ class LearnedPredictionPluginTest {
 
     private val sut = LearnedPredictionPlugin(
         aapsLogger = mock<AAPSLogger>(), rh = mock<TextResolver>(), preferences = preferences,
-        notificationManager = mock<NotificationManager>(), historyReader = historyReader, rxBus = rxBus,
+        notificationManager = mock<NotificationManager>(), historyReader = historyReader, runArchive = mock<AutoIsfRunArchive>(), rxBus = rxBus,
         dateUtil = dateUtil, profileUtil = mock<ProfileUtil>(), appScope = scope
     )
 

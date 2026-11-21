@@ -99,7 +99,7 @@ class HistoryReader(private val persistenceLayer: PersistenceLayer) {
                     continue
                 }
                 // Point 0 of an oref curve is BG now
-                out += StoredRun(run.date, curve.drop(1).map { it.toDouble() })
+                StoredRun.of(run.date, curve.drop(1).map { it.toDouble() })?.let { out += it }
             }
             start = end
             yield()

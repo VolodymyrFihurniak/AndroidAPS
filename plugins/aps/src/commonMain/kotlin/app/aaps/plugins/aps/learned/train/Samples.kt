@@ -10,10 +10,29 @@ import kotlin.math.pow
 import kotlin.math.sin
 
 /**
- * autoISF build, personal prediction: one stored AutoISF run, for the comparison on the test days. Point `k` of
- * [mainCurve] is the prediction `(k + 1) * 5` minutes after [timestamp], mg/dl.
+ * autoISF build, personal prediction: one stored AutoISF run, for the comparison on the test days: its main curve 30,
+ * 60 and 120 minutes after [timestamp], mg/dl. The comparison needs no other points, so a copy of 2 weeks stays small.
  */
-data class StoredRun(val timestamp: Long, val mainCurve: List<Double>)
+data class StoredRun(val timestamp: Long, val at30: Double, val at60: Double, val at120: Double) {
+
+    /** The value [steps] 5-minute steps after [timestamp], for 6, 12 and 24 steps; null for any other */
+    fun atStep(steps: Int): Double? = when (steps) {
+        6    -> at30
+        12   -> at60
+        24   -> at120
+        else -> null
+    }
+
+    companion object {
+
+        /** From an oref curve without its point 0 (BG now). oref ends a curve early once it stops changing: past its end it stays at its last value. */
+        fun of(timestamp: Long, curve: List<Double>): StoredRun? {
+            if (curve.isEmpty()) return null
+            fun at(steps: Int) = curve.getOrNull(steps - 1) ?: curve.last()
+            return StoredRun(timestamp, at(6), at(12), at(24))
+        }
+    }
+}
 
 /** autoISF build, personal prediction: the stored runs of a time range, and how many runs there had no prediction curve */
 data class StoredRuns(val runs: List<StoredRun>, val withoutCurve: Int)

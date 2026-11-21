@@ -14,6 +14,7 @@ import app.aaps.core.interfaces.aps.APSResult
 import app.aaps.core.interfaces.aps.Predictions
 import app.aaps.core.interfaces.aps.RT
 import app.aaps.core.interfaces.db.PersistenceLayer
+import app.aaps.plugins.aps.learned.train.StoredRun
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
@@ -127,8 +128,9 @@ class HistoryReaderTest {
         }
         val reader = HistoryReader(persistence(runs = listOf(withCarbs, noCarbs)))
         val runs = reader.storedRuns(day0, day0 + 2 * hour).runs.distinctBy { it.timestamp }
-        assertThat(runs.first { it.timestamp == day0 }.mainCurve).containsExactly(110.0, 120.0).inOrder()
-        assertThat(runs.first { it.timestamp == day0 + hour }.mainCurve).containsExactly(101.0, 102.0).inOrder()
+        // The curves are short: past their end they stay at their last value
+        assertThat(runs.first { it.timestamp == day0 }).isEqualTo(StoredRun(day0, 120.0, 120.0, 120.0))
+        assertThat(runs.first { it.timestamp == day0 + hour }).isEqualTo(StoredRun(day0 + hour, 102.0, 102.0, 102.0))
     }
 
     @Test
