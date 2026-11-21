@@ -109,4 +109,13 @@ class HistoryGridBuilderTest {
         assertEquals(2 * PI * 3.0 / 24.0, grid.dayAngle[oneUtc], 1e-9)
         assertEquals(2 * PI * (3.0 + 55.0 / 60.0) / 24.0, grid.dayAngle[oneUtc - 1], 1e-9)
     }
+
+    @Test
+    fun `not aligned starts exactly at from`() {
+        val from = t0 + 3 * minute
+        val grid = HistoryGridBuilder.build(input(bg = listOf(BgReading(from, 100.0))), from, from + 12 * STEP_MS, TimeZone.UTC, alignToStep = false)
+        assertEquals(from, grid.start)
+        assertEquals(from + STEP_MS, grid.timeOf(1))
+        assertEquals(100.0, grid.bg[0])
+    }
 }

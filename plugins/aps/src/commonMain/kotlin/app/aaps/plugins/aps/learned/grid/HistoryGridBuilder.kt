@@ -33,9 +33,13 @@ object HistoryGridBuilder {
     private const val HOUR_MS = 3_600_000.0
     private const val DAY_S = 86_400.0
 
-    /** The grid from [from] (down to a whole step) to [to], with the local time of day in [timeZone] */
-    fun build(input: HistoryInput, from: Long, to: Long, timeZone: TimeZone): HistoryGrid {
-        val start = from.floorDiv(STEP_MS) * STEP_MS
+    /**
+     * The grid from [from] to [to], with the local time of day in [timeZone]. With [alignToStep] the first step is
+     * [from] down to a whole 5 minutes; without it the first step is exactly [from], so a live grid can end exactly at
+     * the newest reading and a 1-minute sensor can be learned in 5 shifted phases (see [Phases]).
+     */
+    fun build(input: HistoryInput, from: Long, to: Long, timeZone: TimeZone, alignToStep: Boolean = true): HistoryGrid {
+        val start = if (alignToStep) from.floorDiv(STEP_MS) * STEP_MS else from
         val size = max(0L, (to - start + STEP_MS - 1) / STEP_MS).toInt()
         val end = start + size * STEP_MS
         fun indexOf(timestamp: Long) = ((timestamp - start).floorDiv(STEP_MS)).toInt()
