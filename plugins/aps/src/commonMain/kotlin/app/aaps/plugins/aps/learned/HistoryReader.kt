@@ -2,6 +2,7 @@ package app.aaps.plugins.aps.learned
 
 import app.aaps.core.data.model.BS
 import app.aaps.core.data.model.EPS
+import app.aaps.core.data.model.GV
 import app.aaps.core.data.model.TE
 import app.aaps.core.data.model.TT
 import app.aaps.core.interfaces.db.PersistenceLayer
@@ -19,6 +20,8 @@ import app.aaps.plugins.aps.learned.train.StoredRun
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.yield
@@ -33,6 +36,9 @@ import kotlin.math.min
 @SingleIn(AppScope::class)
 @Inject
 class HistoryReader(private val persistenceLayer: PersistenceLayer) {
+
+    /** Emits when BG readings are added or changed: with a 1-minute sensor, every minute */
+    fun bgChanges(): Flow<Unit> = persistenceLayer.observeChanges(GV::class).map { }
 
     /** Everything from [from] to [to]. Temp basals and extended boluses that started before [from] are included. */
     suspend fun read(from: Long, to: Long): HistoryInput = read(from, to, liveAt = null)

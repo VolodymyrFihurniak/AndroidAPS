@@ -49,6 +49,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
@@ -129,7 +131,11 @@ class LearnedPredictionPlugin(
         liveJob?.cancel()
         liveJob = appScope.launch(Dispatchers.Default) {
             refresh()
-            rxBus.toFlow(EventBucketedDataCreated::class).debounce(DEBOUNCE_MS).collect { refresh() }
+            // A new forecast on every new BG reading (with a 1-minute sensor every minute), and when the data of the
+            // graph is calculated again, for example after a bolus
+            merge(historyReader.bgChanges(), rxBus.toFlow(EventBucketedDataCreated::class).map { })
+                .debounce(DEBOUNCE_MS)
+                .collect { refresh() }
         }
     }
 
