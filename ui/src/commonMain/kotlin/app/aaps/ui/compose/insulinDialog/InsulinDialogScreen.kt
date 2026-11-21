@@ -310,6 +310,7 @@ internal fun InsulinDialogContent(
 
             // autoISF build: the advice of the loop, from its last run
             uiState.recommendation?.let { BolusRecommendationCard(advice = it, onUse = onUseRecommendation) }
+            uiState.modelAdvice?.let { ModelAdviceCard(advice = it) }
 
             // --- Card 1: Switches ---
             Card(

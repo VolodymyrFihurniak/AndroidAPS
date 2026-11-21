@@ -36,7 +36,9 @@ data class InsulinDialogUiState(
     /** An SMB is being delivered on this phone (always false on a client: its master decides). */
     val smbBeingDelivered: Boolean = false,
     /** autoISF build: the advice of the loop, null until it is read */
-    val recommendation: BolusRecommendation? = null
+    val recommendation: BolusRecommendation? = null,
+    /** autoISF build: the advice of the personal prediction, null while that plugin is off */
+    val modelAdvice: ModelAdvice? = null
 )
 
 val InsulinDialogUiState.eventTimeChanged: Boolean

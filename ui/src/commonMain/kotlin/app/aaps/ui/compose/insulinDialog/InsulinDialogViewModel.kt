@@ -181,6 +181,9 @@ class InsulinDialogViewModel(
         viewModelScope.launch {
             val recommendation = bolusRecommendationSource.current()
             _uiState.update { it.copy(recommendation = recommendation) }
+            // autoISF build: and the advice of the personal prediction, when that plugin is on
+            val modelAdvice = bolusRecommendationSource.modelAdvice()
+            _uiState.update { it.copy(modelAdvice = modelAdvice) }
         }
     }
 

@@ -457,4 +457,15 @@
     <string name="bolus_rec_isf" comment="%1$s=BG with unit. Example: ISF: 3.0 mmol/l per U">ISF: %1$s per U</string>
     <string name="bolus_rec_run_age" comment="%1$s=minutes with unit. Example: Loop run 3 min ago">Loop run %1$s ago</string>
     <string name="bolus_rec_use" comment="Button that puts the advised dose into the amount field. %1$s=dose with unit. Example: Use 0.65 U">Use %1$s</string>
+    <string name="model_adv_title" comment="Title of the advice block of the personal prediction in the Insulin dialog">Model advice (experimental)</string>
+    <string name="model_adv_no_data">No current prediction of the model.</string>
+    <string name="model_adv_not_ready">The model is not better than AutoISF yet, so it gives no dose.</string>
+    <string name="model_adv_missing" comment="%1$s=insulin with unit. Example: About 0.65 U are missing.">About %1$s are missing.</string>
+    <string name="model_adv_loop_may_give">The loop may give part of this itself as SMB.</string>
+    <string name="model_adv_too_much" comment="%1$s=insulin with unit, %2$s=carbs with unit. Example: About 0.65 U too much insulin. About 8 g would cover it.">About %1$s too much insulin. About %2$s would cover it.</string>
+    <string name="model_adv_none">No bolus needed.</string>
+    <string name="model_adv_in" comment="%1$s=time with unit, %2$s=BG with unit. Example: In 30 min: 6.2 mmol/l">In %1$s: %2$s</string>
+    <string name="model_adv_isf" comment="%1$s=BG with unit. Example: Personal ISF: 2.8 mmol/l per U">Personal ISF: %1$s per U</string>
+    <string name="model_adv_error" comment="%1$s=BG with unit. Example: 1.0 mmol/l">Typical error at 60 min: %1$s</string>
+    <string name="model_adv_trained" comment="%1$s=date and time">Model trained: %1$s</string>
 </resources>

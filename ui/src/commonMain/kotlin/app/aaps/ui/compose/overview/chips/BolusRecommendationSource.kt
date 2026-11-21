@@ -1,6 +1,7 @@
 package app.aaps.ui.compose.overview.chips
 
 import app.aaps.core.data.model.RM
+import app.aaps.core.interfaces.aps.LearnedPrediction
 import app.aaps.core.interfaces.aps.Loop
 import app.aaps.core.interfaces.configuration.Config
 import app.aaps.core.interfaces.constraints.ConstraintsChecker
@@ -11,6 +12,9 @@ import app.aaps.core.interfaces.profile.ProfileUtil
 import app.aaps.core.interfaces.utils.DateUtil
 import app.aaps.core.keys.UnitDoubleKey
 import app.aaps.core.keys.interfaces.Preferences
+import app.aaps.ui.compose.insulinDialog.ModelAdvice
+import app.aaps.ui.compose.insulinDialog.ModelAdviceKind
+import app.aaps.ui.compose.insulinDialog.modelAdviceOf
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
@@ -34,10 +38,30 @@ class BolusRecommendationSource(
     private val profileUtil: ProfileUtil,
     private val constraintChecker: ConstraintsChecker,
     private val activePlugin: ActivePlugin,
-    private val dateUtil: DateUtil
+    private val dateUtil: DateUtil,
+    private val learnedPrediction: LearnedPrediction
 ) {
 
     suspend fun current(): BolusRecommendation = runCatching { bolusRecommendationOf(input()) }.getOrElse { BolusRecommendation() }
+
+    /**
+     * autoISF build: the advice of the personal prediction (experimental), with the same BG, low mark, step and
+     * closed loop as [current]. Null while that plugin is off.
+     */
+    suspend fun modelAdvice(): ModelAdvice? {
+        if (!learnedPrediction.enabled.value) return null
+        return runCatching {
+            val input = input()
+            modelAdviceOf(
+                forecast = learnedPrediction.forecastNow(),
+                bgMgdl = input.bgMgdl,
+                lowMgdl = input.lowMgdl,
+                bolusStep = input.bolusStep,
+                closedLoopSmb = input.loopGivesSmb,
+                now = dateUtil.now()
+            )
+        }.getOrElse { ModelAdvice(ModelAdviceKind.NO_DATA) }
+    }
 
     private suspend fun input(): BolusRecommendationInput {
         val now = dateUtil.now()

@@ -116,12 +116,27 @@ internal class InsulinDialogViewModelTest {
         sut = create()
     }
 
-    private fun create() = InsulinDialogViewModel(
+    private fun create(modelAdvice: ModelAdvice? = null) = InsulinDialogViewModel(
         constraintChecker, profileFunction, profileUtil, activePlugin, ch, insulinManager,
         config, automation, decimalFormatter, loop, preferences, rh, dateUtil, hardLimits, batchExecutor,
         rxBus, CoroutineScope(UnconfinedTestDispatcher()), nsClient, commandQueue,
-        mock<BolusRecommendationSource> { onBlocking { current() } doReturn BolusRecommendation() }
+        mock<BolusRecommendationSource> {
+            on { current() } doReturn BolusRecommendation()
+            on { modelAdvice() } doReturn modelAdvice
+        }
     )
+
+    // autoISF build: the advice of the personal prediction, read once when the dialog opens
+    @Test
+    fun `model advice is loaded`() {
+        val withModel = create(ModelAdvice(ModelAdviceKind.MISSING, units = 0.5))
+        main.scheduler.runCurrent()
+        assertThat(withModel.uiState.value.modelAdvice?.kind).isEqualTo(ModelAdviceKind.MISSING)
+
+        val withoutModel = create(null)
+        main.scheduler.runCurrent()
+        assertThat(withoutModel.uiState.value.modelAdvice).isNull()
+    }
 
     @Test
     fun `the eating soon target is offered to a role that may set one`() {

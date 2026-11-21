@@ -425,4 +425,15 @@
     <string name="bolus_rec_isf">ISF: %1$s на Од</string>
     <string name="bolus_rec_run_age">Розрахунок петлі %1$s тому</string>
     <string name="bolus_rec_use">Взяти %1$s</string>
+    <string name="model_adv_title">Порада моделі (експериментально)</string>
+    <string name="model_adv_no_data">Немає свіжого прогнозу моделі.</string>
+    <string name="model_adv_not_ready">Модель ще не краща за AutoISF, тому дозу не радить.</string>
+    <string name="model_adv_missing">Бракує близько %1$s.</string>
+    <string name="model_adv_loop_may_give">Частину з цього петля може дати сама як SMB.</string>
+    <string name="model_adv_too_much">Близько %1$s інсуліну забагато. Це покриють близько %2$s.</string>
+    <string name="model_adv_none">Болюс не потрібен.</string>
+    <string name="model_adv_in">Через %1$s: %2$s</string>
+    <string name="model_adv_isf">Персональний ISF: %1$s на 1 Од</string>
+    <string name="model_adv_error">Типова похибка на 60 хв: %1$s</string>
+    <string name="model_adv_trained">Модель навчена: %1$s</string>
 </resources>
