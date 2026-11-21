@@ -4,6 +4,8 @@ plugins {
     alias(libs.plugins.compose.multiplatform)
     // Metro, so this module can wire its own Android entry points.
     alias(libs.plugins.metro)
+    // autoISF build: the personal prediction saves its model as JSON
+    id("kotlinx-serialization")
 }
 
 registerKeyStrings("aps")
