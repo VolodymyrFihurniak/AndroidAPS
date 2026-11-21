@@ -1,8 +1,7 @@
-package app.aaps.plugins.sync.log
+package app.aaps.core.interfaces.sync
 
 import app.aaps.core.interfaces.logging.AAPSLogger
 import app.aaps.core.interfaces.logging.LTag
-import app.aaps.core.interfaces.sync.SyncLogEntry
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,7 +10,7 @@ import kotlinx.serialization.json.JsonElement
 
 /**
  * The log a sync plugin shows on its screen, newest first, at most [maxEntries] lines. Nightscout, xDrip
- * and Tidepool each own one, and [SyncLogList] shows it. Every line also goes to the debug log under [tag].
+ * and Tidepool each own one, and `SyncLogList` in core/ui shows it. Every line also goes to the debug log under [tag].
  */
 class SyncLogBuffer(
     private val aapsLogger: AAPSLogger,

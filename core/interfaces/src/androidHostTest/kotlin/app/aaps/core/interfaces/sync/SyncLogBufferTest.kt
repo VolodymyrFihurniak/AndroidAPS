@@ -1,4 +1,4 @@
-package app.aaps.plugins.sync.log
+package app.aaps.core.interfaces.sync
 
 import app.aaps.core.interfaces.logging.AAPSLogger
 import app.aaps.core.interfaces.logging.LTag

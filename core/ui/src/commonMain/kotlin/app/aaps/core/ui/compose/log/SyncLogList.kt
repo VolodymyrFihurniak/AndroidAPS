@@ -1,4 +1,4 @@
-package app.aaps.plugins.sync.log
+package app.aaps.core.ui.compose.log
 
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement

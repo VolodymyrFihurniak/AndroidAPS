@@ -21,6 +21,7 @@ import app.aaps.core.interfaces.utils.DateUtil
 import app.aaps.core.ui.compose.AapsSpacing
 import app.aaps.core.ui.compose.ActionButtons
 import app.aaps.core.ui.compose.ScreenAction
+import app.aaps.core.ui.compose.log.SyncLogList
 import app.aaps.core.ui.compose.stringResource
 import app.aaps.plugins.sync.SyncStrings
 

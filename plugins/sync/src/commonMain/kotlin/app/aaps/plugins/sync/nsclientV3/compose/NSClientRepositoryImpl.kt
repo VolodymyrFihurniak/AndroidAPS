@@ -6,7 +6,7 @@ import app.aaps.core.interfaces.nsclient.NSClientRepository
 import app.aaps.core.interfaces.rx.bus.RxBus
 import app.aaps.core.interfaces.rx.events.EventSWSyncStatus
 import app.aaps.core.interfaces.sync.SyncLogEntry
-import app.aaps.plugins.sync.log.SyncLogBuffer
+import app.aaps.core.interfaces.sync.SyncLogBuffer
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject

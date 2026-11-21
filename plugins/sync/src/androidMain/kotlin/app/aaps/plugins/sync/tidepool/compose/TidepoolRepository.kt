@@ -3,7 +3,7 @@ package app.aaps.plugins.sync.tidepool.compose
 import app.aaps.core.interfaces.logging.AAPSLogger
 import app.aaps.core.interfaces.logging.LTag
 import app.aaps.core.interfaces.sync.SyncLogEntry
-import app.aaps.plugins.sync.log.SyncLogBuffer
+import app.aaps.core.interfaces.sync.SyncLogBuffer
 import app.aaps.plugins.sync.tidepool.auth.AuthFlowOut
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
