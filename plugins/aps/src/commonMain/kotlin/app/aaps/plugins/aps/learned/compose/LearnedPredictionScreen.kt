@@ -129,21 +129,31 @@ private fun StatusCard(status: LearnedStatus) {
     val dateUtil = LocalDateUtil.current
     AapsCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(AapsSpacing.extraLarge), verticalArrangement = Arrangement.spacedBy(AapsSpacing.small)) {
-            val (text, warning) = when (status.state) {
-                LearnedState.NO_MODEL  -> stringResource(ApsStrings.learned_state_no_model) to false
-                LearnedState.TRAINING  -> stringResource(ApsStrings.learned_state_training) to false
-                LearnedState.READY     -> stringResource(ApsStrings.learned_state_ready) to false
-                LearnedState.NOT_READY ->
-                    // Too few stored AutoISF runs is a different reason than losing to AutoISF
-                    if ((status.model?.autoIsfCoverage ?: 0.0) < 0.5)
-                        stringResource(ApsStrings.learned_state_no_comparison, ((status.model?.autoIsfCoverage ?: 0.0) * 100).roundToInt()) to true
+            val model = status.model
+            // One line per curve, the expected one first. Too few stored AutoISF runs is a different reason than
+            // losing to AutoISF, and the same for both curves.
+            val lines: List<Pair<String, Boolean>> = when {
+                status.state == LearnedState.NO_MODEL -> listOf(stringResource(ApsStrings.learned_state_no_model) to false)
+                status.state == LearnedState.TRAINING -> listOf(stringResource(ApsStrings.learned_state_training) to false)
+                model == null                         -> emptyList()
+                model.autoIsfCoverage < Trainer.MIN_COVERAGE ->
+                    listOf(stringResource(ApsStrings.learned_state_no_comparison, (model.autoIsfCoverage * 100).roundToInt()) to true)
+
+                else                                  -> listOfNotNull(
+                    if (model.expected == null) null
+                    else if (model.expectedReady) stringResource(ApsStrings.learned_state_ready_expected) to false
+                    else stringResource(ApsStrings.learned_state_not_ready_expected) to true,
+                    if (model.ready) stringResource(ApsStrings.learned_state_ready) to false
                     else stringResource(ApsStrings.learned_state_not_ready) to true
+                )
             }
-            Text(
-                text = text,
-                style = MaterialTheme.typography.titleSmall,
-                color = if (warning) AapsTheme.generalColors.statusWarning else MaterialTheme.colorScheme.onSurface
-            )
+            lines.forEach { (text, warning) ->
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (warning) AapsTheme.generalColors.statusWarning else MaterialTheme.colorScheme.onSurface
+                )
+            }
             if (status.state == LearnedState.TRAINING) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 status.progress?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -159,12 +169,33 @@ private fun StatusCard(status: LearnedStatus) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Text(
+                    text = stringResource(ApsStrings.learned_phases, model.phases),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (model.trainingSeconds.isNotEmpty()) {
+                    val seconds = model.trainingSeconds
+                    Text(
+                        text = stringResource(
+                            ApsStrings.learned_training_time, duration(seconds.values.sum()), duration(seconds["linear"] ?: 0),
+                            duration(seconds["network"] ?: 0), duration(seconds["gru"] ?: 0), duration(seconds["measure"] ?: 0)
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
 }
 
-/** The mean error at 30, 60 and 120 minutes of the model, AutoISF and "BG stays the same" on the test days */
+/** A time in whole seconds below a minute, else in whole minutes */
+@Composable
+private fun duration(seconds: Int): String =
+    if (seconds < 60) stringResource(CoreUiStrings.secs, seconds) else stringResource(CoreUiStrings.format_mins, (seconds + 30) / 60)
+
+/** The mean error at 30, 60 and 120 minutes of both curves, AutoISF and "BG stays the same" on the test days */
 @Composable
 private fun ErrorsCard(model: LearnedModel) {
     val profileUtil = LocalProfileUtil.current
@@ -174,9 +205,12 @@ private fun ErrorsCard(model: LearnedModel) {
             ErrorRow("", listOf(30, 60, 120).map { stringResource(CoreUiStrings.format_mins, it) }, bold = true)
             fun values(metrics: Metrics?) = listOf(metrics?.mae30, metrics?.mae60, metrics?.mae120)
                 .map { value -> value?.let { profileUtil.fromMgdlToStringWithUnits(it) } ?: "–" }
-            // All three on the moments with a stored AutoISF run, so the rows compare fairly
+            // All rows on the moments with a stored AutoISF run, so they compare fairly
             val paired = model.modelOnAutoIsfMoments != null
-            ErrorRow(stringResource(ApsStrings.learned_row_model), values(model.modelOnAutoIsfMoments ?: model.model), bold = true)
+            if (model.expected != null) {
+                ErrorRow(stringResource(ApsStrings.learned_row_expected), values(model.expectedOnAutoIsfMoments ?: model.expectedMetrics), bold = true)
+            }
+            ErrorRow(stringResource(ApsStrings.learned_row_no_insulin), values(model.modelOnAutoIsfMoments ?: model.model), bold = true)
             ErrorRow(stringResource(ApsStrings.openaps_auto_isf), values(model.autoIsf))
             ErrorRow(stringResource(ApsStrings.learned_row_naive), values(model.naiveOnAutoIsfMoments ?: model.naive))
             Text(

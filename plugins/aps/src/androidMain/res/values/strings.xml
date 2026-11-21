@@ -10,15 +10,20 @@
     <string name="learned_window_days">Days of history to learn from</string>
     <string name="learned_state_no_model">No model yet. It learns when there is enough history (about 2 weeks or more).</string>
     <string name="learned_state_training">Learning…</string>
-    <string name="learned_state_ready">Ready: better than AutoISF on the test days</string>
-    <string name="learned_state_not_ready">Not better than AutoISF yet, so it gives no dose</string>
+    <string name="learned_state_ready">No more insulin curve: better than AutoISF on the test days</string>
+    <string name="learned_state_not_ready">No more insulin curve: not better than AutoISF yet, so it gives no dose</string>
+    <string name="learned_state_ready_expected">Expected curve: better than AutoISF on the test days</string>
+    <string name="learned_state_not_ready_expected">Expected curve: not better than AutoISF yet</string>
     <string name="learned_state_no_comparison" comment="%1$d=percent of the test moments with a stored loop run. Example: 35">Not compared with AutoISF: its runs are stored for only %1$d %% of the test days, so it gives no dose</string>
     <string name="learned_compared_on" comment="%1$d=percent. Example: Compared on 97 % of the test moments, where an AutoISF run was stored">Compared on %1$d %% of the test moments, where an AutoISF run was stored</string>
     <string name="learned_no_autoisf_runs">No stored AutoISF runs on the test days</string>
     <string name="learned_last_training" comment="%1$s=date and time. Example: Last training: 21.11. 10:45">Last training: %1$s</string>
     <string name="learned_trained_on" comment="%1$d=days of history, %2$d=number of 5-minute samples. Example: 180 days, 48000 samples">%1$d days, %2$d samples</string>
+    <string name="learned_phases" comment="%1$d=number of grids shifted by 1 minute that the model learned from: 5 with a 1-minute sensor, 1 with a 5-minute sensor">1-minute phases used: %1$d</string>
+    <string name="learned_training_time" comment="Each value is a time with unit. %1$s=whole training, %2$s=linear part, %3$s=small network, %4$s=GRU of the expected curve, %5$s=measuring on the test days. Example: Training took 9 min: linear part 4 s, network 25 s, expected curve 8 min, measuring 12 s">Training took %1$s: linear part %2$s, network %3$s, expected curve %4$s, measuring %5$s</string>
     <string name="learned_errors_title">Mean error on the last 14 days</string>
-    <string name="learned_row_model">Model</string>
+    <string name="learned_row_expected" comment="Row of a table: the error of the expected curve of the model (with the loop)">Expected</string>
+    <string name="learned_row_no_insulin" comment="Row of a table: the error of the model curve if no more insulin is given">No more insulin</string>
     <string name="learned_row_naive" comment="Row of a table: the error of a guess that BG does not change">BG stays the same</string>
     <string name="learned_learned_title">What it learned</string>
     <string name="learned_part_night">At night (3:00)</string>

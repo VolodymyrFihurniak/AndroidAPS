@@ -386,7 +386,8 @@ class Trainer(
         private const val MIN_FINAL_EPOCHS = 5
         private const val BATCH = 256
         private const val LEARNING_RATE = 1e-3f
-        private const val MIN_COVERAGE = 0.5
+        /** Below this part of the test moments with a stored AutoISF run, neither curve is compared, so neither is ready */
+        const val MIN_COVERAGE = 0.5
         private const val RUN_MATCH_MS = 5 * 60_000L
         private const val MIN_BG = 39.0
         private const val MAX_BG = 400.0
