@@ -171,41 +171,57 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
 
 ### Personal prediction (experimental)
 A test feature that learns from the history on the phone how BG reacts to insulin, carbs and the
-time of day, and predicts BG for the next 2 hours. **It never changes insulin delivery**: the loop,
-SMB, temp basals and all limits work as before, and the loop never waits for it.
+time of day, and predicts BG for the next 2 hours as two curves. **It never changes insulin
+delivery**: the loop, SMB, temp basals and all limits work as before, and the loop never waits for it.
 * Switch it on in *Config Builder → Experimental → Personal prediction*. Its one setting is how many
   days of history it learns from (180 by default, 30 to 730); older days count less (half every 90
   days). The model is saved on the phone and is not part of the settings export.
+* **Two curves.**
+  * *Expected*: where BG really goes, the loop included, as the loop usually acted in the history. A
+    small recurrent network (GRU, 32 units) reads the last 3 hours step by step (BG, insulin, IOB,
+    carbs, COB, temp basal, time of day) and what BG did at the same time of day on the last 7 days.
+  * *No more insulin*: what happens if nothing more is given, like the IOB curve of the loop. A
+    linear part learns the personal ISF by time of day (kept within 50 % to 200 % of the profile ISF),
+    how strongly and how fast carbs act (absorption of 1 to 6 hours), what BG does on its own by time
+    of day, and the BG trend; it is pulled towards the profile, so with little data it stays the
+    profile. The insulin acts along the known curve of each dose. A small network (16 inputs, 32
+    units) learns what is left over at 30, 60, 90 and 120 minutes, limited to ±60 mg/dl.
+  * All in plain Kotlin, on the phone.
 * **How it learns.** The history becomes a grid of 5-minute steps (BG, every bolus and SMB with its
   own insulin curve, temp basals and extended boluses as insulin above or below the profile basal,
-  carbs, the profile active at that time). A linear part learns the personal ISF by time of day (as a
-  part of the profile ISF), how strongly and how fast carbs act (absorption of 1 to 6 hours), what BG
-  does on its own by time of day, and the BG trend; it is pulled towards the profile, so with little
-  data it stays the profile. The insulin acts along the known curve of each dose, so the model knows
-  what one more unit does. A small neural network (16 inputs, 32 units) learns what is left over at
-  30, 60, 90 and 120 minutes, limited to ±60 mg/dl. All in plain Kotlin, on the phone.
-* **How it is measured.** The last 14 days are kept back. On them the model, AutoISF (its stored
-  loop runs) and "BG stays the same" are compared as they would be live, at 30, 60 and 120 minutes.
-  The model is *ready* when it beats AutoISF at 60 minutes (or "BG stays the same" without enough
-  stored runs). Then it learns again on all days. Its curve says what happens if nothing more is
-  given, like the IOB curve of the loop.
+  carbs, the profile active at that time). Priming boluses are not counted. With a 1-minute sensor
+  the grid is built 5 times, shifted by 0 to 4 minutes (for the last 180 days at most), so the
+  expected curve sees 5 times more moments; it keeps at most 100 000 of them.
+* **How it is measured.** The last 14 days are kept back. On them both curves, AutoISF (its stored
+  loop runs) and "BG stays the same" are compared as they would be live, at 30, 60 and 120 minutes,
+  on the same moments. A curve is *ready* when it beats AutoISF at 60 minutes there, and those
+  moments cover at least half of the test days; without enough stored AutoISF runs neither curve is
+  ready. Then both learn again on all days.
 * **When it learns.** When it is switched on without a model, then once a day, or on *Train now*.
-  A training stops after 10 minutes at most, and *Stop* ends it; the old model stays until a new one
-  is ready. It needs at least about 2 weeks of history.
-* **Its screen** shows the state, the error table, what it learned (ISF and BG on its own at 3:00,
-  9:00, 15:00 and 21:00, the carb factor and absorption), the buttons *Train now*, *Stop* and *Reset
-  model*, and a log of each training and of a prediction every 15 minutes, as on the NSClient screen.
-* **Graph.** The BG graph gets a layer *Model* (in the layer menu only while the plugin is on, on by
-  default): a purple line from BG now with a dashed band of its typical error. The legend says
-  *Model: not better than AutoISF yet* while it is not ready, and the value card shows the model
-  value on the future part. A forecast older than 15 minutes is not drawn.
+  A training stops after 20 minutes at most (each of the two passes of the expected curve after 6
+  minutes), and *Stop* ends it; the old model stays until a new one is ready. It needs at least about
+  2 weeks of history. A model saved by an older version is not used; it learns again.
+* **Every minute.** With a 1-minute sensor each new reading gives a new forecast that starts at that
+  reading, not at the last whole 5 minutes.
+* **Its screen** shows one ready line per curve, the error table (both curves, AutoISF and "BG stays
+  the same"), how many 1-minute phases were used, how long each part of the training took, what it
+  learned (ISF and BG on its own at 3:00, 9:00, 15:00 and 21:00, the carb factor and absorption), the
+  buttons *Train now*, *Stop* and *Reset model*, and a log of each training (with insulin per day as
+  the model sees it, to compare with the TDD) and of both curves every 15 minutes, as on the NSClient
+  screen.
+* **Graph.** The BG graph gets two layers (in the layer menu only while the plugin is on, on by
+  default): *Model: expected* as a solid purple line with a dashed band of its typical error, and
+  *Model: no more insulin* as a dashed purple line. The legend says *not better than AutoISF yet* for
+  a curve that is not ready, and the value card shows both values on the future part. A forecast older
+  than 15 minutes is not drawn.
 * **Insulin dialog.** Under the advice of the loop a second block *Model advice (experimental)*:
-  the same guards first (BG low now, no fresh forecast, not ready, a low in the next 2 hours), then
-  the units missing or too much (with the grams that would cover them), from the eventual BG of the
-  model, the target and the personal ISF, rounded towards 0 to the pump step; in closed loop with SMB
-  it notes that the loop may give part of it. Under it BG in 30, 60 and 120 minutes, the eventual BG,
-  the personal ISF, the typical error and when the model learned. There is no button: a dose is
-  typed by hand.
+  the same guards first (BG low now, no fresh forecast, not ready, a low in the next 2 hours on either
+  curve, BG falling), then the units missing or too much (with the grams that would cover them), from
+  the eventual BG of the "no more insulin" curve, the target and the ISF (never below the profile
+  ISF), rounded towards 0 to the pump step; in closed loop with SMB it notes that the loop may give
+  part of it. The expected curve gives no dose: it already holds what the loop gives next. Under it
+  BG in 30, 60 and 120 minutes on both curves, the eventual BG, the personal ISF, the typical error
+  and when the model learned. There is no button: a dose is typed by hand.
 * It works on AAPSClient too, from the client's own database.
 
 ### Fixes compared to AAPS 4.0
