@@ -1,0 +1,92 @@
+package app.aaps.plugins.aps.learned
+
+import app.aaps.core.data.model.EPS
+import app.aaps.core.data.model.GlucoseUnit
+import app.aaps.core.data.model.ICfg
+import app.aaps.core.data.model.TB
+import app.aaps.core.data.model.data.Block
+import app.aaps.core.data.model.data.TargetBlock
+import app.aaps.core.interfaces.aps.APSResult
+import app.aaps.core.interfaces.aps.Predictions
+import app.aaps.core.interfaces.aps.RT
+import app.aaps.core.interfaces.db.PersistenceLayer
+import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.Test
+import org.mockito.kotlin.any
+import org.mockito.kotlin.doReturn
+import org.mockito.kotlin.mock
+
+class HistoryReaderTest {
+
+    private val hour = 3_600_000L
+    private val day0 = 1_767_225_600_000L
+    private val day1 = day0 + 24 * hour
+    private val iCfg = ICfg("Rapid", peak = 75, dia = 8.0, concentration = 1.0)
+
+    private fun eps(timestamp: Long, isf: Double) = EPS(
+        timestamp = timestamp,
+        basalBlocks = listOf(Block(24 * hour, 0.8)),
+        isfBlocks = listOf(Block(24 * hour, isf)),
+        icBlocks = listOf(Block(24 * hour, 10.0)),
+        targetBlocks = listOf(TargetBlock(24 * hour, 90.0, 110.0)),
+        glucoseUnit = GlucoseUnit.MGDL,
+        originalProfileName = "", originalCustomizedName = "", originalTimeshift = 0, originalPercentage = 100,
+        originalDuration = 0, originalEnd = 0, iCfg = iCfg
+    )
+
+    private fun persistence(
+        switches: List<EPS> = emptyList(),
+        tempBasals: List<TB> = emptyList(),
+        runs: List<APSResult> = emptyList()
+    ): PersistenceLayer = mock {
+        onBlocking { getBgReadingsDataFromTimeToTime(any(), any(), any()) } doReturn emptyList()
+        onBlocking { getBolusesFromTimeToTime(any(), any(), any()) } doReturn emptyList()
+        onBlocking { getTemporaryBasalsStartingFromTimeToTime(any(), any(), any()) } doReturn tempBasals
+        onBlocking { getExtendedBolusesStartingFromTimeToTime(any(), any(), any()) } doReturn emptyList()
+        onBlocking { getCarbsFromTimeToTimeExpanded(any(), any(), any()) } doReturn emptyList()
+        onBlocking { getEffectiveProfileSwitchesFromTimeToTime(any(), any(), any()) } doReturn switches
+        onBlocking { getEffectiveProfileSwitchActiveAt(any()) } doReturn null
+        onBlocking { getTherapyEventDataFromToTime(any(), any()) } doReturn emptyList()
+        onBlocking { getValidCalibrationEntriesSince(any()) } doReturn emptyList()
+        onBlocking { getTemporaryTargetActiveAt(any()) } doReturn null
+        onBlocking { getApsResults(any(), any()) } doReturn runs
+    }
+
+    @Test
+    fun `profile timeline uses the switch active at the time`() = runBlocking {
+        val reader = HistoryReader(persistence(switches = listOf(eps(day0, 50.0), eps(day1, 70.0))))
+        val input = reader.read(day0 - hour, day1 + 2 * hour)
+        assertThat(input.profile.valuesAt(day0 + hour)?.isfMgdl).isEqualTo(50.0)
+        assertThat(input.profile.valuesAt(day1 + hour)?.isfMgdl).isEqualTo(70.0)
+        assertThat(input.profile.valuesAt(day0 - 1)).isNull()
+        assertThat(input.profile.valuesAt(day0 + hour)?.targetMgdl).isEqualTo(100.0)
+        assertThat(input.profile.valuesAt(day0 + hour)?.basal).isEqualTo(0.8)
+    }
+
+    @Test
+    fun `live read keeps the planned end of the running temp basal`() = runBlocking {
+        val now = day0 + 10 * hour
+        val running = TB(timestamp = now - 10 * 60_000L, type = TB.Type.NORMAL, isAbsolute = true, rate = 0.0, duration = 30 * 60_000L)
+        val reader = HistoryReader(persistence(switches = listOf(eps(day0, 50.0)), tempBasals = listOf(running)))
+        val input = reader.readLive(now)
+        assertThat(input.tempBasals.single().end).isEqualTo(now + 20 * 60_000L)
+    }
+
+    @Test
+    fun `stored run main curve prefers COB when carbs are on board`() = runBlocking {
+        val rt = RT(runningDynamicIsf = false, COB = 20.0, predBGs = Predictions(IOB = listOf(100, 101, 102), COB = listOf(100, 110, 120)))
+        val withCarbs: APSResult = mock {
+            on { date } doReturn day0
+            on { algorithmResult } doReturn rt
+        }
+        val noCarbs: APSResult = mock {
+            on { date } doReturn day0 + hour
+            on { algorithmResult } doReturn rt.copy(COB = 0.0)
+        }
+        val reader = HistoryReader(persistence(runs = listOf(withCarbs, noCarbs)))
+        val runs = reader.storedRuns(day0, day0 + 2 * hour).distinctBy { it.timestamp }
+        assertThat(runs.first { it.timestamp == day0 }.mainCurve).containsExactly(110.0, 120.0).inOrder()
+        assertThat(runs.first { it.timestamp == day0 + hour }.mainCurve).containsExactly(101.0, 102.0).inOrder()
+    }
+}
