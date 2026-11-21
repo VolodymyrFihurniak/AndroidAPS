@@ -19,28 +19,43 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
+import kotlin.time.Duration
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 
 /**
- * autoISF build, personal prediction: learns a [LearnedModel] from a [HistoryGrid].
+ * autoISF build, personal prediction: learns a [LearnedModel] from [HistoryGrid]s, one per 1-minute phase of the
+ * history (only one with a 5-minute sensor). The "no more insulin" curve learns from the first grid, the expected
+ * curve from all of them.
  *
  * 1. Takes the valid steps of the window ([Samples.valid]); the last [Samples.TEST_DAYS] days are the test days.
  * 2. Fits the linear part by ridge regression, once on the learning days and once on all days.
  * 3. Trains the network on what the linear part leaves over, on the learning days, and stops when the test days stop
  *    getting better.
- * 4. Measures the model, "BG stays the same" and AutoISF on the test days, as they would be live: nothing given after
- *    the sample time is known.
- * 5. Trains the network again on all days for the same number of epochs. That model is the one used.
+ * 4. Trains the GRU of the expected curve the same way ([ExpectedCurveTrainer]).
+ * 5. Measures both curves, "BG stays the same" and AutoISF on the test days, as they would be live: nothing given
+ *    after the sample time is known.
+ * 6. Trains the network and the GRU again on all days for the same number of epochs. Those are the ones used.
  *
  * Writes one line per step to [log], short progress to [progress], and formats BG values with [bg]. Checks for
- * cancellation often, so "Stop" works within a moment.
+ * cancellation often, so "Stop" works within a moment. The GRU splits each batch over [threads]. [timeSource] measures
+ * the time of each part.
  */
 class Trainer(
     private val log: (String) -> Unit,
     private val progress: (String) -> Unit,
-    private val bg: (Double) -> String
+    private val bg: (Double) -> String,
+    private val expectedCurve: ExpectedCurveTrainer.Settings = ExpectedCurveTrainer.Settings(),
+    private val threads: Int = 4,
+    private val timeSource: TimeSource = TimeSource.Monotonic
 ) {
 
-    suspend fun train(grid: HistoryGrid, now: Long, windowDays: Int, autoIsfRuns: List<StoredRun>): LearnedModel? {
+    suspend fun train(grid: HistoryGrid, now: Long, windowDays: Int, autoIsfRuns: List<StoredRun>): LearnedModel? =
+        train(listOf(grid), now, windowDays, autoIsfRuns)
+
+    /** [grids] holds one grid per phase, phase 0 first */
+    suspend fun train(grids: List<HistoryGrid>, now: Long, windowDays: Int, autoIsfRuns: List<StoredRun>): LearnedModel? {
+        val grid = grids.first()
         val effects = Effects(grid)
         val first = max(Samples.LEAD_STEPS, grid.indexOf(now - windowDays * DAY_MS))
         val verdicts = (first until grid.size).map { it to Samples.reject(grid, it) }
@@ -61,7 +76,8 @@ class Trainer(
             log("Not enough data: ${learn.size} samples to learn from and ${test.size} to test")
             return null
         }
-        log("Training started: $windowDays days, ${samples.size} samples")
+        log("Training started: $windowDays days, ${samples.size} samples" + if (grids.size > 1) ", ${grids.size} phases of 1 minute" else "")
+        val times = PARTS.associateWith { Duration.ZERO }.toMutableMap()
 
         val weights = DoubleArray(grid.size)
         samples.forEach { weights[it] = Samples.weight(now - grid.timeOf(it)) }
@@ -70,6 +86,7 @@ class Trainer(
 
         // Linear part, both fits in one pass
         progress("Linear fit")
+        val linearStart = timeSource.markNow()
         val accLearn = RidgeAccumulator(LinearFeatures.SIZE)
         val accAll = RidgeAccumulator(LinearFeatures.SIZE)
         val x = DoubleArray(LinearFeatures.SIZE)
@@ -86,8 +103,10 @@ class Trainer(
         val linearLearn = LinearModel(RidgeFit.solve(accLearn, LinearFeatures.PRIOR, LinearFeatures.NON_NEGATIVE).toList())
         val linearAll = LinearModel(RidgeFit.solve(accAll, LinearFeatures.PRIOR, LinearFeatures.NON_NEGATIVE).toList())
         logLinear(linearAll)
+        times.add(LINEAR, linearStart)
 
         // Network on the learning days, early stop on the test days
+        val networkStart = timeSource.markNow()
         val learnSet = networkSet(grid, effects, linearLearn, learn, futures, weights)
         val testSet = networkSet(grid, effects, linearLearn, test, futures, weights)
         val scaling = Scaling.of(learnSet.x)
@@ -111,27 +130,33 @@ class Trainer(
         }
         network.setParameters(best)
         log("Network: best epoch $bestEpoch, test error ${bg(sqrt(bestLoss) * LearnedModel.OUTPUT_SCALE)}")
+        times.add(NETWORK, networkStart)
+
+        // GRU of the expected curve on the learning days of all phases, early stop on the test days
+        val gruStart = timeSource.markNow()
+        val windowStart = now - windowDays * DAY_MS
+        val gru = ExpectedCurveTrainer(expectedCurve, threads, timeSource, log, progress, bg)
+        val gruData = gru.prepare(grids, now, windowStart, now - Samples.TEST_DAYS * DAY_MS)
+        val gruFit = gru.learn(gruData, linearLearn)
+        times.add(GRU, gruStart)
 
         // Measure on the test days, as live
         progress("Measuring")
-        val evaluation = evaluate(grid, effects, linearLearn, network, scaling, test, futures, autoIsfRuns)
+        val measureStart = timeSource.markNow()
+        val expected: ((Int) -> DoubleArray?)? = gruFit?.let { fit -> { i -> gru.predict(gruData, fit, linearLearn, 0, i) } }
+        val evaluation = evaluate(grid, effects, linearLearn, network, scaling, test, futures, autoIsfRuns, expected)
         // Ready only when it beats AutoISF on the same moments, and those cover at least half of the test days.
         // Without enough stored AutoISF runs there is nothing fair to compare with, so it is not ready.
-        val percent = (evaluation.coverage * 100).roundToInt()
-        val pairedModel = evaluation.modelOnAutoIsf
         val autoIsf = evaluation.autoIsf
-        val ready = evaluation.coverage >= MIN_COVERAGE && pairedModel != null && autoIsf != null && pairedModel.mae60 < autoIsf.mae60
-        log("Test days, all moments: 60 min error model ${bg(evaluation.model.mae60)}, BG stays ${bg(evaluation.naive.mae60)}")
-        log(
-            if (pairedModel != null && autoIsf != null)
-                "Test days, $percent % of moments with an AutoISF run: 60 min error model ${bg(pairedModel.mae60)}, AutoISF ${bg(autoIsf.mae60)}" +
-                    if (ready) " -> ready" else if (evaluation.coverage < MIN_COVERAGE) " -> not ready (too few AutoISF runs)" else " -> not ready"
-            else "Test days: no stored AutoISF runs -> not ready"
-        )
-        if (evaluation.clampHits > 0) log("Warning: the network hit its limit of ${bg(Samples.MAX_RESIDUAL)} ${evaluation.clampHits} times")
+        val enoughRuns = evaluation.coverage >= MIN_COVERAGE && autoIsf != null
+        val ready = enoughRuns && evaluation.modelOnAutoIsf.beats(autoIsf)
+        val expectedReady = enoughRuns && evaluation.expectedOnAutoIsf.beats(autoIsf)
+        logEvaluation(evaluation, ready, expectedReady)
+        times.add(MEASURE, measureStart)
 
         // The model used: the linear part of all days, the network trained again on all days
         progress("Final training")
+        val finalStart = timeSource.markNow()
         val allSet = networkSet(grid, effects, linearAll, samples, futures, weights)
         val finalScaling = Scaling.of(allSet.x)
         finalScaling.apply(allSet.x)
@@ -141,6 +166,17 @@ class Trainer(
             finalNetwork.trainEpoch(allSet.x, allSet.y, allSet.w, BATCH, LEARNING_RATE, epoch + 1)
             yield()
         }
+        times.add(NETWORK, finalStart)
+
+        // And the GRU trained again on all days
+        val finalGruStart = timeSource.markNow()
+        val finalGru = gruFit?.let { gru.final(gruData, linearAll, max(ExpectedCurveTrainer.MIN_FINAL_EPOCHS, it.bestEpoch)) }
+        times.add(GRU, finalGruStart)
+        val seconds = times.mapValues { it.value.inWholeSeconds.toInt() }
+        log(
+            "Time: linear ${seconds[LINEAR]} s, network ${seconds[NETWORK]} s, expected curve ${seconds[GRU]} s, " +
+                "measuring ${seconds[MEASURE]} s"
+        )
 
         return LearnedModel(
             trainedAt = now,
@@ -158,9 +194,55 @@ class Trainer(
             autoIsfCoverage = evaluation.coverage,
             typicalErrorMgdl = evaluation.perHorizon.toList(),
             ready = ready,
-            clampHits = evaluation.clampHits
+            clampHits = evaluation.clampHits,
+            expected = finalGru?.network?.toState(),
+            expectedStepMean = if (finalGru != null) gruData.stepScaling.mean.toList() else emptyList(),
+            expectedStepStd = if (finalGru != null) gruData.stepScaling.std.toList() else emptyList(),
+            expectedContextMean = finalGru?.contextScaling?.mean?.toList() ?: emptyList(),
+            expectedContextStd = finalGru?.contextScaling?.std?.toList() ?: emptyList(),
+            expectedMetrics = evaluation.expected,
+            expectedOnAutoIsfMoments = evaluation.expectedOnAutoIsf,
+            expectedTypicalErrorMgdl = evaluation.expectedPerHorizon?.toList() ?: emptyList(),
+            expectedReady = expectedReady && finalGru != null,
+            phases = grids.size,
+            trainingSeconds = seconds
         )
     }
+
+    private fun MutableMap<String, Duration>.add(part: String, start: TimeMark) {
+        this[part] = getValue(part) + start.elapsedNow()
+    }
+
+    private fun Metrics?.beats(autoIsf: Metrics?): Boolean = this != null && autoIsf != null && mae60 < autoIsf.mae60
+
+    private fun logEvaluation(evaluation: Evaluation, ready: Boolean, expectedReady: Boolean) {
+        val expected = evaluation.expected
+        log(
+            "Test days, all moments: 60 min error " + (if (expected != null) "expected ${bg(expected.mae60)}, " else "") +
+                "no more insulin ${bg(evaluation.model.mae60)}, BG stays ${bg(evaluation.naive.mae60)}"
+        )
+        val autoIsf = evaluation.autoIsf
+        val pairedModel = evaluation.modelOnAutoIsf
+        if (autoIsf == null || pairedModel == null) {
+            log("Test days: no stored AutoISF runs -> neither curve is ready")
+        } else {
+            val percent = (evaluation.coverage * 100).roundToInt()
+            val pairedExpected = evaluation.expectedOnAutoIsf
+            val verdict = when {
+                evaluation.coverage < MIN_COVERAGE -> "neither curve is ready (too few AutoISF runs)"
+                pairedExpected != null             -> "expected curve ${readyText(expectedReady)}, no more insulin curve ${readyText(ready)}"
+                else                               -> "no more insulin curve ${readyText(ready)}"
+            }
+            log(
+                "Test days, $percent % of moments with an AutoISF run: 60 min error " +
+                    (if (pairedExpected != null) "expected ${bg(pairedExpected.mae60)}, " else "") +
+                    "no more insulin ${bg(pairedModel.mae60)}, AutoISF ${bg(autoIsf.mae60)} -> $verdict"
+            )
+        }
+        if (evaluation.clampHits > 0) log("Warning: the network hit its limit of ${bg(Samples.MAX_RESIDUAL)} ${evaluation.clampHits} times")
+    }
+
+    private fun readyText(ready: Boolean) = if (ready) "ready" else "not ready"
 
     private fun logLinear(linear: LinearModel) {
         val raw = DAY_PARTS.map { linear.rawIsfMultiplier(angleOfHour(it)) }
@@ -199,19 +281,23 @@ class Trainer(
 
     private class Evaluation(
         val model: Metrics, val naive: Metrics, val autoIsf: Metrics?, val modelOnAutoIsf: Metrics?, val naiveOnAutoIsf: Metrics?,
-        val coverage: Double, val perHorizon: DoubleArray, val clampHits: Int
+        val coverage: Double, val perHorizon: DoubleArray, val clampHits: Int,
+        val expected: Metrics?, val expectedOnAutoIsf: Metrics?, val expectedPerHorizon: DoubleArray?
     )
 
+    /** [expected] gives the BG change of the expected curve at step `i`, mg/dl, as known at that step */
     private suspend fun evaluate(
         grid: HistoryGrid, effects: Effects, linear: LinearModel, network: ResidualNetwork, scaling: Scaling,
-        test: List<Int>, futures: Map<Int, DoubleArray>, runs: List<StoredRun>
+        test: List<Int>, futures: Map<Int, DoubleArray>, runs: List<StoredRun>, expected: ((Int) -> DoubleArray?)?
     ): Evaluation {
         val sortedRuns = runs.sortedBy { it.timestamp }
         val modelSum = DoubleArray(HORIZONS)
         val naiveSum = DoubleArray(HORIZONS)
-        // The same three on the moments with a stored AutoISF run only, so they are compared fairly
+        val expectedSum = DoubleArray(HORIZONS)
+        // The same on the moments with a stored AutoISF run only, so they are compared fairly
         val pairedModelSum = DoubleArray(HORIZONS)
         val pairedNaiveSum = DoubleArray(HORIZONS)
+        val pairedExpectedSum = DoubleArray(HORIZONS)
         val autoIsfSum = DoubleArray(HORIZONS)
         var covered = 0
         var clampHits = 0
@@ -231,23 +317,29 @@ class Trainer(
             val future = futures.getValue(i)
             val run = nearestRun(sortedRuns, grid.timeOf(i))
             if (run != null) covered++
+            // Valid test steps always have 36 rows before them, so a GRU always gives a curve here
+            val expectedChange = expected?.invoke(i)
             for (h in 1..HORIZONS) {
                 val actual = future[h - 1]
                 val predicted = (grid.bg[i] + linear.delta(grid, live, i, h) + Samples.residualAt(knots, h)).coerceIn(MIN_BG, MAX_BG)
                 val modelError = abs(predicted - actual)
                 val naiveError = abs(grid.bg[i] - actual)
+                val expectedError = expectedChange?.let { abs((grid.bg[i] + it[h - 1]).coerceIn(MIN_BG, MAX_BG) - actual) } ?: 0.0
                 modelSum[h - 1] += modelError
                 naiveSum[h - 1] += naiveError
+                expectedSum[h - 1] += expectedError
                 // oref ends a curve early once it stops changing; past its end it stays at its last value
                 run?.mainCurve?.let { curve -> curve.getOrNull(h - 1) ?: curve.lastOrNull() }?.let {
                     autoIsfSum[h - 1] += abs(it - actual)
                     pairedModelSum[h - 1] += modelError
                     pairedNaiveSum[h - 1] += naiveError
+                    pairedExpectedSum[h - 1] += expectedError
                 }
             }
         }
         val perHorizon = DoubleArray(HORIZONS) { modelSum[it] / test.size }
         val naive = DoubleArray(HORIZONS) { naiveSum[it] / test.size }
+        val expectedPerHorizon = if (expected != null) DoubleArray(HORIZONS) { expectedSum[it] / test.size } else null
         fun paired(sum: DoubleArray) = if (covered > 0) metrics(DoubleArray(HORIZONS) { sum[it] / covered }) else null
         return Evaluation(
             model = metrics(perHorizon),
@@ -257,7 +349,10 @@ class Trainer(
             naiveOnAutoIsf = paired(pairedNaiveSum),
             coverage = covered.toDouble() / test.size,
             perHorizon = perHorizon,
-            clampHits = clampHits
+            clampHits = clampHits,
+            expected = expectedPerHorizon?.let { metrics(it) },
+            expectedOnAutoIsf = if (expected != null) paired(pairedExpectedSum) else null,
+            expectedPerHorizon = expectedPerHorizon
         )
     }
 
@@ -295,6 +390,13 @@ class Trainer(
         private const val RUN_MATCH_MS = 5 * 60_000L
         private const val MIN_BG = 39.0
         private const val MAX_BG = 400.0
+
+        /** The parts of the training whose time is measured */
+        private const val LINEAR = "linear"
+        private const val NETWORK = "network"
+        private const val GRU = "gru"
+        private const val MEASURE = "measure"
+        private val PARTS = listOf(LINEAR, NETWORK, GRU, MEASURE)
 
         /** The hours shown for night, morning, day and evening, also on the plugin screen */
         val DAY_PARTS = listOf(3, 9, 15, 21)
