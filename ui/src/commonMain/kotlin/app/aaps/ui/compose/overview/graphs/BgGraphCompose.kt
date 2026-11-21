@@ -219,6 +219,9 @@ fun BgGraphCompose(
         else            -> rawParabola.copy(extrapolation = emptyList())
     }
     val chartConfig by viewModel.chartConfigFlow.collectAsStateWithLifecycle()
+    // autoISF build: the personal prediction, a layer of its own
+    val rawLearned by viewModel.learnedCurveFlow.collectAsStateWithLifecycle()
+    val learned = if (SeriesType.LEARNED_PREDICTION in bgOverlays) rawLearned else null
 
     // Use derived time range or fall back to default (last GRAPH_TIME_RANGE_HOURS hours)
     val (minTimestamp, maxTimestamp) = derivedTimeRange ?: run {
@@ -239,6 +242,7 @@ fun BgGraphCompose(
     val targetLineColor = AapsTheme.elementColors.tempTarget
     val activityColor = AapsTheme.elementColors.activity
     val parabolaColor = AapsTheme.generalColors.bgParabola
+    val learnedColor = AapsTheme.generalColors.learnedPrediction
     val insulinColor = AapsTheme.elementColors.insulin
     val carbsColor = AapsTheme.elementColors.carbs
     val bgCheckColor = AapsTheme.elementColors.bgCheck
@@ -274,7 +278,7 @@ fun BgGraphCompose(
     // it as a repeat, and the lines stayed like that. Same as in SecondaryGraphCompose.
     val modelInput = BgModelInput(
         bgReadings, bucketedData, predictions, basalData, targetData, epsPoints, activityData, showActivity, chartConfig,
-        minTimestamp, maxX, visibleTimeRange, treatmentData, predictionHeadroom, bgParabola, iobData, cobData
+        minTimestamp, maxX, visibleTimeRange, treatmentData, predictionHeadroom, bgParabola, iobData, cobData, learned
     )
     val latestModelInput by rememberUpdatedState(modelInput)
     LaunchedEffect(modelProducer) {
@@ -511,6 +515,27 @@ fun BgGraphCompose(
     }
 
     // =========================================================================
+    // autoISF build: personal prediction lines (layer 5b) — the curve, then the band of its typical error
+    // =========================================================================
+
+    val learnedLines = remember(learnedColor) {
+        val band = LineCartesianLayer.Line(
+            fill = LineCartesianLayer.LineFill.single(Fill(learnedColor.copy(alpha = 0.5f))),
+            stroke = LineCartesianLayer.LineStroke.Dashed(thickness = 1.dp, cap = StrokeCap.Round, dashLength = 3.dp, gapLength = 3.dp),
+            areaFill = null
+        )
+        listOf(
+            LineCartesianLayer.Line(
+                fill = LineCartesianLayer.LineFill.single(Fill(learnedColor)),
+                stroke = LineCartesianLayer.LineStroke.Continuous(thickness = 2.dp),
+                areaFill = null
+            ),
+            band,
+            band
+        )
+    }
+
+    // =========================================================================
     // Treatment marker lines (layer 6) — order must match block 7 in submitBgModel
     // =========================================================================
 
@@ -629,6 +654,12 @@ fun BgGraphCompose(
                 rangeProvider = startAxisRangeProvider,
                 verticalAxisPosition = Axis.Position.Vertical.Start
             ),
+            // Layer 5b: autoISF build, the personal prediction (start axis, see block 6b)
+            rememberLineCartesianLayer(
+                lineProvider = LineCartesianLayer.LineProvider.series(learnedLines),
+                rangeProvider = startAxisRangeProvider,
+                verticalAxisPosition = Axis.Position.Vertical.Start
+            ),
             // Layer 6: Treatment markers (start axis — drawn last, see block 7)
             rememberLineCartesianLayer(
                 lineProvider = LineCartesianLayer.LineProvider.series(treatmentLines),
@@ -686,7 +717,9 @@ private data class BgModelInput(
     val bgParabola: BgParabolaData,
     /** autoISF build: IOB and COB for their areas at the bottom, empty when they are not shown */
     val iob: List<GraphDataPoint>,
-    val cob: List<GraphDataPoint>
+    val cob: List<GraphDataPoint>,
+    /** autoISF build: the personal prediction, null when it is not shown */
+    val learned: LearnedCurve?
 )
 
 /**
@@ -738,7 +771,8 @@ private suspend fun submitBgModel(
     // Real values and predicted ones apart: a prediction may pull the top of the axis only so
     // far above the real data, see bgAxisTop. The window fallback is decided for both together.
     val realPoints = (input.bgReadings + input.bucketedData).map { it.timestamp to it.value } + measuredPoints
-    val predictionPoints = input.predictions.map { it.timestamp to it.value }
+    val predictionPoints = input.predictions.map { it.timestamp to it.value } +
+        input.learned?.center.orEmpty().map { it.timestamp to it.value }
     val windowHasData = (realPoints + predictionPoints).any { inWindow(it.first) }
     fun List<Pair<Long, Double>>.axisValues() = if (windowHasData) filter { inWindow(it.first) }.map { it.second } else map { it.second }
     val realValues = realPoints.axisValues()
@@ -944,6 +978,18 @@ private suspend fun submitBgModel(
             }
             parabolaSeries(input.bgParabola.fitted)
             parabolaSeries(input.bgParabola.extrapolation)
+        }
+
+        // Block 6b → autoISF build: the personal prediction (layer 5b, start axis, already in the units of the graph).
+        // Always three series - the curve, the top and the bottom of its band - with dummies when it is not shown.
+        lineModel {
+            fun learnedSeries(points: List<GraphDataPoint>?) {
+                if (points == null || points.size < 2) series(x = listOf(0.0, 1.0), y = MARKER_EMPTY_Y)
+                else series(x = points.map { timestampToX(it.timestamp, minTimestamp) }, y = points.map { it.value })
+            }
+            learnedSeries(input.learned?.center)
+            learnedSeries(input.learned?.upper)
+            learnedSeries(input.learned?.lower)
         }
 
         // Block 7 → Treatment markers (layer 6, start axis — drawn at the glucose value of the

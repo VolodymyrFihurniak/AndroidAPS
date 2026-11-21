@@ -4,13 +4,17 @@ import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.aaps.core.data.configuration.Constants
+import app.aaps.core.interfaces.aps.LearnedForecast
+import app.aaps.core.interfaces.aps.LearnedPrediction
 import app.aaps.core.interfaces.logging.AAPSLogger
 import app.aaps.core.interfaces.logging.LTag
 import app.aaps.core.interfaces.overview.graph.BgDataPoint
+import app.aaps.core.interfaces.overview.graph.GraphDataPoint
 import app.aaps.core.interfaces.overview.graph.GraphConfig
 import app.aaps.core.interfaces.overview.graph.GraphConfigRepository
 import app.aaps.core.interfaces.overview.graph.OverviewDataCache
 import app.aaps.core.interfaces.overview.graph.SeriesType
+import app.aaps.core.interfaces.profile.ProfileUtil
 import app.aaps.core.interfaces.resources.TextResolver
 import app.aaps.core.interfaces.utils.DateUtil
 import app.aaps.core.keys.BooleanNonKey
@@ -54,7 +58,9 @@ class GraphViewModel(
     private val aapsLogger: AAPSLogger,
     private val preferences: Preferences,
     private val dateUtil: DateUtil,
-    private val rh: TextResolver
+    private val rh: TextResolver,
+    learnedPrediction: LearnedPrediction,
+    private val profileUtil: ProfileUtil
 ) : ViewModel() {
 
     @AssistedFactory
@@ -125,6 +131,7 @@ class GraphViewModel(
     // NSClient status (pump/openAPS/uploader from Nightscout)
     val nsClientStatusFlow = cache.nsClientStatusFlow
 
+
     // =========================================================================
     // BG Info Section (Overview info display)
     // =========================================================================
@@ -143,6 +150,32 @@ class GraphViewModel(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = dateUtil.now()
     )
+
+    /** autoISF build: true while the personal prediction plugin is on. Never in a history window. */
+    val learnedAvailable: StateFlow<Boolean> =
+        if (fullWindow) MutableStateFlow(false) else learnedPrediction.enabled
+
+    /**
+     * autoISF build: the personal prediction in the units of the graph, with a band of its typical error. Null when
+     * the plugin is off, has no forecast, the forecast is older than [LEARNED_MAX_AGE_MS], or in a history window.
+     */
+    val learnedCurveFlow: StateFlow<LearnedCurve?> =
+        if (fullWindow) MutableStateFlow(null)
+        else learnedPrediction.forecast
+            .combine(learnedPrediction.enabled) { forecast, enabled -> forecast?.takeIf { enabled } }
+            .combine(ticker30s) { forecast, now -> forecast?.takeIf { now - it.timestamp <= LEARNED_MAX_AGE_MS }?.toCurve() }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    private fun LearnedForecast.toCurve(): LearnedCurve {
+        fun units(mgdl: Double) = profileUtil.fromMgdlToUnits(mgdl)
+        val start = GraphDataPoint(timestamp, units(bgMgdl))
+        return LearnedCurve(
+            center = listOf(start) + points.map { GraphDataPoint(it.timestamp, units(it.mgdl)) },
+            upper = listOf(start) + points.mapIndexed { k, p -> GraphDataPoint(p.timestamp, units(p.mgdl + typicalErrorMgdl.getOrElse(k) { 0.0 })) },
+            lower = listOf(start) + points.mapIndexed { k, p -> GraphDataPoint(p.timestamp, units(p.mgdl - typicalErrorMgdl.getOrElse(k) { 0.0 })) },
+            ready = ready
+        )
+    }
 
     // BG info UI state - combines bgInfo with periodic timeAgo updates
     val bgInfoState: StateFlow<BgInfoUiState> = combine(

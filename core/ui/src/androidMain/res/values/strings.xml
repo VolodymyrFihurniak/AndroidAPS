@@ -1247,6 +1247,9 @@
     <string name="bg_parabola_shortname" comment="Short label for the BG parabola of autoISF on the BG graph">PARAB</string>
     <string name="graph_series_bg_line" comment="Switch of the BG graph: draw the glucose readings as one line instead of dots">Glucose as a line</string>
     <string name="bg_line_shortname" comment="Short label of the switch that draws the glucose as a line">LINE</string>
+    <string name="graph_series_learned" comment="Layer of the BG graph: the curve of the personal prediction plugin">Personal prediction (experimental)</string>
+    <string name="learned_shortname" comment="Short name of the personal prediction curve, in the graph legend and the value card">Model</string>
+    <string name="learned_not_ready_legend" comment="Graph legend when the personal prediction is not yet better than AutoISF">Model: not better than AutoISF yet</string>
     <string name="graph_series_predictions">Predictions</string>
 
 

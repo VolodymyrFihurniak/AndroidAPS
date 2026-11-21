@@ -221,12 +221,15 @@ private val PREDICTION_SPOKEN_ORDER = listOf(
 private val BG_OVERLAY_SERIES = listOf(
     SeriesType.ACTIVITY, SeriesType.PREDICTIONS, SeriesType.BG_PARABOLA,
     // autoISF build: IOB, COB and the basal inside the BG graph, and the readings as a line
-    SeriesType.IOB, SeriesType.COB, SeriesType.BASAL, SeriesType.BG_LINE
+    SeriesType.IOB, SeriesType.COB, SeriesType.BASAL, SeriesType.BG_LINE,
+    // autoISF build: the personal prediction, offered only while its plugin is on
+    SeriesType.LEARNED_PREDICTION
 )
 
 /** Series types available for user-configurable secondary graphs (IOB + UI-only overlays excluded) */
 private val CONFIGURABLE_SERIES = SeriesType.entries.filter {
-    it != SeriesType.IOB && it != SeriesType.PREDICTIONS && it != SeriesType.BG_PARABOLA && it != SeriesType.BASAL && it != SeriesType.BG_LINE
+    it != SeriesType.IOB && it != SeriesType.PREDICTIONS && it != SeriesType.BG_PARABOLA && it != SeriesType.BASAL && it != SeriesType.BG_LINE &&
+        it != SeriesType.LEARNED_PREDICTION
 }
 
 /** autoISF build: the layers of the IOB graph that can be switched on and off */
@@ -455,6 +458,9 @@ fun GraphsSection(
     // Auto-scroll when new BG value arrives
     val bgInfoState by graphViewModel.bgInfoState.collectAsStateWithLifecycle()
     val predictions by graphViewModel.predictionsFlow.collectAsStateWithLifecycle()
+    // autoISF build: the personal prediction, for the legend and the layer menu
+    val learnedCurve by graphViewModel.learnedCurveFlow.collectAsStateWithLifecycle()
+    val learnedAvailable by graphViewModel.learnedAvailable.collectAsStateWithLifecycle()
     var lastBgTimestamp by remember { mutableLongStateOf(0L) }
 
     LaunchedEffect(bgInfoState.bgInfo?.timestamp) {
@@ -531,7 +537,8 @@ fun GraphsSection(
                     bgViewportResetTrigger++
                 },
                 bgOverlays = graphConfig.bgOverlays,
-                onOpenHistory = onOpenHistory
+                onOpenHistory = onOpenHistory,
+                learned = learnedCurve
             )
         }
         // Treatment Belt Graph - running mode background + therapy events. A hold or a tap shows the pill.
@@ -712,7 +719,7 @@ fun GraphsSection(
             GraphSeriesBottomSheet(
                 title = stringResource(CoreUiStrings.graph_bg),
                 selectedSeries = graphConfig.bgOverlays,
-                availableSeries = BG_OVERLAY_SERIES,
+                availableSeries = if (learnedAvailable) BG_OVERLAY_SERIES else BG_OVERLAY_SERIES - SeriesType.LEARNED_PREDICTION,
                 height = graphConfig.bgHeight,
                 onHeightChange = { h ->
                     graphViewModel.updateGraphConfig(graphConfig.copy(bgHeight = h))
@@ -965,6 +972,7 @@ private fun seriesShortNameId(type: SeriesType): TextRef = when (type) {
     SeriesType.BG_PARABOLA     -> CoreUiStrings.bg_parabola_shortname
     SeriesType.BASAL           -> CoreUiStrings.basal_shortname
     SeriesType.BG_LINE         -> CoreUiStrings.bg_line_shortname
+    SeriesType.LEARNED_PREDICTION -> CoreUiStrings.learned_shortname
 }
 
 /** String resource ID for the full name of a series type, for the graph settings where there is room (#5336) */
@@ -986,6 +994,7 @@ private fun seriesNameId(type: SeriesType): TextRef = when (type) {
     SeriesType.BG_PARABOLA     -> CoreUiStrings.graph_series_bg_parabola
     SeriesType.BASAL           -> CoreUiStrings.graph_series_basal
     SeriesType.BG_LINE         -> CoreUiStrings.graph_series_bg_line
+    SeriesType.LEARNED_PREDICTION -> CoreUiStrings.graph_series_learned
 }
 
 // =========================================================================

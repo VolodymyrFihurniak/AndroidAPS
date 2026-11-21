@@ -38,7 +38,10 @@ enum class SeriesType {
     BASAL,
 
     // autoISF build: the BG readings drawn as one line instead of dots, a switch of the BG graph only
-    BG_LINE
+    BG_LINE,
+
+    // autoISF build: the curve of the personal prediction (experimental), a BG graph layer shown only while its plugin is on
+    LEARNED_PREDICTION
 }
 
 /**
@@ -81,7 +84,8 @@ data class GraphConfig(
 
         /** autoISF build: IOB, COB and the basal are drawn in the BG graph, as the user asked */
         val DEFAULT_BG_OVERLAYS = listOf(
-            SeriesType.ACTIVITY, SeriesType.PREDICTIONS, SeriesType.BG_PARABOLA, SeriesType.IOB, SeriesType.COB, SeriesType.BASAL
+            SeriesType.ACTIVITY, SeriesType.PREDICTIONS, SeriesType.BG_PARABOLA, SeriesType.IOB, SeriesType.COB, SeriesType.BASAL,
+            SeriesType.LEARNED_PREDICTION
         )
 
         /** Maximum number of secondary graphs allowed */

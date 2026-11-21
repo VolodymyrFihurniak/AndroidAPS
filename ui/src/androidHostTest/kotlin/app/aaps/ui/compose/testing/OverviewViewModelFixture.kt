@@ -197,8 +197,11 @@ internal class OverviewViewModelFixture(private val screen: AapsScreenFixture) {
         whenever(visibilityContext.clientRole).thenReturn(ClientRole.Admin)
     }
 
+    /** autoISF build: the personal prediction, off unless a test switches it on */
+    val learnedPrediction = FakeLearnedPrediction()
+
     val graphViewModel: GraphViewModel by lazy {
-        GraphViewModel(cache, false, graphConfigRepository, aapsLogger, screen.preferences, screen.dateUtil, rh)
+        GraphViewModel(cache, false, graphConfigRepository, aapsLogger, screen.preferences, screen.dateUtil, rh, learnedPrediction, screen.profileUtil)
     }
 
     val chipsViewModel: ChipsViewModel by lazy {

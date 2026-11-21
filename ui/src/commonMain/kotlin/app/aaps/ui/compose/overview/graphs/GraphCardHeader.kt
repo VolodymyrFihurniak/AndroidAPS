@@ -44,7 +44,9 @@ internal fun GraphCardHeader(
     onRangeSelected: (Double) -> Unit,
     bgOverlays: List<SeriesType>,
     onOpenHistory: (() -> Unit)?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** autoISF build: the personal prediction when it is drawn, for its legend entry */
+    learned: LearnedCurve? = null
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier.fillMaxWidth()) {
         Icon(
@@ -87,6 +89,12 @@ internal fun GraphCardHeader(
         LegendItem(AapsTheme.generalColors.bgInRange, glucoseMark, stringResource(CoreUiStrings.glucose))
         if (SeriesType.PREDICTIONS in bgOverlays) LegendItem(AapsTheme.generalColors.iobPrediction, LegendMark.DASHED, stringResource(CoreUiStrings.predictions_shortname))
         if (SeriesType.BG_PARABOLA in bgOverlays) LegendItem(AapsTheme.generalColors.bgParabola, LegendMark.LINE, stringResource(CoreUiStrings.bg_parabola_shortname))
+        if (learned != null && SeriesType.LEARNED_PREDICTION in bgOverlays) {
+            LegendItem(
+                AapsTheme.generalColors.learnedPrediction, LegendMark.LINE,
+                stringResource(if (learned.ready) CoreUiStrings.learned_shortname else CoreUiStrings.learned_not_ready_legend)
+            )
+        }
         // IOB and COB are areas at the bottom of the BG graph, the basal a band at its top
         if (SeriesType.IOB in bgOverlays) LegendItem(AapsTheme.generalColors.iobPrediction, LegendMark.SQUARE, stringResource(CoreUiStrings.iob))
         if (SeriesType.COB in bgOverlays) LegendItem(AapsTheme.generalColors.cobPrediction, LegendMark.SQUARE, stringResource(CoreUiStrings.cob))

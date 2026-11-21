@@ -84,6 +84,8 @@ data class GeneralColors(
     val uamPrediction: Color,
     val ztPrediction: Color,
     val bgParabola: Color,
+    /** autoISF build: the curve of the personal prediction (experimental) */
+    val learnedPrediction: Color,
     val basalIncrease: Color,
     val basalDecrease: Color,
     val graphGrid: Color,
@@ -149,6 +151,7 @@ val LightGeneralColors = GeneralColors(
     uamPrediction = Color(0xFFC9BD60),       // yellow-ish for UAM predictions (matches uamColor attr)
     ztPrediction = Color(0xFF00D2D2),        // cyan for zero-temp predictions (matches ztColor attr)
     bgParabola = Color(0xFFFF00FF),          // magenta for the autoISF BG parabola (bgParabolaColor of aisf)
+    learnedPrediction = Color(0xFF7E57C2),   // deep purple for the personal prediction
     basalIncrease = Color(0x66FB8C00),       // orange at 40%: more basal than the profile
     basalDecrease = Color(0x6642A5F5),       // blue at 40%: less basal than the profile
     graphGrid = Color(0x80CAC4D0),           // Material outlineVariant at 50%
@@ -210,6 +213,7 @@ val DarkGeneralColors = GeneralColors(
     uamPrediction = Color(0xFFE6D39A),       // lighter yellow for UAM predictions (dark mode)
     ztPrediction = Color(0xFF4DD4D4),        // lighter cyan for zero-temp predictions (dark mode)
     bgParabola = Color(0xFFFF00FF),          // magenta for the autoISF BG parabola (same in both modes, as in aisf)
+    learnedPrediction = Color(0xFFB39DDB),   // lighter purple for the personal prediction (dark mode)
     basalIncrease = Color(0x66FFB74D),       // lighter orange at 40% for dark mode
     basalDecrease = Color(0x6664B5F6),       // lighter blue at 40% for dark mode
     graphGrid = Color(0x40938F99),           // Material outline at 25%: outlineVariant at 50% was barely visible on the dark surface

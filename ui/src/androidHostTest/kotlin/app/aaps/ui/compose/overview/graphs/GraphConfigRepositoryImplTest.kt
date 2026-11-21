@@ -116,7 +116,7 @@ class GraphConfigRepositoryImplTest {
     @Test
     fun `an empty overlay list is kept empty, not replaced by the default`() {
         // Written explicitly means the user turned them all off - that is not the same as absent.
-        val restored = GraphConfigRepositoryImpl.fromJson("""{"bgLayers":[]}""")
+        val restored = GraphConfigRepositoryImpl.fromJson("""{"bgLayers":[],"modelLayer":false}""")
 
         assertThat(restored.bgOverlays).isEmpty()
     }
@@ -127,7 +127,8 @@ class GraphConfigRepositoryImplTest {
     fun `a config saved before the BG layers gets IOB, COB and the basal in the BG graph`() {
         val restored = GraphConfigRepositoryImpl.fromJson("""{"bgOverlays":["PREDICTIONS"]}""")
 
-        assertThat(restored.bgOverlays).containsExactly(SeriesType.PREDICTIONS, SeriesType.IOB, SeriesType.COB, SeriesType.BASAL).inOrder()
+        assertThat(restored.bgOverlays)
+            .containsExactly(SeriesType.PREDICTIONS, SeriesType.IOB, SeriesType.COB, SeriesType.BASAL, SeriesType.LEARNED_PREDICTION).inOrder()
     }
 
     @Test
@@ -158,5 +159,38 @@ class GraphConfigRepositoryImplTest {
         val restored = GraphConfigRepositoryImpl.fromJson(GraphConfigRepositoryImpl.toJson(config))
 
         assertThat(restored.secondaryGraphs.map { it.series }).containsExactly(listOf(SeriesType.COB))
+    }
+
+    // autoISF build: the layer of the personal prediction
+
+    @Test
+    fun `model layer is on for a config saved before it`() {
+        val restored = GraphConfigRepositoryImpl.fromJson("""{"bgLayers":["PREDICTIONS","COB"]}""")
+
+        assertThat(restored.bgOverlays).containsExactly(SeriesType.PREDICTIONS, SeriesType.COB, SeriesType.LEARNED_PREDICTION).inOrder()
+    }
+
+    @Test
+    fun `model layer switched off stays off`() {
+        val config = GraphConfig(bgOverlays = listOf(SeriesType.PREDICTIONS))
+
+        val restored = GraphConfigRepositoryImpl.fromJson(GraphConfigRepositoryImpl.toJson(config))
+
+        assertThat(restored.bgOverlays).containsExactly(SeriesType.PREDICTIONS)
+    }
+
+    @Test
+    fun `old key does not get the model layer`() {
+        val config = GraphConfig(bgOverlays = listOf(SeriesType.PREDICTIONS, SeriesType.LEARNED_PREDICTION))
+
+        val json = GraphConfigRepositoryImpl.toJson(config)
+
+        assertThat(json).contains(""""bgOverlays":["PREDICTIONS"]""")
+        assertThat(GraphConfigRepositoryImpl.fromJson(json).bgOverlays).containsExactly(SeriesType.PREDICTIONS, SeriesType.LEARNED_PREDICTION).inOrder()
+    }
+
+    @Test
+    fun `the model layer is on by default`() {
+        assertThat(GraphConfig.DEFAULT_BG_OVERLAYS).contains(SeriesType.LEARNED_PREDICTION)
     }
 }
