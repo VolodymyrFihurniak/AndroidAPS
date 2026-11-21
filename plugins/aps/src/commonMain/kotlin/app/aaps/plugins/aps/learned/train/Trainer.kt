@@ -43,8 +43,13 @@ class Trainer(
     suspend fun train(grid: HistoryGrid, now: Long, windowDays: Int, autoIsfRuns: List<StoredRun>): LearnedModel? {
         val effects = Effects(grid)
         val first = max(Samples.LEAD_STEPS, grid.indexOf(now - windowDays * DAY_MS))
-        val candidates = (first until grid.size).toList()
-        val samples = candidates.filter { Samples.valid(grid, it) }
+        val verdicts = (first until grid.size).map { it to Samples.reject(grid, it) }
+        val samples = verdicts.filter { it.second == null }.map { it.first }
+        val dropped = verdicts.mapNotNull { it.second }.filter { it != Samples.Reject.EDGE }.groupingBy { it }.eachCount()
+        log(
+            "Dropped: " + if (dropped.isEmpty()) "none"
+            else dropped.entries.sortedByDescending { it.value }.joinToString(", ") { (reason, count) -> "$count ${reason.label()}" }
+        )
         if (samples.size < Samples.MIN_SAMPLES) {
             log("Not enough data: ${samples.size} samples, at least ${Samples.MIN_SAMPLES} needed")
             return null
@@ -56,7 +61,7 @@ class Trainer(
             log("Not enough data: ${learn.size} samples to learn from and ${test.size} to test")
             return null
         }
-        log("Training started: $windowDays days, ${samples.size} samples, ${candidates.size - samples.size} dropped (gaps, sensor start)")
+        log("Training started: $windowDays days, ${samples.size} samples")
 
         val weights = DoubleArray(grid.size)
         samples.forEach { weights[it] = Samples.weight(now - grid.timeOf(it)) }
@@ -110,12 +115,18 @@ class Trainer(
         // Measure on the test days, as live
         progress("Measuring")
         val evaluation = evaluate(grid, effects, linearLearn, network, scaling, test, futures, autoIsfRuns)
-        val autoIsfText = evaluation.autoIsf?.let { "AutoISF ${bg(it.mae60)}" } ?: "AutoISF no stored runs"
-        val ready = if (evaluation.coverage >= MIN_COVERAGE && evaluation.autoIsf != null) evaluation.model.mae60 < evaluation.autoIsf.mae60
-        else evaluation.model.mae60 < evaluation.naive.mae60
+        // Ready only when it beats AutoISF on the same moments, and those cover at least half of the test days.
+        // Without enough stored AutoISF runs there is nothing fair to compare with, so it is not ready.
+        val percent = (evaluation.coverage * 100).roundToInt()
+        val pairedModel = evaluation.modelOnAutoIsf
+        val autoIsf = evaluation.autoIsf
+        val ready = evaluation.coverage >= MIN_COVERAGE && pairedModel != null && autoIsf != null && pairedModel.mae60 < autoIsf.mae60
+        log("Test days, all moments: 60 min error model ${bg(evaluation.model.mae60)}, BG stays ${bg(evaluation.naive.mae60)}")
         log(
-            "Test days: 60 min error model ${bg(evaluation.model.mae60)}, $autoIsfText, BG stays ${bg(evaluation.naive.mae60)}" +
-                if (ready) " -> ready" else " -> not ready"
+            if (pairedModel != null && autoIsf != null)
+                "Test days, $percent % of moments with an AutoISF run: 60 min error model ${bg(pairedModel.mae60)}, AutoISF ${bg(autoIsf.mae60)}" +
+                    if (ready) " -> ready" else if (evaluation.coverage < MIN_COVERAGE) " -> not ready (too few AutoISF runs)" else " -> not ready"
+            else "Test days: no stored AutoISF runs -> not ready"
         )
         if (evaluation.clampHits > 0) log("Warning: the network hit its limit of ${bg(Samples.MAX_RESIDUAL)} ${evaluation.clampHits} times")
 
@@ -142,6 +153,8 @@ class Trainer(
             model = evaluation.model,
             autoIsf = evaluation.autoIsf,
             naive = evaluation.naive,
+            modelOnAutoIsfMoments = evaluation.modelOnAutoIsf,
+            naiveOnAutoIsfMoments = evaluation.naiveOnAutoIsf,
             autoIsfCoverage = evaluation.coverage,
             typicalErrorMgdl = evaluation.perHorizon.toList(),
             ready = ready,
@@ -185,7 +198,8 @@ class Trainer(
     }
 
     private class Evaluation(
-        val model: Metrics, val naive: Metrics, val autoIsf: Metrics?, val coverage: Double, val perHorizon: DoubleArray, val clampHits: Int
+        val model: Metrics, val naive: Metrics, val autoIsf: Metrics?, val modelOnAutoIsf: Metrics?, val naiveOnAutoIsf: Metrics?,
+        val coverage: Double, val perHorizon: DoubleArray, val clampHits: Int
     )
 
     private suspend fun evaluate(
@@ -195,8 +209,10 @@ class Trainer(
         val sortedRuns = runs.sortedBy { it.timestamp }
         val modelSum = DoubleArray(HORIZONS)
         val naiveSum = DoubleArray(HORIZONS)
+        // The same three on the moments with a stored AutoISF run only, so they are compared fairly
+        val pairedModelSum = DoubleArray(HORIZONS)
+        val pairedNaiveSum = DoubleArray(HORIZONS)
         val autoIsfSum = DoubleArray(HORIZONS)
-        val autoIsfCount = IntArray(HORIZONS)
         var covered = 0
         var clampHits = 0
         val inputs = FloatArray(Samples.INPUTS)
@@ -218,21 +234,27 @@ class Trainer(
             for (h in 1..HORIZONS) {
                 val actual = future[h - 1]
                 val predicted = (grid.bg[i] + linear.delta(grid, live, i, h) + Samples.residualAt(knots, h)).coerceIn(MIN_BG, MAX_BG)
-                modelSum[h - 1] += abs(predicted - actual)
-                naiveSum[h - 1] += abs(grid.bg[i] - actual)
-                run?.mainCurve?.getOrNull(h - 1)?.let {
+                val modelError = abs(predicted - actual)
+                val naiveError = abs(grid.bg[i] - actual)
+                modelSum[h - 1] += modelError
+                naiveSum[h - 1] += naiveError
+                // oref ends a curve early once it stops changing; past its end it stays at its last value
+                run?.mainCurve?.let { curve -> curve.getOrNull(h - 1) ?: curve.lastOrNull() }?.let {
                     autoIsfSum[h - 1] += abs(it - actual)
-                    autoIsfCount[h - 1]++
+                    pairedModelSum[h - 1] += modelError
+                    pairedNaiveSum[h - 1] += naiveError
                 }
             }
         }
         val perHorizon = DoubleArray(HORIZONS) { modelSum[it] / test.size }
         val naive = DoubleArray(HORIZONS) { naiveSum[it] / test.size }
-        val autoIsf = if (autoIsfCount.all { it > 0 }) DoubleArray(HORIZONS) { autoIsfSum[it] / autoIsfCount[it] } else null
+        fun paired(sum: DoubleArray) = if (covered > 0) metrics(DoubleArray(HORIZONS) { sum[it] / covered }) else null
         return Evaluation(
             model = metrics(perHorizon),
             naive = metrics(naive),
-            autoIsf = autoIsf?.let { metrics(it) },
+            autoIsf = paired(autoIsfSum),
+            modelOnAutoIsf = paired(pairedModelSum),
+            naiveOnAutoIsf = paired(pairedNaiveSum),
             coverage = covered.toDouble() / test.size,
             perHorizon = perHorizon,
             clampHits = clampHits
@@ -278,6 +300,15 @@ class Trainer(
         val DAY_PARTS = listOf(3, 9, 15, 21)
 
         fun angleOfHour(hour: Int): Double = 2 * PI * hour / 24.0
+
+        private fun Samples.Reject.label(): String = when (this) {
+            Samples.Reject.EDGE                  -> "at the edge"
+            Samples.Reject.NO_PROFILE            -> "no profile"
+            Samples.Reject.NO_BG_NOW             -> "no BG"
+            Samples.Reject.NO_BG_BEFORE          -> "no BG 5 to 30 min before"
+            Samples.Reject.SENSOR_OR_CALIBRATION -> "sensor start or calibration"
+            Samples.Reject.GAPS_AHEAD            -> "BG gaps in the next 2 h"
+        }
 
         private fun Double.fmt(): String = ((this * 100).roundToInt() / 100.0).toString()
     }

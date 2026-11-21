@@ -23,6 +23,9 @@ enum class ModelAdviceKind {
     /** A point of the model curve goes below the low mark in the next 2 hours */
     LOW_PREDICTED,
 
+    /** BG falls faster than [MODEL_FALLING_DELTA_MGDL] per 5 minutes: no advice to give more insulin */
+    FALLING,
+
     /** [ModelAdvice.units] of insulin are missing */
     MISSING,
 
@@ -35,6 +38,9 @@ enum class ModelAdviceKind {
 
 /** A forecast older than this gives no advice */
 const val MODEL_FORECAST_MAX_AGE_MS = 15 * 60_000L
+
+/** BG falling more than this in 5 minutes (about 0.17 mmol/l) gives no advice to give more insulin */
+const val MODEL_FALLING_DELTA_MGDL = -3.0
 
 @Immutable
 data class ModelAdvice(
@@ -58,9 +64,14 @@ fun modelAdviceOf(forecast: LearnedForecast?, bgMgdl: Double?, lowMgdl: Double, 
     if (!forecast.ready) return ModelAdvice(ModelAdviceKind.NOT_READY, forecast = forecast)
     val lowest = forecast.points.minOfOrNull { it.mgdl }
     if (lowest != null && lowest < lowMgdl) return ModelAdvice(ModelAdviceKind.LOW_PREDICTED, minPredictedMgdl = lowest, forecast = forecast)
-    if (forecast.isfMgdl <= 0.0) return ModelAdvice(ModelAdviceKind.NO_DATA)
-    val need = towardsZero((forecast.eventualMgdl - forecast.targetMgdl) / forecast.isfMgdl, bolusStep)
+    // The model may learn an ISF far below the profile from closed loop data (SMBs come while BG rises), which
+    // would ask for much more insulin. A dose is never bigger than with the profile ISF: the larger ISF wins.
+    val isf = maxOf(forecast.isfMgdl, forecast.profileIsfMgdl)
+    if (isf <= 0.0) return ModelAdvice(ModelAdviceKind.NO_DATA)
+    val need = towardsZero((forecast.eventualMgdl - forecast.targetMgdl) / isf, bolusStep)
+    val falling = (forecast.deltaMgdl ?: 0.0) < MODEL_FALLING_DELTA_MGDL
     return when {
+        need >= bolusStep && falling -> ModelAdvice(ModelAdviceKind.FALLING, forecast = forecast)
         need >= bolusStep  -> ModelAdvice(ModelAdviceKind.MISSING, units = need, forecast = forecast, loopMayGive = closedLoopSmb)
         need <= -bolusStep -> ModelAdvice(
             ModelAdviceKind.TOO_MUCH, units = -need, carbs = (-need * forecast.ic).roundToInt(), forecast = forecast

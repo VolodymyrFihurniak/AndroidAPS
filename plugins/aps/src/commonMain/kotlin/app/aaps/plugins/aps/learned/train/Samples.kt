@@ -42,17 +42,23 @@ object Samples {
     private const val DAY_MS = 86_400_000.0
     private const val CAP_MINUTES = 360f
 
+    /** Why a step cannot be learned from, for the log */
+    enum class Reject { EDGE, NO_PROFILE, NO_BG_NOW, NO_BG_BEFORE, SENSOR_OR_CALIBRATION, GAPS_AHEAD }
+
     /**
-     * True when step [i] can be learned from: BG now and 5, 15 and 30 minutes ago, a profile, no excluded step in the
-     * next 2 hours, enough history before it and BG for the next 2 hours (one missing point is filled).
+     * Null when step [i] can be learned from: BG now and 5, 15 and 30 minutes ago, a profile, no excluded step in the
+     * next 2 hours, enough history before it and BG for the next 2 hours (one missing point is filled). Else why not.
      */
-    fun valid(grid: HistoryGrid, i: Int): Boolean {
-        if (i < LEAD_STEPS || i + HORIZONS >= grid.size) return false
-        if (!grid.hasProfile(i) || grid.isf[i] <= 0.0 || grid.ic[i] <= 0.0) return false
-        if (grid.bg[i].isNaN() || grid.bg[i - 1].isNaN() || grid.bg[i - 3].isNaN() || grid.bg[i - 6].isNaN()) return false
-        for (k in i..i + HORIZONS) if (grid.excluded[k]) return false
-        return futureBg(grid, i) != null
+    fun reject(grid: HistoryGrid, i: Int): Reject? {
+        if (i < LEAD_STEPS || i + HORIZONS >= grid.size) return Reject.EDGE
+        if (!grid.hasProfile(i) || grid.isf[i] <= 0.0 || grid.ic[i] <= 0.0) return Reject.NO_PROFILE
+        if (grid.bg[i].isNaN()) return Reject.NO_BG_NOW
+        if (grid.bg[i - 1].isNaN() || grid.bg[i - 3].isNaN() || grid.bg[i - 6].isNaN()) return Reject.NO_BG_BEFORE
+        for (k in i..i + HORIZONS) if (grid.excluded[k]) return Reject.SENSOR_OR_CALIBRATION
+        return if (futureBg(grid, i) == null) Reject.GAPS_AHEAD else null
     }
+
+    fun valid(grid: HistoryGrid, i: Int): Boolean = reject(grid, i) == null
 
     /** BG at `i + 1` .. `i + 24`, one missing point filled with a straight line; null with more gaps or the last one missing */
     fun futureBg(grid: HistoryGrid, i: Int): DoubleArray? {

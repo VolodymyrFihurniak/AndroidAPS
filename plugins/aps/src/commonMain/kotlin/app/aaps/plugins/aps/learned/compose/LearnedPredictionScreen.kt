@@ -133,7 +133,11 @@ private fun StatusCard(status: LearnedStatus) {
                 LearnedState.NO_MODEL  -> stringResource(ApsStrings.learned_state_no_model) to false
                 LearnedState.TRAINING  -> stringResource(ApsStrings.learned_state_training) to false
                 LearnedState.READY     -> stringResource(ApsStrings.learned_state_ready) to false
-                LearnedState.NOT_READY -> stringResource(ApsStrings.learned_state_not_ready) to true
+                LearnedState.NOT_READY ->
+                    // Too few stored AutoISF runs is a different reason than losing to AutoISF
+                    if ((status.model?.autoIsfCoverage ?: 0.0) < 0.5)
+                        stringResource(ApsStrings.learned_state_no_comparison, ((status.model?.autoIsfCoverage ?: 0.0) * 100).roundToInt()) to true
+                    else stringResource(ApsStrings.learned_state_not_ready) to true
             }
             Text(
                 text = text,
@@ -170,9 +174,17 @@ private fun ErrorsCard(model: LearnedModel) {
             ErrorRow("", listOf(30, 60, 120).map { stringResource(CoreUiStrings.format_mins, it) }, bold = true)
             fun values(metrics: Metrics?) = listOf(metrics?.mae30, metrics?.mae60, metrics?.mae120)
                 .map { value -> value?.let { profileUtil.fromMgdlToStringWithUnits(it) } ?: "–" }
-            ErrorRow(stringResource(ApsStrings.learned_row_model), values(model.model), bold = true)
+            // All three on the moments with a stored AutoISF run, so the rows compare fairly
+            val paired = model.modelOnAutoIsfMoments != null
+            ErrorRow(stringResource(ApsStrings.learned_row_model), values(model.modelOnAutoIsfMoments ?: model.model), bold = true)
             ErrorRow(stringResource(ApsStrings.openaps_auto_isf), values(model.autoIsf))
-            ErrorRow(stringResource(ApsStrings.learned_row_naive), values(model.naive))
+            ErrorRow(stringResource(ApsStrings.learned_row_naive), values(model.naiveOnAutoIsfMoments ?: model.naive))
+            Text(
+                text = if (paired) stringResource(ApsStrings.learned_compared_on, (model.autoIsfCoverage * 100).roundToInt())
+                else stringResource(ApsStrings.learned_no_autoisf_runs),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

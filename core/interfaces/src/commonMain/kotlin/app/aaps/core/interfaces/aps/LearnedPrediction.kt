@@ -28,7 +28,11 @@ data class LearnedForecast(
     val targetMgdl: Double,
     /** True when the model was better than AutoISF on the test days. Only then it gives a dose. */
     val ready: Boolean,
-    val modelTrainedAt: Long
+    val modelTrainedAt: Long,
+    /** The profile ISF now, mg/dl per U. A dose advice never uses an ISF below it, see the Insulin dialog. */
+    val profileIsfMgdl: Double = isfMgdl,
+    /** BG change over the last 5 minutes, null when the reading before is missing */
+    val deltaMgdl: Double? = null
 ) {
 
     /** The point [minutes] after [timestamp], for 5, 10, ... 120 */

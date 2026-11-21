@@ -12,6 +12,9 @@
     <string name="learned_state_training">Learning…</string>
     <string name="learned_state_ready">Ready: better than AutoISF on the test days</string>
     <string name="learned_state_not_ready">Not better than AutoISF yet, so it gives no dose</string>
+    <string name="learned_state_no_comparison" comment="%1$d=percent of the test moments with a stored loop run. Example: 35">Not compared with AutoISF: its runs are stored for only %1$d %% of the test days, so it gives no dose</string>
+    <string name="learned_compared_on" comment="%1$d=percent. Example: Compared on 97 % of the test moments, where an AutoISF run was stored">Compared on %1$d %% of the test moments, where an AutoISF run was stored</string>
+    <string name="learned_no_autoisf_runs">No stored AutoISF runs on the test days</string>
     <string name="learned_last_training" comment="%1$s=date and time. Example: Last training: 21.11. 10:45">Last training: %1$s</string>
     <string name="learned_trained_on" comment="%1$d=days of history, %2$d=number of 5-minute samples. Example: 180 days, 48000 samples">%1$d days, %2$d samples</string>
     <string name="learned_errors_title">Mean error on the last 14 days</string>

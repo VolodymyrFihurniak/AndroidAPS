@@ -16,12 +16,16 @@ class ModelAdviceTest {
         eventual: Double,
         points: List<Double> = List(24) { 120.0 },
         ready: Boolean = true,
-        timestamp: Long = now - minute
+        timestamp: Long = now - minute,
+        isf: Double = 50.0,
+        profileIsf: Double = 50.0,
+        delta: Double? = 0.0
     ) = LearnedForecast(
         timestamp = timestamp, bgMgdl = 120.0,
         points = points.mapIndexed { k, v -> LearnedPoint(timestamp + (k + 1) * 5 * minute, v) },
         typicalErrorMgdl = List(24) { 10.0 },
-        eventualMgdl = eventual, isfMgdl = 50.0, ic = 12.0, targetMgdl = 100.0, ready = ready, modelTrainedAt = now
+        eventualMgdl = eventual, isfMgdl = isf, ic = 12.0, targetMgdl = 100.0, ready = ready, modelTrainedAt = now,
+        profileIsfMgdl = profileIsf, deltaMgdl = delta
     )
 
     private fun advice(forecast: LearnedForecast?, bg: Double? = 120.0, closedLoopSmb: Boolean = false) =
@@ -74,4 +78,28 @@ class ModelAdviceTest {
 
     @Test
     fun `no bolus needed`() = assertEquals(ModelAdviceKind.NONE, advice(forecast(eventual = 101.0)).kind)
+
+    // Safety: a learned ISF never makes the dose bigger than the profile would
+
+    @Test
+    fun `a learned ISF that would give a bigger dose is not used`() {
+        val advice = advice(forecast(eventual = 200.0, isf = 20.0, profileIsf = 50.0))
+        assertEquals(ModelAdviceKind.MISSING, advice.kind)
+        assertEquals(2.0, advice.units, 1e-9)
+    }
+
+    @Test
+    fun `a learned ISF that gives a smaller dose is used`() =
+        assertEquals(1.0, advice(forecast(eventual = 200.0, isf = 100.0, profileIsf = 50.0)).units, 1e-9)
+
+    @Test
+    fun `falling BG gives no missing advice`() {
+        val advice = advice(forecast(eventual = 200.0, delta = -12.0))
+        assertEquals(ModelAdviceKind.FALLING, advice.kind)
+        assertEquals(0.0, advice.units)
+    }
+
+    @Test
+    fun `too much insulin is still said while BG falls`() =
+        assertEquals(ModelAdviceKind.TOO_MUCH, advice(forecast(eventual = 50.0, points = List(24) { 90.0 }, delta = -12.0)).kind)
 }

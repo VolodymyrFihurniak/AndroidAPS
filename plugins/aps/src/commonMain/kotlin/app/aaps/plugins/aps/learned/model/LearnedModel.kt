@@ -1,5 +1,6 @@
 package app.aaps.plugins.aps.learned.model
 
+import kotlinx.serialization.Required
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -13,7 +14,8 @@ data class Metrics(val mae30: Double, val mae60: Double, val mae120: Double)
  */
 @Serializable
 data class LearnedModel(
-    val version: Int = VERSION,
+    // Required: a model saved without it (version 1 never wrote it) is not read, so it is learned again
+    @Required val version: Int = VERSION,
     val trainedAt: Long,
     /** Days of history it learned from */
     val windowDays: Int,
@@ -32,9 +34,12 @@ data class LearnedModel(
     val naive: Metrics,
     /** Part of the test samples that had a stored AutoISF run */
     val autoIsfCoverage: Double,
+    /** The model and "BG stays the same" on the moments with a stored AutoISF run, to compare fairly with [autoIsf] */
+    val modelOnAutoIsfMoments: Metrics? = null,
+    val naiveOnAutoIsfMoments: Metrics? = null,
     /** Model error on the test days for each of the 24 points */
     val typicalErrorMgdl: List<Double>,
-    /** True when the model beat AutoISF (or "BG stays the same" without enough stored runs) at 60 minutes */
+    /** True when the model beat AutoISF at 60 minutes on the same moments, which cover at least half of the test days */
     val ready: Boolean,
     /** How often the network residual hit the limit on the test days */
     val clampHits: Int
@@ -44,7 +49,8 @@ data class LearnedModel(
 
     companion object {
 
-        const val VERSION = 1
+        /** 2: the ready rule needs AutoISF on the same moments; a model of version 1 may say ready wrongly */
+        const val VERSION = 2
         const val OUTPUT_SCALE = 50f
 
         private val json = Json { ignoreUnknownKeys = true }

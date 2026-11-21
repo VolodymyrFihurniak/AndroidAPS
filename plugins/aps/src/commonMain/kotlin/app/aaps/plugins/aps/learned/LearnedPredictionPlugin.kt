@@ -221,6 +221,10 @@ class LearnedPredictionPlugin(
         progress("Reading history")
         val input = historyReader.read(from, now)
         log.add("Data", "${input.bg.size} BG readings, ${input.doses.size} boluses and SMB, ${input.carbs.size} carb entries, ${input.tempBasals.size} temp basals")
+        // How much of the window has BG at all: a short history is the usual reason for few samples
+        val bgDays = input.bg.map { it.timestamp / DAY_MS }.distinct().size
+        val firstBg = input.bg.minOfOrNull { it.timestamp }
+        log.add("History", if (firstBg == null) "no BG" else "BG from ${dateUtil.dateString(firstBg)}, on $bgDays of $days days")
         val grid = HistoryGridBuilder.build(input, from, now, TimeZone.currentSystemDefault())
         val runs = historyReader.storedRuns(now - Samples.TEST_DAYS * DAY_MS, now)
         val trainer = Trainer(

@@ -80,7 +80,9 @@ object Forecaster {
             ic = grid.ic[i],
             targetMgdl = grid.target[i],
             ready = model.ready,
-            modelTrainedAt = model.trainedAt
+            modelTrainedAt = model.trainedAt,
+            profileIsfMgdl = grid.isf[i],
+            deltaMgdl = if (i > 0 && !grid.bg[i - 1].isNaN()) bg - grid.bg[i - 1] else null
         )
     }
 }

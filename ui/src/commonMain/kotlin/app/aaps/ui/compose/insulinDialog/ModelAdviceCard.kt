@@ -40,6 +40,7 @@ internal fun ModelAdviceCard(advice: ModelAdvice, modifier: Modifier = Modifier)
         ModelAdviceKind.LOW_NOW       -> stringResource(UiStrings.bolus_rec_low_now)
         ModelAdviceKind.NOT_READY     -> stringResource(UiStrings.model_adv_not_ready)
         ModelAdviceKind.LOW_PREDICTED -> stringResource(UiStrings.bolus_rec_low_predicted, profileUtil.fromMgdlToStringWithUnits(advice.minPredictedMgdl))
+        ModelAdviceKind.FALLING       -> stringResource(UiStrings.model_adv_falling)
         ModelAdviceKind.MISSING       -> stringResource(UiStrings.model_adv_missing, stringResource(InterfacesStrings.format_insulin_units, advice.units))
         ModelAdviceKind.TOO_MUCH      -> stringResource(
             UiStrings.model_adv_too_much, stringResource(InterfacesStrings.format_insulin_units, advice.units), stringResource(InterfacesStrings.format_carbs, advice.carbs)

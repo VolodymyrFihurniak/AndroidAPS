@@ -12,6 +12,9 @@
     <string name="learned_state_training">Навчається…</string>
     <string name="learned_state_ready">Готова: краща за AutoISF на тестових днях</string>
     <string name="learned_state_not_ready">Ще не краща за AutoISF, тому дозу не радить</string>
+    <string name="learned_state_no_comparison">Не порівняна з AutoISF: його розрахунки збережені лише для %1$d %% тестових днів, тому дозу не радить</string>
+    <string name="learned_compared_on">Порівняно на %1$d %% тестових моментів, де збережений розрахунок AutoISF</string>
+    <string name="learned_no_autoisf_runs">За тестові дні немає збережених розрахунків AutoISF</string>
     <string name="learned_last_training">Останнє навчання: %1$s</string>
     <string name="learned_trained_on">%1$d днів, %2$d зразків</string>
     <string name="learned_errors_title">Середня похибка за останні 14 днів</string>
