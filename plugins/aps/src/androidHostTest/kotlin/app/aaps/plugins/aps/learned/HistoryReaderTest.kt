@@ -1,5 +1,6 @@
 package app.aaps.plugins.aps.learned
 
+import app.aaps.core.data.model.BS
 import app.aaps.core.data.model.EPS
 import app.aaps.core.data.model.GlucoseUnit
 import app.aaps.core.data.model.ICfg
@@ -37,11 +38,12 @@ class HistoryReaderTest {
 
     private fun persistence(
         switches: List<EPS> = emptyList(),
+        boluses: List<BS> = emptyList(),
         tempBasals: List<TB> = emptyList(),
         runs: List<APSResult> = emptyList()
     ): PersistenceLayer = mock {
         on { getBgReadingsDataFromTimeToTime(any(), any(), any()) } doReturn emptyList()
-        on { getBolusesFromTimeToTime(any(), any(), any()) } doReturn emptyList()
+        on { getBolusesFromTimeToTime(any(), any(), any()) } doReturn boluses
         on { getTemporaryBasalsStartingFromTimeToTime(any(), any(), any()) } doReturn tempBasals
         on { getExtendedBolusesStartingFromTimeToTime(any(), any(), any()) } doReturn emptyList()
         on { getCarbsFromTimeToTimeExpanded(any(), any(), any()) } doReturn emptyList()
@@ -88,5 +90,16 @@ class HistoryReaderTest {
         val runs = reader.storedRuns(day0, day0 + 2 * hour).distinctBy { it.timestamp }
         assertThat(runs.first { it.timestamp == day0 }.mainCurve).containsExactly(110.0, 120.0).inOrder()
         assertThat(runs.first { it.timestamp == day0 + hour }.mainCurve).containsExactly(101.0, 102.0).inOrder()
+    }
+
+    @Test
+    fun `priming the cannula is not insulin in the body`() = runBlocking<Unit> {
+        val boluses = listOf(
+            BS(timestamp = day0 + hour, amount = 0.5, type = BS.Type.PRIMING, iCfg = iCfg),
+            BS(timestamp = day0 + 2 * hour, amount = 1.0, type = BS.Type.NORMAL, iCfg = iCfg),
+            BS(timestamp = day0 + 3 * hour, amount = 0.1, type = BS.Type.SMB, iCfg = iCfg)
+        )
+        val input = HistoryReader(persistence(switches = listOf(eps(day0, 50.0)), boluses = boluses)).read(day0, day0 + 6 * hour)
+        assertThat(input.doses.map { it.units }).containsExactly(1.0, 0.1)
     }
 }

@@ -96,4 +96,26 @@ class TrainerTest {
         trainer.train(grid, now = history.end, windowDays = 40, autoIsfRuns = emptyList())
         assertTrue(lines.any { it.startsWith("Dropped:") }, lines.joinToString("\n"))
     }
+
+    /**
+     * The safety-relevant direction: in closed loop data (entered meals, meals nobody entered, a loop on temp basals,
+     * both) the fit must not make insulin look weaker than it is, which would ask for bigger doses. A fit on quiet
+     * samples only was tried for v2 and made it 0.2 of the truth with meals nobody entered, so it is not used.
+     */
+    @Test
+    fun `closed loop data does not make insulin look weak`() = runTest(timeout = 10.minutes) {
+        for ((name, history) in listOf(
+            "clean" to SyntheticHistory.generate(days = 40),
+            "unannounced meals" to SyntheticHistory.generate(days = 40, unannouncedMeals = true),
+            "temp basal loop" to SyntheticHistory.generate(days = 40, tbrLoop = true),
+            "both" to SyntheticHistory.generate(days = 40, unannouncedMeals = true, tbrLoop = true)
+        )) {
+            val grid = HistoryGridBuilder.build(history.input, history.start, history.end, TimeZone.UTC)
+            val model = assertNotNull(trainer.train(grid, history.end, 40, bgStaysRuns(history)))
+            for (angle in listOf(0.0, PI)) {
+                val ratio = model.linear.rawIsfMultiplier(angle) / SyntheticHistory.trueIsfMultiplier(angle)
+                assertTrue(ratio >= 0.85, "$name at ${angle}: ${model.linear.rawIsfMultiplier(angle)}")
+            }
+        }
+    }
 }

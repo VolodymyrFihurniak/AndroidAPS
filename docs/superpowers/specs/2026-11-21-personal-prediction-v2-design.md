@@ -94,6 +94,14 @@ slowest to train), a small causal CNN (close in accuracy, faster), and a bigger 
 
 ### 6.3 "No more insulin" curve
 
+**Changed while building (Task 2):** the quiet-sample fit below was tried on made-up closed loop data and rejected.
+With meals nobody entered it made the day ISF 0.2 of the truth, the very problem it was meant to fix; the fit on all
+samples never made insulin look weaker than it is in four scenarios (entered meals, meals nobody entered, a temp basal
+loop, both), so it stays, with the ISF multiplier kept in 0.5-2.0. The 30 % on the phone is not explained by closed
+loop data alone, so priming is now left out of the insulin and the log shows the insulin per day to compare with the
+TDD of AAPS. The text below is kept as the record of what was planned.
+
+
 - The v1 linear model and network stay, with one change: the insulin weights (`ins*`) are fitted only on quiet
   samples, where insulin is not hidden by meals or by the loop: no carbs from 3 hours before to the end of the window,
   and BG not rising at the start (change over 15 minutes not above 0). The other weights are then fitted on all

@@ -22,7 +22,10 @@ import app.aaps.core.keys.interfaces.Preferences
 import app.aaps.core.ui.compose.preference.PreferenceSubScreenDef
 import app.aaps.plugins.aps.ApsStrings
 import app.aaps.plugins.aps.learned.compose.LearnedPredictionScreen
+import app.aaps.plugins.aps.learned.grid.HistoryGrid
 import app.aaps.plugins.aps.learned.grid.HistoryGridBuilder
+import app.aaps.plugins.aps.learned.grid.HistoryInput
+import app.aaps.plugins.aps.learned.grid.STEP_MS
 import app.aaps.plugins.aps.learned.keys.LearnedIntKey
 import app.aaps.plugins.aps.learned.keys.LearnedStringKey
 import app.aaps.plugins.aps.learned.model.LearnedModel
@@ -48,6 +51,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import kotlinx.datetime.TimeZone
+import kotlin.math.roundToInt
 
 /** autoISF build, personal prediction: what the plugin screen shows */
 enum class LearnedState { NO_MODEL, TRAINING, READY, NOT_READY }
@@ -226,6 +230,7 @@ class LearnedPredictionPlugin(
         val firstBg = input.bg.minOfOrNull { it.timestamp }
         log.add("History", if (firstBg == null) "no BG" else "BG from ${dateUtil.dateString(firstBg)}, on $bgDays of $days days")
         val grid = HistoryGridBuilder.build(input, from, now, TimeZone.currentSystemDefault())
+        logInsulinPerDay(input, grid, days)
         val runs = historyReader.storedRuns(now - Samples.TEST_DAYS * DAY_MS, now)
         val trainer = Trainer(
             log = { log.add(it) },
@@ -233,6 +238,22 @@ class LearnedPredictionPlugin(
             bg = { profileUtil.fromMgdlToStringWithUnits(it) }
         )
         return trainer.train(grid, now, days, runs)
+    }
+
+    /**
+     * Insulin per day as the model sees it, to compare with the TDD of AAPS. Insulin counted twice (or missing) makes
+     * the learned ISF wrong; a phone learned 30 % of the profile ISF, which closed loop data alone did not explain.
+     */
+    private fun logInsulinPerDay(input: HistoryInput, grid: HistoryGrid, days: Int) {
+        if (days <= 0) return
+        val boluses = input.doses.sumOf { it.units } / days
+        val net = grid.insulin.sumOf { it.sum() } / days - boluses
+        val scheduled = (0 until grid.size).sumOf { if (grid.basal[it].isNaN()) 0.0 else grid.basal[it] } * STEP_MS / 3_600_000.0 / days
+        fun units(value: Double) = ((value * 10).roundToInt() / 10.0).toString()
+        log.add(
+            "Insulin per day",
+            "about ${units(boluses + net + scheduled)} U: ${units(boluses)} U boluses and SMB, ${units(scheduled)} U profile basal, ${units(net)} U temp basal above or below it"
+        )
     }
 
     private fun progress(text: String) {

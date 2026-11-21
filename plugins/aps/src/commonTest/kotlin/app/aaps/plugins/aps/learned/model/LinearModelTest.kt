@@ -47,8 +47,8 @@ class LinearModelTest {
     @Test
     fun `isf multiplier is clamped`() {
         val theta = LinearFeatures.PRIOR.copyOf().also { it[0] = 5.0 }
-        assertEquals(3.0, LinearModel(theta.toList()).isfMultiplier(0.0))
+        assertEquals(2.0, LinearModel(theta.toList()).isfMultiplier(0.0))
         val low = LinearFeatures.PRIOR.copyOf().also { it[0] = 0.1 }
-        assertEquals(0.3, LinearModel(low.toList()).isfMultiplier(0.0))
+        assertEquals(0.5, LinearModel(low.toList()).isfMultiplier(0.0))
     }
 }

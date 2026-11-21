@@ -90,7 +90,7 @@ data class LinearModel(val theta: List<Double>) {
         return sum
     }
 
-    /** The personal ISF is the profile ISF times this, at the time of day [angle]. Kept in 0.3..3.0. */
+    /** The personal ISF is the profile ISF times this, at the time of day [angle]. Kept in 0.5..2.0. */
     fun isfMultiplier(angle: Double): Double = rawIsfMultiplier(angle).coerceIn(MIN_ISF_MULTIPLIER, MAX_ISF_MULTIPLIER)
 
     /** The multiplier before the limits, for the warning in the log */
@@ -112,7 +112,8 @@ data class LinearModel(val theta: List<Double>) {
 
     companion object {
 
-        const val MIN_ISF_MULTIPLIER = 0.3
-        const val MAX_ISF_MULTIPLIER = 3.0
+        // v2: narrower than v1 (0.3-3.0); a phone learned 0.3 from closed loop data
+        const val MIN_ISF_MULTIPLIER = 0.5
+        const val MAX_ISF_MULTIPLIER = 2.0
     }
 }

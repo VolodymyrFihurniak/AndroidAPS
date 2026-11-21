@@ -1,5 +1,6 @@
 package app.aaps.plugins.aps.learned
 
+import app.aaps.core.data.model.BS
 import app.aaps.core.data.model.EPS
 import app.aaps.core.data.model.TE
 import app.aaps.core.data.model.TT
@@ -72,7 +73,8 @@ class HistoryReader(private val persistenceLayer: PersistenceLayer) {
                 .filter { it.isValid }
                 .mapTo(bg) { BgReading(it.timestamp, it.value) }
             persistenceLayer.getBolusesFromTimeToTime(start, end, true)
-                .filter { it.isValid && !it.isBasalInsulin && it.amount > 0.0 }
+                // Priming fills the cannula and never reaches the body
+                .filter { it.isValid && !it.isBasalInsulin && it.type != BS.Type.PRIMING && it.amount > 0.0 }
                 .mapTo(doses) { InsulinDose(it.timestamp, it.amount, it.iCfg) }
             persistenceLayer.getCarbsFromTimeToTimeExpanded(start, end, true)
                 .filter { it.isValid && it.amount > 0.0 }

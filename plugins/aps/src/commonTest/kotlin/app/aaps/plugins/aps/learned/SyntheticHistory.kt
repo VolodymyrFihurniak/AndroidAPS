@@ -22,6 +22,8 @@ import kotlin.random.Random
  * - carbs act 1.1 times the profile IC (10) says, absorbed in 2 hours
  * - BG rises 6 mg/dl per hour from 04:00 to 07:00 on its own
  * - three meals a day with a bolus, SMBs above 150 mg/dl, a zero temp below 85 mg/dl
+ * - with `unannouncedMeals`, two more meals a day that are eaten but not entered: the loop gives SMBs while BG rises
+ *   from them, as it does in real closed loop data, which makes insulin look weak to a naive fit
  */
 object SyntheticHistory {
 
@@ -33,7 +35,7 @@ object SyntheticHistory {
 
     class Result(val input: HistoryInput, val start: Long, val end: Long)
 
-    fun generate(days: Int, seed: Int = 7): Result {
+    fun generate(days: Int, seed: Int = 7, unannouncedMeals: Boolean = false, tbrLoop: Boolean = false): Result {
         val random = Random(seed)
         val start = 1_767_225_600_000L // 2026-01-01 00:00 UTC
         val steps = days * 288
@@ -50,6 +52,10 @@ object SyntheticHistory {
         for (day in 0 until days) for ((step, size) in meals) {
             mealSteps[day * 288 + step + random.nextInt(-6, 7)] = size * random.nextDouble(0.8, 1.2)
         }
+        val hiddenSteps = mutableMapOf<Int, Double>()
+        if (unannouncedMeals) for (day in 0 until days) for ((step, size) in listOf(10 * 12 + 6 to 40.0, 16 * 12 to 50.0)) {
+            hiddenSteps[day * 288 + step + random.nextInt(-12, 13)] = size * random.nextDouble(0.6, 1.4)
+        }
         var bg = 110.0
         var lastSmb = -100
         var zeroTempUntil = -1
@@ -63,16 +69,30 @@ object SyntheticHistory {
                 units[k] += bolus
                 doses += InsulinDose(time, bolus, insulin)
             }
+            hiddenSteps[k]?.let { g -> grams[k] += g }
+            val rising = k > 0 && bg > readings[readings.size - 2].mgdl
             if (bg > 150.0 && k - lastSmb >= 3 && iob(units, insulinKernel, k) < 2.0) {
                 units[k] += 0.3
                 doses += InsulinDose(time, 0.3, insulin)
                 lastSmb = k
+            } else if (unannouncedMeals && rising && bg > 120.0 && k - lastSmb >= 2 && iob(units, insulinKernel, k) < 3.0) {
+                // As a loop with UAM does: SMBs while BG rises without entered carbs
+                units[k] += 0.4
+                doses += InsulinDose(time, 0.4, insulin)
+                lastSmb = k
             }
-            if (bg < 85.0 && k > zeroTempUntil) {
+            if (tbrLoop) {
+                // A loop that sets a temp basal every 5 minutes from BG and its trend: more when high or rising,
+                // down to 0 when low or falling, as oref does
+                val delta = if (readings.size >= 2) bg - readings[readings.size - 2].mgdl else 0.0
+                val rate = (profile.basal * (1.0 + (bg - 110.0) / 40.0 + delta / 4.0)).coerceIn(0.0, 3 * profile.basal)
+                tempBasals += TempBasalSegment(time, time + STEP_MS, rate, isAbsolute = true)
+                units[k] += (rate - profile.basal) / 12.0
+            } else if (bg < 85.0 && k > zeroTempUntil) {
                 tempBasals += TempBasalSegment(time, time + 6 * STEP_MS, 0.0, isAbsolute = true)
                 zeroTempUntil = k + 5
             }
-            if (k <= zeroTempUntil) units[k] -= profile.basal / 12.0
+            if (!tbrLoop && k <= zeroTempUntil) units[k] -= profile.basal / 12.0
 
             val angle = 2 * PI * (k % 288) / 288.0
             var acting = 0.0
