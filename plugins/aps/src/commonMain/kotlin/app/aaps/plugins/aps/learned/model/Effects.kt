@@ -77,11 +77,20 @@ class CarbKernel(val hours: Int) {
  * in training that is the insulin that was really given, in a live grid it is the planned rest of the running temp
  * basal.
  */
-class Effects(private val grid: HistoryGrid, private val liveIndex: Int? = null) {
+class Effects private constructor(
+    private val grid: HistoryGrid,
+    private val liveIndex: Int?,
+    private val insulinKernels: List<InsulinKernel>,
+    private val carbKernels: Map<Int, CarbKernel>
+) {
 
-    private val insulinKernels = grid.curves.map { InsulinKernel(it) }
-    private val carbKernels = CARB_HOURS.associateWith { CarbKernel(it) }
+    constructor(grid: HistoryGrid, liveIndex: Int? = null) :
+        this(grid, liveIndex, grid.curves.map { InsulinKernel(it) }, CARB_HOURS.associateWith { CarbKernel(it) })
+
     private val lastDose = min(grid.size - 1, liveIndex ?: Int.MAX_VALUE)
+
+    /** The same grid seen from step [index]: what was given after it is ignored. Shares the kernels, so it is cheap. */
+    fun atLive(index: Int): Effects = Effects(grid, index, insulinKernels, carbKernels)
 
     /** Units that act between step [i] and step `i + h` */
     fun insulinActing(i: Int, h: Int): Double {
