@@ -19,5 +19,7 @@ data class ConfigCategoryUiModel(
     val subtitle: String,
     val categoryIcon: ImageVector?,
     /** True only on a client for a category whose selection syncs to the master — drives the sync badge. */
-    val synced: Boolean = false
+    val synced: Boolean = false,
+    /** autoISF build: a warning shown on the category screen, for the Experimental category */
+    val warningRes: TextRef? = null
 )

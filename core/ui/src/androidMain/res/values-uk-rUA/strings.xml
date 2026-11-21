@@ -82,6 +82,8 @@
     <string name="configbuilder_loop">Петля</string>
     <string name="configbuilder_sync">Звʼязок</string>
     <string name="configbuilder_general">Загальне</string>
+    <string name="configbuilder_experimental">Експериментальне</string>
+    <string name="configbuilder_experimental_warning">Тестові функції. Вони не змінюють подачу інсуліну.</string>
     <string name="protection">Захист</string>
     <string name="value_unavailable_short">н/д</string>
     <!-- master_password moved to core/keys/strings.xml -->

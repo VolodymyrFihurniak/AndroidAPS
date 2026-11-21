@@ -21,5 +21,8 @@ enum class PluginType(
     BGSOURCE(singleSelect = true),
     SYNC,
     SMOOTHING(singleSelect = true, selectionSyncs = true),
-    CALIBRATION(singleSelect = true, selectionSyncs = true)
+    CALIBRATION(singleSelect = true, selectionSyncs = true),
+
+    /** autoISF build: test features that do not change insulin delivery, any number of them on at once */
+    EXPERIMENTAL
 }

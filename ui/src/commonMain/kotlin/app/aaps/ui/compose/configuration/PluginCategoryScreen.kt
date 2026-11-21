@@ -22,6 +22,7 @@ import app.aaps.core.data.plugin.PluginType
 import app.aaps.core.keys.interfaces.ClientRole
 import app.aaps.core.ui.CoreUiStrings
 import app.aaps.core.ui.compose.AapsSpacing
+import app.aaps.core.ui.compose.AapsTheme
 import app.aaps.core.ui.compose.AapsTopAppBar
 import app.aaps.core.ui.compose.ConfigPluginCard
 import app.aaps.core.ui.compose.MasterOfflineBanner
@@ -118,6 +119,16 @@ fun PluginCategoryScreen(
                         vertical = AapsSpacing.large
                     )
                 )
+            }
+            category.warningRes?.let { warning ->
+                item(key = "category-warning") {
+                    Text(
+                        text = stringResource(warning),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AapsTheme.generalColors.statusWarning,
+                        modifier = Modifier.padding(horizontal = AapsSpacing.xxLarge, vertical = AapsSpacing.small)
+                    )
+                }
             }
             if (noneSelected) {
                 item(key = "warning") {

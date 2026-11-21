@@ -21,4 +21,5 @@ fun pluginCategoryTitle(type: PluginType): TextRef = when (type) {
     PluginType.CONSTRAINTS -> CoreUiStrings.constraints
     PluginType.SYNC        -> CoreUiStrings.configbuilder_sync
     PluginType.GENERAL     -> CoreUiStrings.configbuilder_general
+    PluginType.EXPERIMENTAL -> CoreUiStrings.configbuilder_experimental
 }

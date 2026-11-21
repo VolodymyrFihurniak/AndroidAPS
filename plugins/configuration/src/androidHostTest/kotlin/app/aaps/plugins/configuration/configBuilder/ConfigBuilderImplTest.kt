@@ -112,6 +112,14 @@ internal class ConfigBuilderImplTest {
         }
     }
 
+    /** autoISF build: the Experimental category holds test plugins side by side, and a client chooses its own */
+    @Test
+    fun `experimental category has no active plugin key and does not sync`() {
+        assertEquals(null, sut.activePluginKey(PluginType.EXPERIMENTAL))
+        assertEquals(false, PluginType.EXPERIMENTAL.singleSelect)
+        assertEquals(false, PluginType.EXPERIMENTAL.selectionSyncs)
+    }
+
     // ---- applyConfiguration ----
 
     /** One observer per synced key, however many times the configuration has been applied. */

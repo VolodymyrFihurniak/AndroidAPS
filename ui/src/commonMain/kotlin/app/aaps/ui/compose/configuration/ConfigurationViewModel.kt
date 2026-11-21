@@ -2,6 +2,7 @@ package app.aaps.ui.compose.configuration
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.runtime.Immutable
@@ -14,6 +15,7 @@ import app.aaps.core.interfaces.configuration.ConfigBuilder
 import app.aaps.core.interfaces.plugin.ActivePlugin
 import app.aaps.core.interfaces.plugin.PluginBase
 import app.aaps.core.keys.interfaces.Preferences
+import app.aaps.core.ui.CoreUiStrings
 import app.aaps.core.ui.compose.ConfigPluginUiModel
 import app.aaps.core.ui.compose.pluginCategoryTitle
 import app.aaps.ui.plugin.HardwarePumpConfirmation
@@ -173,6 +175,7 @@ class ConfigurationViewModel(
             val defaultIcon = when (type) {
                 PluginType.SYNC    -> Icons.Default.Sync
                 PluginType.GENERAL -> Icons.Default.Extension
+                PluginType.EXPERIMENTAL -> Icons.Default.Science
                 else               -> Icons.Default.Settings
             }
 
@@ -184,7 +187,8 @@ class ConfigurationViewModel(
                     isMultiSelect = isMultiSelect,
                     subtitle = subtitle,
                     categoryIcon = singleEnabled?.composeIcon ?: defaultIcon,
-                    synced = clientSynced(type)
+                    synced = clientSynced(type),
+                    warningRes = if (type == PluginType.EXPERIMENTAL) CoreUiStrings.configbuilder_experimental_warning else null
                 )
             )
         }
@@ -207,6 +211,7 @@ class ConfigurationViewModel(
         }
         addCategory(PluginType.SYNC)
         addCategory(PluginType.GENERAL)
+        addCategory(PluginType.EXPERIMENTAL)
 
         pluginLookup = lookup
         return categories

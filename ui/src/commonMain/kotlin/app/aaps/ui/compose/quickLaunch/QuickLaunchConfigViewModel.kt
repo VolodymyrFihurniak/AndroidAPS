@@ -194,7 +194,7 @@ class QuickLaunchConfigViewModel(
             PluginType.PUMP, PluginType.BGSOURCE, PluginType.APS, PluginType.LOOP,
             PluginType.SENSITIVITY, PluginType.SMOOTHING, PluginType.CALIBRATION,
             PluginType.CONSTRAINTS,
-            PluginType.SYNC, PluginType.GENERAL
+            PluginType.SYNC, PluginType.GENERAL, PluginType.EXPERIMENTAL
         )
 
         val plugins = activePlugin.getPluginsList()

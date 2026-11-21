@@ -117,7 +117,8 @@ class ConfigBuilderImpl(
         PluginType.CALIBRATION                                                       -> StringNonKey.ActivePluginCalibration
         PluginType.PUMP                                                              -> StringNonKey.ActivePluginPump
         PluginType.BGSOURCE                                                          -> StringNonKey.ActivePluginBgSource
-        PluginType.GENERAL, PluginType.CONSTRAINTS, PluginType.LOOP, PluginType.SYNC -> null  // multi-select: no single active
+        PluginType.GENERAL, PluginType.CONSTRAINTS, PluginType.LOOP, PluginType.SYNC,
+        PluginType.EXPERIMENTAL                                                      -> null  // multi-select: no single active
     }
 
     // SSOT = PluginType.selectionSyncs (the activePluginKey wiring is guarded against it in ConfigBuilderImplTest).
@@ -236,7 +237,8 @@ class ConfigBuilderImpl(
                     (if (p.isEnabled(PluginType.BGSOURCE)) " BGSOURCE" else "") +
                     (if (p.isEnabled(PluginType.SYNC)) " SYNC" else "") +
                     (if (p.isEnabled(PluginType.SMOOTHING)) " SMOOTHING" else "") +
-                    if (p.isEnabled(PluginType.CALIBRATION)) " CALIBRATION" else ""
+                    (if (p.isEnabled(PluginType.CALIBRATION)) " CALIBRATION" else "") +
+                    if (p.isEnabled(PluginType.EXPERIMENTAL)) " EXPERIMENTAL" else ""
             )
         }
     }
