@@ -178,6 +178,12 @@ class TrainerTest {
         assertTrue(model.autoIsfCoverage < 0.5, "coverage ${model.autoIsfCoverage}")
         assertFalse(model.ready)
         assertNotNull(model.modelOnAutoIsfMoments)
+        // The log says which test days have runs, so a gap in the stored runs can be seen
+        val line = assertNotNull(lines.singleOrNull { it.startsWith("AutoISF runs on the test days") }, lines.joinToString("\n"))
+        val percents = line.substringAfter(": ").split(", ").map { it.removeSuffix(" %").toInt() }
+        assertEquals(Samples.TEST_DAYS, percents.size, line)
+        assertTrue(percents.take(10).all { it == 0 }, line)
+        assertTrue(percents.takeLast(2).all { it >= 90 }, line)
     }
 
     @Test

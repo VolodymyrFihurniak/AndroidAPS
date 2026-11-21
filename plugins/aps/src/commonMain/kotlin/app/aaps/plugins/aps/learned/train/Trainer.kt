@@ -144,7 +144,7 @@ class Trainer(
         progress("Measuring")
         val measureStart = timeSource.markNow()
         val expected: ((Int) -> DoubleArray?)? = gruFit?.let { fit -> { i -> gru.predict(gruData, fit, linearLearn, 0, i) } }
-        val evaluation = evaluate(grid, effects, linearLearn, network, scaling, test, futures, autoIsfRuns, expected)
+        val evaluation = evaluate(grid, effects, linearLearn, network, scaling, test, futures, autoIsfRuns, expected, now - Samples.TEST_DAYS * DAY_MS)
         // Ready only when it beats AutoISF on the same moments, and those cover at least half of the test days.
         // Without enough stored AutoISF runs there is nothing fair to compare with, so it is not ready.
         val autoIsf = evaluation.autoIsf
@@ -216,6 +216,9 @@ class Trainer(
     private fun Metrics?.beats(autoIsf: Metrics?): Boolean = this != null && autoIsf != null && mae60 < autoIsf.mae60
 
     private fun logEvaluation(evaluation: Evaluation, ready: Boolean, expectedReady: Boolean) {
+        // Which test days have stored runs: a gap shows whether the database lost them or the loop did not run
+        log("AutoISF runs on the test days, part of the moments per day (oldest first): " +
+                evaluation.coveragePerDay.joinToString(", ") { "${(it * 100).roundToInt()} %" })
         val expected = evaluation.expected
         log(
             "Test days, all moments: 60 min error " + (if (expected != null) "expected ${bg(expected.mae60)}, " else "") +
@@ -282,14 +285,18 @@ class Trainer(
     private class Evaluation(
         val model: Metrics, val naive: Metrics, val autoIsf: Metrics?, val modelOnAutoIsf: Metrics?, val naiveOnAutoIsf: Metrics?,
         val coverage: Double, val perHorizon: DoubleArray, val clampHits: Int,
-        val expected: Metrics?, val expectedOnAutoIsf: Metrics?, val expectedPerHorizon: DoubleArray?
+        val expected: Metrics?, val expectedOnAutoIsf: Metrics?, val expectedPerHorizon: DoubleArray?,
+        /** Per test day, oldest first: the part of its moments with a stored AutoISF run */
+        val coveragePerDay: List<Double>
     )
 
     /** [expected] gives the BG change of the expected curve at step `i`, mg/dl, as known at that step */
     private suspend fun evaluate(
         grid: HistoryGrid, effects: Effects, linear: LinearModel, network: ResidualNetwork, scaling: Scaling,
-        test: List<Int>, futures: Map<Int, DoubleArray>, runs: List<StoredRun>, expected: ((Int) -> DoubleArray?)?
+        test: List<Int>, futures: Map<Int, DoubleArray>, runs: List<StoredRun>, expected: ((Int) -> DoubleArray?)?, testStart: Long
     ): Evaluation {
+        val dayMoments = IntArray(Samples.TEST_DAYS)
+        val dayCovered = IntArray(Samples.TEST_DAYS)
         val sortedRuns = runs.sortedBy { it.timestamp }
         val modelSum = DoubleArray(HORIZONS)
         val naiveSum = DoubleArray(HORIZONS)
@@ -316,7 +323,12 @@ class Trainer(
             }
             val future = futures.getValue(i)
             val run = nearestRun(sortedRuns, grid.timeOf(i))
-            if (run != null) covered++
+            val day = ((grid.timeOf(i) - testStart) / DAY_MS).toInt().coerceIn(0, Samples.TEST_DAYS - 1)
+            dayMoments[day]++
+            if (run != null) {
+                covered++
+                dayCovered[day]++
+            }
             // Valid test steps always have 36 rows before them, so a GRU always gives a curve here
             val expectedChange = expected?.invoke(i)
             for (h in 1..HORIZONS) {
@@ -352,7 +364,8 @@ class Trainer(
             clampHits = clampHits,
             expected = expectedPerHorizon?.let { metrics(it) },
             expectedOnAutoIsf = if (expected != null) paired(pairedExpectedSum) else null,
-            expectedPerHorizon = expectedPerHorizon
+            expectedPerHorizon = expectedPerHorizon,
+            coveragePerDay = List(Samples.TEST_DAYS) { if (dayMoments[it] > 0) dayCovered[it].toDouble() / dayMoments[it] else 0.0 }
         )
     }
 

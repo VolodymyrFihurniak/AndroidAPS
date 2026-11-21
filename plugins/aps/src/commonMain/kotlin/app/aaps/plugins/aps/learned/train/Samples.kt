@@ -15,6 +15,9 @@ import kotlin.math.sin
  */
 data class StoredRun(val timestamp: Long, val mainCurve: List<Double>)
 
+/** autoISF build, personal prediction: the stored runs of a time range, and how many runs there had no prediction curve */
+data class StoredRuns(val runs: List<StoredRun>, val withoutCurve: Int)
+
 /** autoISF build, personal prediction: which steps the model learns from, and what the network sees at a step. */
 object Samples {
 

@@ -244,7 +244,9 @@ class LearnedPredictionPlugin(
         progress("Building the history")
         val grids = phaseGrids(input, from, now)
         logInsulinPerDay(input, grids.first(), days)
-        val runs = historyReader.storedRuns(now - Samples.TEST_DAYS * DAY_MS, now)
+        val stored = historyReader.storedRuns(now - Samples.TEST_DAYS * DAY_MS, now)
+        log.add("AutoISF runs", "${stored.runs.size} with a prediction curve in the database on the test days, ${stored.withoutCurve} without one")
+        val runs = stored.runs
         val trainer = Trainer(
             log = { log.add(it) },
             progress = { progress(it) },

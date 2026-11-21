@@ -126,9 +126,24 @@ class HistoryReaderTest {
             on { algorithmResult } doReturn rt.copy(COB = 0.0)
         }
         val reader = HistoryReader(persistence(runs = listOf(withCarbs, noCarbs)))
-        val runs = reader.storedRuns(day0, day0 + 2 * hour).distinctBy { it.timestamp }
+        val runs = reader.storedRuns(day0, day0 + 2 * hour).runs.distinctBy { it.timestamp }
         assertThat(runs.first { it.timestamp == day0 }.mainCurve).containsExactly(110.0, 120.0).inOrder()
         assertThat(runs.first { it.timestamp == day0 + hour }.mainCurve).containsExactly(101.0, 102.0).inOrder()
+    }
+
+    @Test
+    fun `a stored run without a prediction curve is counted`() = runBlocking<Unit> {
+        val withCurve: APSResult = mock {
+            on { date } doReturn day0
+            on { algorithmResult } doReturn RT(runningDynamicIsf = false, predBGs = Predictions(IOB = listOf(100, 101, 102)))
+        }
+        val noCurve: APSResult = mock {
+            on { date } doReturn day0 + hour
+            on { algorithmResult } doReturn RT(runningDynamicIsf = false)
+        }
+        val read = HistoryReader(persistence(runs = listOf(withCurve, noCurve))).storedRuns(day0, day0 + 2 * hour)
+        assertThat(read.runs.map { it.timestamp }).containsExactly(day0)
+        assertThat(read.withoutCurve).isEqualTo(1)
     }
 
     @Test

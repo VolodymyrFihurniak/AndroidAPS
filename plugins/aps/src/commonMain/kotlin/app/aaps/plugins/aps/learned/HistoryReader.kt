@@ -17,6 +17,7 @@ import app.aaps.plugins.aps.learned.grid.ProfileTimeline
 import app.aaps.plugins.aps.learned.grid.ProfileValues
 import app.aaps.plugins.aps.learned.grid.TempBasalSegment
 import app.aaps.plugins.aps.learned.train.StoredRun
+import app.aaps.plugins.aps.learned.train.StoredRuns
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
@@ -80,23 +81,30 @@ class HistoryReader(private val persistenceLayer: PersistenceLayer) {
     }
 
     /** The stored loop runs of [from]..[to], one day at a time, as [StoredRun] with their main curve */
-    suspend fun storedRuns(from: Long, to: Long): List<StoredRun> {
+    suspend fun storedRuns(from: Long, to: Long): StoredRuns {
         val out = mutableListOf<StoredRun>()
+        var withoutCurve = 0
         var start = from
         while (start < to) {
             val end = min(to, start + DAY_MS)
             for (run in persistenceLayer.getApsResults(start, end)) {
-                val rt = run.algorithmResult ?: continue
-                val predictions = rt.predBGs ?: continue
-                val cob = predictions.COB?.takeIf { (rt.COB ?: 0.0) > 0.0 && it.size > 1 }
-                val curve = cob ?: predictions.UAM?.takeIf { it.size > 1 } ?: predictions.IOB?.takeIf { it.size > 1 } ?: continue
+                val curve = run.algorithmResult?.let { rt ->
+                    val predictions = rt.predBGs
+                    predictions?.COB?.takeIf { (rt.COB ?: 0.0) > 0.0 && it.size > 1 }
+                        ?: predictions?.UAM?.takeIf { it.size > 1 }
+                        ?: predictions?.IOB?.takeIf { it.size > 1 }
+                }
+                if (curve == null) {
+                    withoutCurve++
+                    continue
+                }
                 // Point 0 of an oref curve is BG now
                 out += StoredRun(run.date, curve.drop(1).map { it.toDouble() })
             }
             start = end
             yield()
         }
-        return out
+        return StoredRuns(out, withoutCurve)
     }
 
     private suspend fun read(from: Long, to: Long, liveAt: Long?): HistoryInput {
