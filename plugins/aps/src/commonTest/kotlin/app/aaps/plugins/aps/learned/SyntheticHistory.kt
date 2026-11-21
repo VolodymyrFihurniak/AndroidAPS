@@ -24,6 +24,8 @@ import kotlin.random.Random
  * - three meals a day with a bolus, SMBs above 150 mg/dl, a zero temp below 85 mg/dl
  * - with `unannouncedMeals`, two more meals a day that are eaten but not entered: the loop gives SMBs while BG rises
  *   from them, as it does in real closed loop data, which makes insulin look weak to a naive fit
+ * - with `noCarbsEntered`, no meal is entered and none gets a bolus: a full closed loop, where all the insulin for a
+ *   meal comes as SMBs while BG rises (the user of this build lives like this)
  */
 object SyntheticHistory {
 
@@ -35,7 +37,7 @@ object SyntheticHistory {
 
     class Result(val input: HistoryInput, val start: Long, val end: Long)
 
-    fun generate(days: Int, seed: Int = 7, unannouncedMeals: Boolean = false, tbrLoop: Boolean = false): Result {
+    fun generate(days: Int, seed: Int = 7, unannouncedMeals: Boolean = false, tbrLoop: Boolean = false, noCarbsEntered: Boolean = false): Result {
         val random = Random(seed)
         val start = 1_767_225_600_000L // 2026-01-01 00:00 UTC
         val steps = days * 288
@@ -49,8 +51,10 @@ object SyntheticHistory {
         val readings = mutableListOf<BgReading>()
         val meals = listOf(8 * 12 to 60.0, 13 * 12 to 70.0, 19 * 12 to 50.0)
         val mealSteps = mutableMapOf<Int, Double>()
+        // Without entered carbs the meals also come at less regular times, up to 2 hours earlier or later
+        val jitter = if (noCarbsEntered) 24 else 6
         for (day in 0 until days) for ((step, size) in meals) {
-            mealSteps[day * 288 + step + random.nextInt(-6, 7)] = size * random.nextDouble(0.8, 1.2)
+            mealSteps[day * 288 + step + random.nextInt(-jitter, jitter + 1)] = size * random.nextDouble(0.8, 1.2)
         }
         val hiddenSteps = mutableMapOf<Int, Double>()
         if (unannouncedMeals) for (day in 0 until days) for ((step, size) in listOf(10 * 12 + 6 to 40.0, 16 * 12 to 50.0)) {
@@ -64,10 +68,12 @@ object SyntheticHistory {
             readings += BgReading(time, bg)
             mealSteps[k]?.let { g ->
                 grams[k] += g
-                carbs += CarbEntry(time, g, 0L)
-                val bolus = g / profile.ic
-                units[k] += bolus
-                doses += InsulinDose(time, bolus, insulin)
+                if (!noCarbsEntered) {
+                    carbs += CarbEntry(time, g, 0L)
+                    val bolus = g / profile.ic
+                    units[k] += bolus
+                    doses += InsulinDose(time, bolus, insulin)
+                }
             }
             hiddenSteps[k]?.let { g -> grams[k] += g }
             val rising = k > 0 && bg > readings[readings.size - 2].mgdl
@@ -75,7 +81,7 @@ object SyntheticHistory {
                 units[k] += 0.3
                 doses += InsulinDose(time, 0.3, insulin)
                 lastSmb = k
-            } else if (unannouncedMeals && rising && bg > 120.0 && k - lastSmb >= 2 && iob(units, insulinKernel, k) < 3.0) {
+            } else if ((unannouncedMeals || noCarbsEntered) && rising && bg > 120.0 && k - lastSmb >= 2 && iob(units, insulinKernel, k) < 3.0) {
                 // As a loop with UAM does: SMBs while BG rises without entered carbs
                 units[k] += 0.4
                 doses += InsulinDose(time, 0.4, insulin)

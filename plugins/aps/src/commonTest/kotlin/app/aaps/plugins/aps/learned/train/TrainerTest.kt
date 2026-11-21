@@ -11,6 +11,7 @@ import app.aaps.plugins.aps.learned.model.ResidualNetwork
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.TimeZone
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -103,6 +104,31 @@ class TrainerTest {
         assertTrue(model.expectedReady, log)
         assertEquals(24, model.expectedTypicalErrorMgdl.size)
         assertEquals(1, model.phases)
+    }
+
+    /**
+     * A full closed loop without carb entries, with meals at times that move by up to 2 hours: before the meals that were
+     * not entered were found and left out, the fit split them between the ISF and the drift (ISF x0.3 at 3:00 and a
+     * drift of 75 mg/dl per hour at 9:00 here; 30 to 50 % of the profile ISF on a real phone).
+     */
+    @Test
+    fun `meals that were not entered do not move the ISF`() = runTest(timeout = 10.minutes) {
+        for ((name, history) in listOf(
+            "no carbs" to SyntheticHistory.generate(days = 40, noCarbsEntered = true),
+            "no carbs, temp basal loop" to SyntheticHistory.generate(days = 40, noCarbsEntered = true, tbrLoop = true)
+        )) {
+            val grid = HistoryGridBuilder.build(history.input, history.start, history.end, TimeZone.UTC)
+            val model = assertNotNull(trainer.train(grid, history.end, 40, emptyList()))
+            val log = lines.joinToString("\n")
+            for (hour in Trainer.DAY_PARTS) {
+                val angle = Trainer.angleOfHour(hour)
+                val ratio = model.linear.rawIsfMultiplier(angle) / SyntheticHistory.trueIsfMultiplier(angle)
+                assertTrue(ratio in 0.75..1.33, "$name at $hour:00: ISF $ratio of the truth\n$log")
+                // The made-up body has no drift by day
+                if (hour == 9 || hour == 15) assertTrue(abs(model.linear.driftPerHour(angle)) < 15.0, "$name at $hour:00: drift ${model.linear.driftPerHour(angle)}\n$log")
+            }
+            assertTrue(lines.any { it.startsWith("Meals not entered:") }, log)
+        }
     }
 
     @Test

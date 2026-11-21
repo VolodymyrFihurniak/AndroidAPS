@@ -90,10 +90,21 @@ class Trainer(
         val accLearn = RidgeAccumulator(LinearFeatures.SIZE)
         val accAll = RidgeAccumulator(LinearFeatures.SIZE)
         val x = DoubleArray(LinearFeatures.SIZE)
+        // Meals that were not entered are left out: in them insulin comes while BG keeps rising
+        val meals = UnannouncedMeals.find(grid, effects)
+        val mealsUpTo = IntArray(grid.size + 1).also { count -> for (j in 0 until grid.size) count[j + 1] = count[j] + if (meals[j]) 1 else 0 }
+        var rows = 0
+        var mealRows = 0
         samples.forEachIndexed { n, i ->
             if (n % CHECK_EVERY == 0) yield()
             val future = futures.getValue(i)
             for (h in 1..HORIZONS) {
+                rows++
+                // The steps i .. i + h - 1 make the BG change of this row
+                if (mealsUpTo[i + h] - mealsUpTo[i] > 0) {
+                    mealRows++
+                    continue
+                }
                 LinearFeatures.fill(grid, effects, i, h, x)
                 val y = future[h - 1] - grid.bg[i]
                 accAll.add(x, y, weights[i])
@@ -102,6 +113,7 @@ class Trainer(
         }
         val linearLearn = LinearModel(RidgeFit.solve(accLearn, LinearFeatures.PRIOR, LinearFeatures.NON_NEGATIVE).toList())
         val linearAll = LinearModel(RidgeFit.solve(accAll, LinearFeatures.PRIOR, LinearFeatures.NON_NEGATIVE).toList())
+        log("Meals not entered: ${mealStarts(meals)} found, ${if (rows > 0) (mealRows * 100L / rows) else 0} % of the rows left out of the linear fit")
         logLinear(linearAll)
         times.add(LINEAR, linearStart)
 
@@ -212,6 +224,8 @@ class Trainer(
     private fun MutableMap<String, Duration>.add(part: String, start: TimeMark) {
         this[part] = getValue(part) + start.elapsedNow()
     }
+
+    private fun mealStarts(meals: BooleanArray): Int = meals.indices.count { meals[it] && (it == 0 || !meals[it - 1]) }
 
     private fun Metrics?.beats(autoIsf: Metrics?): Boolean = this != null && autoIsf != null && mae60 < autoIsf.mae60
 

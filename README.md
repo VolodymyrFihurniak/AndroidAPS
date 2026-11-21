@@ -189,19 +189,24 @@ delivery**: the loop, SMB, temp basals and all limits work as before, and the lo
   * All in plain Kotlin, on the phone.
 * **How it learns.** The history becomes a grid of 5-minute steps (BG, every bolus and SMB with its
   own insulin curve, temp basals and extended boluses as insulin above or below the profile basal,
-  carbs, the profile active at that time). Priming boluses are not counted. With a 1-minute sensor
+  carbs, the profile active at that time). Priming boluses are not counted. Meals that were eaten but
+  not entered are found from BG alone (a rise faster than insulin and entered carbs explain) and left
+  out of the linear part, so a full closed loop without carb entries does not make insulin look weak.
+  With a 1-minute sensor
   the grid is built 5 times, shifted by 0 to 4 minutes (for the last 180 days at most), so the
   expected curve sees 5 times more moments; it keeps at most 100 000 of them.
 * **How it is measured.** The last 14 days are kept back. On them both curves, AutoISF (its stored
   loop runs) and "BG stays the same" are compared as they would be live, at 30, 60 and 120 minutes,
   on the same moments. A curve is *ready* when it beats AutoISF at 60 minutes there, and those
   moments cover at least half of the test days; without enough stored AutoISF runs neither curve is
-  ready. Then both learn again on all days.
+  ready. Then both learn again on all days. The database may keep the loop runs for fewer days, so
+  the plugin keeps its own copy of the AutoISF predictions of the last 15 days (at 30, 60 and 120
+  minutes, one every 5 minutes); the log shows for each test day which part of it had a run.
 * **When it learns.** When it is switched on without a model, then once a day, or on *Train now*.
   A training stops after 20 minutes at most (each of the two passes of the expected curve after 6
   minutes), and *Stop* ends it; the old model stays until a new one is ready. It needs at least about
   2 weeks of history. A model saved by an older version is not used; it learns again.
-* **Every minute.** With a 1-minute sensor each new reading gives a new forecast that starts at that
+* **Every minute.** Each new reading in the database gives a new forecast that starts at that
   reading, not at the last whole 5 minutes.
 * **Its screen** shows one ready line per curve, the error table (both curves, AutoISF and "BG stays
   the same"), how many 1-minute phases were used, how long each part of the training took, what it
