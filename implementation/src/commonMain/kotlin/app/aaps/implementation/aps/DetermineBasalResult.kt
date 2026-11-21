@@ -98,6 +98,8 @@ class DetermineBasalResult(
 
     lateinit var result: RT
 
+    override val algorithmResult: RT? get() = if (::result.isInitialized) result else null
+
     override fun with(result: RT): APSResult = this.also {
         this.algorithm = result.algorithm
         this.result = result

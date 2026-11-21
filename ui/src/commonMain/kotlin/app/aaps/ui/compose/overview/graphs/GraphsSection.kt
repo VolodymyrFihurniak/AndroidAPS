@@ -511,7 +511,8 @@ fun GraphsSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            // autoISF build: the graph card lines up with the other cards of the phone layout (12 dp)
+            .padding(horizontal = if (cardStyle) AapsSpacing.large else 16.dp, vertical = 8.dp)
             .then(
                 if (cardStyle) Modifier
                     .clip(RoundedCornerShape(AapsSpacing.large))

@@ -4,7 +4,6 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import app.aaps.core.interfaces.overview.IsfStep
 import app.aaps.core.interfaces.profile.Profile
-import kotlin.math.ceil
 
 /**
  * What the overview chips show.
@@ -73,45 +72,6 @@ data class LoopUiState(
     val lastRunText: String = "",
     val isOld: Boolean = false
 )
-
-/** autoISF build: what the bolus calculator says for now, with no new carbs. */
-enum class BolusAdviceKind {
-
-    /** No profile or no recent BG: nothing to say */
-    UNKNOWN,
-
-    /** A correction bolus, see [BolusAdviceUiState.insulin] */
-    INSULIN,
-
-    /** BG goes below the target: carbs, not insulin, see [BolusAdviceUiState.carbs] */
-    CARBS,
-
-    /** Nothing to give */
-    NONE
-}
-
-/**
- * autoISF build: the advice of the Bolus card. It is only shown, never given: a tap opens the bolus wizard, where the
- * user checks it and confirms. [loopMayCover] is set in closed loop, where the loop may give the same insulin as SMB.
- */
-@Immutable
-data class BolusAdviceUiState(
-    val kind: BolusAdviceKind = BolusAdviceKind.UNKNOWN,
-    val insulin: Double = 0.0,
-    val carbs: Int = 0,
-    val loopMayCover: Boolean = false
-)
-
-/**
- * autoISF build: the advice from the result of the bolus wizard. [insulin] is the dose after the constraints, already
- * on the step of the pump, so anything above 0 can be given. [carbsEquivalent] is what the wizard asks for when the
- * total is negative, rounded up to whole grams.
- */
-internal fun bolusAdviceOf(insulin: Double, carbsEquivalent: Double, loopMayCover: Boolean): BolusAdviceUiState = when {
-    insulin > 0.0          -> BolusAdviceUiState(BolusAdviceKind.INSULIN, insulin = insulin, loopMayCover = loopMayCover)
-    carbsEquivalent >= 1.0 -> BolusAdviceUiState(BolusAdviceKind.CARBS, carbs = ceil(carbsEquivalent).toInt())
-    else                   -> BolusAdviceUiState(BolusAdviceKind.NONE)
-}
 
 /**
  * autoISF build: the basal card next to IOB and COB, and the details it opens. See `basalCardState` for the rules.

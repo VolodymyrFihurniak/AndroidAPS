@@ -73,8 +73,6 @@ fun OverviewScreen(
     statusLightsDef: PreferenceSubScreenDef,
     onNavigate: (NavigationRequest) -> Unit,
     onIobChipClick: () -> Unit,
-    /** autoISF build: opens the treatments sheet, from the Bolus card of the phone layout */
-    onOpenTreatments: () -> Unit = {},
     notifications: List<AapsNotification>,
     onDismissNotification: (AapsNotification) -> Unit,
     onNotificationActionClick: (AapsNotification) -> Unit,
@@ -249,7 +247,6 @@ fun OverviewScreen(
                     statusLightsDef = statusLightsDef,
                     onNavigate = onNavigate,
                     onIobChipClick = onIobChipClick,
-                    onOpenTreatments = onOpenTreatments,
                     paddingValues = paddingValues,
                     activeSceneState = activeSceneState,
                     sceneExpired = sceneExpired,

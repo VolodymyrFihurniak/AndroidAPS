@@ -49,6 +49,8 @@ import app.aaps.ui.UiStrings
 import app.aaps.ui.UiStringsValues
 import app.aaps.ui.compose.manageSheet.FakePumpPlugin
 import app.aaps.ui.compose.manageSheet.ManageViewModel
+import app.aaps.ui.compose.overview.chips.BolusRecommendation
+import app.aaps.ui.compose.overview.chips.BolusRecommendationSource
 import app.aaps.ui.compose.overview.chips.ChipsViewModel
 import app.aaps.ui.compose.overview.graphs.GraphViewModel
 import app.aaps.ui.compose.overview.statusLights.StatusViewModel
@@ -201,7 +203,7 @@ internal class OverviewViewModelFixture(private val screen: AapsScreenFixture) {
 
     val chipsViewModel: ChipsViewModel by lazy {
         // The real English texts: the basal card resolves strings of this module, which the mocked rh does not know
-        ChipsViewModel(cache, iobCobCalculator, loop, screen.config, persistenceLayer, sensitivityOverview, generatedTextResolver(rh, "ui" to UiStringsValues::textOf), decimalFormatter, rxBus, screen.preferences, activePlugin, mock(), mock(), mock(), mock(), screen.dateUtil, mock(), { error("no bolus wizard in these tests") })
+        ChipsViewModel(cache, iobCobCalculator, loop, screen.config, persistenceLayer, sensitivityOverview, generatedTextResolver(rh, "ui" to UiStringsValues::textOf), decimalFormatter, rxBus, screen.preferences, activePlugin, mock(), mock(), mock(), mock(), screen.dateUtil, mock(), mock<BolusRecommendationSource> { onBlocking { current() } doReturn BolusRecommendation() })
     }
 
     val statusViewModel: StatusViewModel by lazy {

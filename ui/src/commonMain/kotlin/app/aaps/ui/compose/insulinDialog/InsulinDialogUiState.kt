@@ -1,6 +1,7 @@
 package app.aaps.ui.compose.insulinDialog
 
 import androidx.compose.runtime.Immutable
+import app.aaps.ui.compose.overview.chips.BolusRecommendation
 import app.aaps.core.data.model.GlucoseUnit
 import app.aaps.core.data.model.ICfg
 
@@ -33,7 +34,9 @@ data class InsulinDialogUiState(
     val isAapsClient: Boolean = false,
     val forcedRecordOnly: Boolean = false,
     /** An SMB is being delivered on this phone (always false on a client: its master decides). */
-    val smbBeingDelivered: Boolean = false
+    val smbBeingDelivered: Boolean = false,
+    /** autoISF build: the advice of the loop, null until it is read */
+    val recommendation: BolusRecommendation? = null
 )
 
 val InsulinDialogUiState.eventTimeChanged: Boolean

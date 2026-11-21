@@ -429,14 +429,32 @@
     <string name="inspect_forecast" comment="Beside the time in the graph card when that time is after now, so the values there are a forecast">forecast</string>
     <string name="nav_treatments_log" comment="Bottom menu: opens the history of treatments (boluses, carbs, temp basals). Keep it short.">Log</string>
     <string name="bolus_card" comment="Name of the overview card that shows the bolus advice and opens the bolus wizard">Bolus</string>
-    <string name="bolus_advice_none" comment="Bolus card: the calculator says no insulin is needed now">No bolus</string>
-    <string name="bolus_advice_correction" comment="Bolus card, under the advised dose: it is a correction for now, with no new carbs">Correction now</string>
-    <string name="bolus_advice_loop_covers" comment="Bolus card, under the advised dose in closed loop: the loop may give this insulin by itself as SMB">Loop may give it as SMB</string>
-    <string name="bolus_advice_carbs" comment="Bolus card, under the grams: BG goes below the target, so carbs are needed, not insulin">Carbs needed</string>
-    <string name="bolus_advice_calculator" comment="Bolus card, under 'No bolus': this is what the bolus calculator says">By the calculator</string>
     <string name="treatment_source_algorithm" comment="Treatment history: the bolus or temp basal was given by the loop">Algorithm</string>
     <string name="treatment_source_client" comment="Treatment history: given by a paired AAPSClient. %1$s=its device name. Example: Client: Pixel 7">Client: %1$s</string>
     <string name="treatment_source_client_or_ns" comment="Treatment history: given by a client whose name is not known, or entered in Nightscout">Client or Nightscout</string>
     <string name="treatment_source_user" comment="Treatment history: given by the user of this phone">You</string>
     <string name="treatment_source_user_via" comment="Treatment history: given by the user of this phone, with the screen it came from. %1$s=screen. Example: You · Bolus wizard">You · %1$s</string>
+    <string name="bolus_rec_card_suggest" comment="Bolus card, under the advised dose in open loop">Correction</string>
+    <string name="bolus_rec_card_loop_gives" comment="Bolus card, under the insulin the loop still needs in closed loop: the loop gives it itself as SMB">Loop gives it</string>
+    <string name="bolus_rec_card_none">Not needed</string>
+    <string name="bolus_rec_card_in_range">Prediction in range</string>
+    <string name="bolus_rec_card_carbs" comment="Bolus card, under the grams the loop asks for">Eat carbs</string>
+    <string name="bolus_rec_card_no_bolus" comment="Bolus card: do not give a bolus now">No bolus</string>
+    <string name="bolus_rec_card_low_now">BG is low</string>
+    <string name="bolus_rec_card_low_predicted">Low predicted</string>
+    <string name="bolus_rec_card_no_data">No loop data</string>
+    <string name="bolus_rec_title" comment="Title of the advice block in the Insulin dialog">Advice of the loop</string>
+    <string name="bolus_rec_suggest" comment="%1$s=dose with unit. Example: Correction 0.65 U by the last loop run.">Correction %1$s by the last loop run. Check it before you give it.</string>
+    <string name="bolus_rec_loop_gives" comment="%1$s=insulin with unit. Example: about 0.60 U">The loop gives about %1$s itself as SMB in the next runs. No manual bolus needed.</string>
+    <string name="bolus_rec_none">No bolus needed: the prediction ends in range.</string>
+    <string name="bolus_rec_carbs" comment="%1$s=carbs with unit, %2$s=time. Example: asks for 15 g within 20 min">Do not bolus. The loop asks for %1$s within %2$s.</string>
+    <string name="bolus_rec_low_now">Do not bolus: BG is below the low mark.</string>
+    <string name="bolus_rec_low_predicted" comment="%1$s=BG with unit. Example: 3.6 mmol/l">Do not bolus: BG is predicted to go down to %1$s in the next 2 hours.</string>
+    <string name="bolus_rec_no_data">No fresh loop run, so no advice. Check BG and IOB yourself.</string>
+    <string name="bolus_rec_in_one_hour" comment="%1$s=predicted BG with unit. Example: In 1 h: 6.2 mmol/l">In 1 h: %1$s</string>
+    <string name="bolus_rec_eventual" comment="%1$s=eventual BG of the loop with unit. Example: Eventual: 7.1 mmol/l">Eventual: %1$s</string>
+    <string name="bolus_rec_needed" comment="%1$s=insulin with unit. Example: 0.40 U">The loop needs: %1$s</string>
+    <string name="bolus_rec_isf" comment="%1$s=BG with unit. Example: ISF: 3.0 mmol/l per U">ISF: %1$s per U</string>
+    <string name="bolus_rec_run_age" comment="%1$s=minutes with unit. Example: Loop run 3 min ago">Loop run %1$s ago</string>
+    <string name="bolus_rec_use" comment="Button that puts the advised dose into the amount field. %1$s=dose with unit. Example: Use 0.65 U">Use %1$s</string>
 </resources>

@@ -67,7 +67,6 @@ fun OverviewScreenStacked(
     statusLightsDef: PreferenceSubScreenDef,
     onNavigate: (NavigationRequest) -> Unit,
     onIobChipClick: () -> Unit,
-    onOpenTreatments: () -> Unit = {},
     paddingValues: PaddingValues,
     activeSceneState: ActiveSceneState? = null,
     sceneExpired: Boolean = false,
@@ -92,7 +91,7 @@ fun OverviewScreenStacked(
     // autoISF build: the basal card next to IOB and COB
     val basalUiState by chipsViewModel.basalUiState.collectAsStateWithLifecycle()
     val loopUiState by chipsViewModel.loopUiState.collectAsStateWithLifecycle()
-    val bolusAdviceUiState by chipsViewModel.bolusAdviceUiState.collectAsStateWithLifecycle()
+    val bolusRecommendation by chipsViewModel.bolusRecommendation.collectAsStateWithLifecycle()
     val todayStatsUiState by chipsViewModel.todayStatsUiState.collectAsStateWithLifecycle()
     val statusState by statusViewModel.uiState.collectAsStateWithLifecycle()
 
@@ -179,13 +178,12 @@ fun OverviewScreenStacked(
                     OverviewCardRow(
                         basalUiState = basalUiState,
                         sensitivityUiState = sensitivityUiState,
-                        bolusAdviceUiState = bolusAdviceUiState,
+                        bolusRecommendation = bolusRecommendation,
                         loopUiState = loopUiState,
                         runningMode = runningMode,
                         runningModeText = runningModeText,
                         commandsAllowed = commandsAllowed,
-                        onNavigate = onNavigate,
-                        onOpenTreatments = onOpenTreatments
+                        onNavigate = onNavigate
                     )
                 }
 
@@ -200,7 +198,10 @@ fun OverviewScreenStacked(
                     onNavigate = onNavigate,
                     statusLightsDef = statusLightsDef,
                     expanded = statusExpanded,
-                    onExpandedChange = { statusExpanded = it }
+                    onExpandedChange = { statusExpanded = it },
+                    // autoISF build: the section adds 4 dp itself, this brings it to the 12 dp of the cards above,
+                    // so it no longer reaches out past them
+                    modifier = Modifier.padding(horizontal = AapsSpacing.medium)
                 )
 
                 if (config.AAPSCLIENT) {

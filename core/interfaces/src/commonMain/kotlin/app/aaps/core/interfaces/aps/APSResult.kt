@@ -62,6 +62,12 @@ interface APSResult {
 
     val iob: IobTotal? get() = iobData?.get(0)
 
+    /**
+     * autoISF build: the result of the algorithm run as it came out (insulinReq, eventualBG, the prediction curves,
+     * carbsReq). Null where the result was not made by DetermineBasal. The bolus recommendation reads it.
+     */
+    val algorithmResult: RT? get() = null
+
     suspend fun resultAsString(): String
     fun newAndClone(): APSResult
     fun json(): JsonObject?

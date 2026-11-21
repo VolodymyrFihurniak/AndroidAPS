@@ -287,11 +287,6 @@ fun MainScreen(
                         statusLightsDef = statusLightsDef,
                         onNavigate = onNavigate,
                         onIobChipClick = chipsViewModel::showIobInfo,
-                        // autoISF build: the corner icon of the Bolus card opens all the treatments
-                        onOpenTreatments = {
-                            treatmentViewModel.refreshState()
-                            showTreatmentSheet = true
-                        },
                         notifications = notifications,
                         onDismissNotification = onDismissNotification,
                         onNotificationActionClick = onNotificationActionClick,

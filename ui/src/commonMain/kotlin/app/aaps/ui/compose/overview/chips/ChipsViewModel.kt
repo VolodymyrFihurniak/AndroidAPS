@@ -3,8 +3,6 @@ package app.aaps.ui.compose.overview.chips
 import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.aaps.core.data.model.RM
-import app.aaps.core.data.time.T
 import app.aaps.core.interfaces.InterfacesStrings
 import app.aaps.core.interfaces.aps.Loop
 import app.aaps.core.interfaces.configuration.Config
@@ -26,14 +24,10 @@ import app.aaps.core.interfaces.utils.DecimalFormatter
 import app.aaps.core.interfaces.widget.WidgetUpdater
 import app.aaps.core.data.model.GlucoseUnit
 import app.aaps.core.keys.BooleanKey
-import app.aaps.core.keys.BooleanNonKey
-import app.aaps.core.keys.IntKey
 import app.aaps.core.keys.UnitDoubleKey
 import app.aaps.core.keys.interfaces.Preferences
 import app.aaps.core.objects.extensions.convertedToAbsolute
 import app.aaps.core.objects.extensions.round
-import app.aaps.core.objects.extensions.valueToUnits
-import app.aaps.core.objects.wizard.BolusWizard
 import app.aaps.core.ui.CoreUiStrings
 import app.aaps.core.ui.extensions.displayText
 import app.aaps.ui.UiStrings
@@ -70,7 +64,7 @@ class ChipsViewModel(
     private val processedDeviceStatusData: ProcessedDeviceStatusData,
     private val dateUtil: DateUtil,
     private val profileUtil: ProfileUtil,
-    private val bolusWizardProvider: () -> BolusWizard
+    private val bolusRecommendationSource: BolusRecommendationSource
 ) : ViewModel() {
 
     @AssistedFactory
@@ -307,48 +301,16 @@ class ChipsViewModel(
         initialValue = LoopUiState()
     )
 
-    // autoISF build: the Bolus card. The bolus wizard for now with no new carbs, with the options the wizard opens with.
-    // Again on a new reading and when IOB changes, and every 2.5 minutes for COB and the trend.
-    val bolusAdviceUiState: StateFlow<BolusAdviceUiState> = combine(iobCobTicker, cache.bgInfoFlow, cache.iobGraphFlow, cache.runningModeFlow) { _, _, _, runningMode ->
-        buildBolusAdvice(runningMode?.mode)
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = BolusAdviceUiState()
-    )
-
-    private suspend fun buildBolusAdvice(runningMode: RM.Mode?): BolusAdviceUiState {
-        val profile = profileFunction.getProfile() ?: return BolusAdviceUiState()
-        // Null when the newest reading is too old for a calculation, as in the wizard
-        val bg = iobCobCalculator.ads.actualBg() ?: return BolusAdviceUiState()
-        val useCob = preferences.get(BooleanNonKey.WizardIncludeCob)
-        val cob = if (useCob) iobCobCalculator.getCobInfo("Bolus advice").displayCob ?: 0.0 else 0.0
-        // The percentage the wizard opens with: the stored one only while it is not reset by time
-        val stored = preferences.get(IntKey.OverviewBolusPercentage)
-        val resetMs = T.mins(preferences.get(IntKey.OverviewResetBolusPercentageTime).toLong()).msecs()
-        val percentage = if (stored != 100 && bg.timestamp >= dateUtil.now() - resetMs) stored else 100
-        return runCatching {
-            val wizard = bolusWizardProvider().doCalc(
-                profile = profile,
-                profileName = profileFunction.getProfileName(),
-                tempTarget = persistenceLayer.getTemporaryTargetActiveAt(dateUtil.now()),
-                carbs = 0,
-                cob = cob,
-                bg = bg.valueToUnits(profileUtil.units),
-                correction = 0.0,
-                percentageCorrection = percentage,
-                useBg = true,
-                useCob = useCob,
-                includeBolusIOB = true,
-                includeBasalIOB = true,
-                useSuperBolus = false,
-                useTT = true,
-                useTrend = preferences.get(BooleanNonKey.WizardIncludeTrend),
-                useAlarm = false
-            )
-            bolusAdviceOf(wizard.insulinAfterConstraints, wizard.carbsEquivalent, loopMayCover = runningMode == RM.Mode.CLOSED_LOOP)
-        }.getOrElse { BolusAdviceUiState() }
-    }
+    // autoISF build: the Bolus card, from the last algorithm run (see BolusRecommendation). Again on a new reading, when
+    // IOB or the predictions change (a loop run), when the running mode changes, and every 2.5 minutes.
+    val bolusRecommendation: StateFlow<BolusRecommendation> =
+        combine(iobCobTicker, cache.bgInfoFlow, cache.iobGraphFlow, cache.predictionsFlow, cache.runningModeFlow) { _, _, _, _, _ ->
+            bolusRecommendationSource.current()
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = BolusRecommendation()
+        )
 
     /** autoISF: switches exercise mode, as the button of aisf did. The widget shows the mode too. */
     fun toggleExerciseMode() {

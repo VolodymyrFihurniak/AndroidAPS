@@ -40,6 +40,7 @@ import app.aaps.core.keys.DoubleKey
 import app.aaps.core.keys.interfaces.Preferences
 import app.aaps.core.objects.runningMode.PumpCommandGate
 import app.aaps.core.ui.clientcontrol.failText
+import app.aaps.ui.compose.overview.chips.BolusRecommendationSource
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
@@ -89,7 +90,8 @@ class InsulinDialogViewModel(
     // binds the same instance under both names.
     private val appScope: CoroutineScope,
     nsClient: NsClient,
-    commandQueue: CommandQueue
+    commandQueue: CommandQueue,
+    private val bolusRecommendationSource: BolusRecommendationSource
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(InsulinDialogUiState())
@@ -175,6 +177,11 @@ class InsulinDialogViewModel(
         commandQueue.smbBeingDelivered
             .onEach { delivering -> _uiState.update { it.copy(smbBeingDelivered = delivering) } }
             .launchIn(viewModelScope)
+        // autoISF build: the advice of the loop, read once when the dialog opens
+        viewModelScope.launch {
+            val recommendation = bolusRecommendationSource.current()
+            _uiState.update { it.copy(recommendation = recommendation) }
+        }
     }
 
     private suspend fun getRunningIcfg() = profileFunction.getRunningOrRequestedICfg()
@@ -188,6 +195,9 @@ class InsulinDialogViewModel(
             )
         }
     }
+
+    /** autoISF build: puts the advised dose into the amount field. It is given only when the user confirms with OK. */
+    fun useRecommendation(dose: Double) = updateInsulin(dose)
 
     fun updateInsulin(value: Double) {
         val clamped = value.coerceIn(0.0, uiState.value.maxInsulin)

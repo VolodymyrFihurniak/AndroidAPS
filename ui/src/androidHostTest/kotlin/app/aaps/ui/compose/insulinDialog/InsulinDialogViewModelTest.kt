@@ -32,6 +32,8 @@ import app.aaps.core.interfaces.utils.HardLimits
 import app.aaps.core.keys.StringNonKey
 import app.aaps.core.keys.interfaces.ClientRole
 import app.aaps.core.keys.interfaces.Preferences
+import app.aaps.ui.compose.overview.chips.BolusRecommendation
+import app.aaps.ui.compose.overview.chips.BolusRecommendationSource
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -117,7 +119,8 @@ internal class InsulinDialogViewModelTest {
     private fun create() = InsulinDialogViewModel(
         constraintChecker, profileFunction, profileUtil, activePlugin, ch, insulinManager,
         config, automation, decimalFormatter, loop, preferences, rh, dateUtil, hardLimits, batchExecutor,
-        rxBus, CoroutineScope(UnconfinedTestDispatcher()), nsClient, commandQueue
+        rxBus, CoroutineScope(UnconfinedTestDispatcher()), nsClient, commandQueue,
+        mock<BolusRecommendationSource> { onBlocking { current() } doReturn BolusRecommendation() }
     )
 
     @Test

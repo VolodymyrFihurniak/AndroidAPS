@@ -109,11 +109,17 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
   in the colour of its range, its unit, the trend in words, the age of the reading, the changes over
   5, 15 and 40 minutes, and IOB and COB on the right. Then the cards *Basal*, *Bolus* and *Loop*
   (running mode, when the loop last ran, in the warning colour after 15 minutes, and the autosens
-  ratio, which opens the sensitivity details). The *Bolus* card shows what the bolus calculator
-  says for now with no new carbs: a correction dose, carbs when BG goes below the target, or *No
-  bolus*; in closed loop it says the loop may give the dose as SMB. It never gives insulin itself:
-  a tap opens the bolus wizard to check and confirm, and the icon beside its title opens all the
-  treatments (insulin, carbs, quick wizard, notes). The
+  ratio, which opens the sensitivity details). The *Bolus* card shows the advice of the loop, and a
+  tap opens the Insulin dialog, where the same advice stands at the top with its numbers (BG in 1 h,
+  eventual BG, insulin the loop needs, ISF, age of the run). The advice comes from the last algorithm
+  run, not from the bolus wizard (which counts a negative IOB as missing insulin and so could advise
+  a bolus at 3.9 mmol/l). In this order: BG below the low mark, carbs asked by the loop, or any
+  prediction curve (IOB, COB, UAM, zero-temp) below the low mark in the next 2 hours means *no
+  bolus*, with the reason; no need means *not needed*; in closed loop with SMB the loop gives the
+  insulin itself, so no dose is offered; in open loop the dose is the need minus the SMB of that run,
+  capped by the max bolus and rounded down to the pump step, and a button puts it into the amount
+  field. Nothing is given until the user confirms with OK. A run older than 15 minutes gives no
+  advice. The
   graphs sit in one card *Glucose and insulin*: a button to the history, the ranges 3 h, 6 h, 12 h
   and 24 h, a legend of what is shown, and the BG graph. On a phone the BG graph holds IOB and COB
   as areas at the bottom (each up to a quarter of the height, scaled to its own highest value in

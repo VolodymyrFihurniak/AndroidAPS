@@ -199,7 +199,8 @@ fun InsulinDialogScreen(
         },
         onNavigateBack = onNavigateBack,
         onConfirmClick = { viewModel.prepareAndConfirm() },
-        onInsulinTypeSelect = viewModel::selectInsulinType
+        onInsulinTypeSelect = viewModel::selectInsulinType,
+        onUseRecommendation = viewModel::useRecommendation
     )
 }
 
@@ -227,7 +228,9 @@ internal fun InsulinDialogContent(
     onInsulinTypeSelect: (ICfg) -> Unit,
     onSettingsClick: (() -> Unit)?,
     onNavigateBack: () -> Unit,
-    onConfirmClick: () -> Unit
+    onConfirmClick: () -> Unit,
+    /** autoISF build: puts the advised dose into the amount field */
+    onUseRecommendation: (Double) -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
 
@@ -304,6 +307,9 @@ internal fun InsulinDialogContent(
         ) {
             // --- Status Bar ---
             DialogStatusBar(bgInfo = bgInfo, iob = iob, cob = cob)
+
+            // autoISF build: the advice of the loop, from its last run
+            uiState.recommendation?.let { BolusRecommendationCard(advice = it, onUse = onUseRecommendation) }
 
             // --- Card 1: Switches ---
             Card(
