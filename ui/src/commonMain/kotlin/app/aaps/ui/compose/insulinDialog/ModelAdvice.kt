@@ -20,7 +20,7 @@ enum class ModelAdviceKind {
     /** The model was not better than AutoISF on the test days, so it gives no dose */
     NOT_READY,
 
-    /** A point of the model curve goes below the low mark in the next 2 hours */
+    /** A point of one of the two model curves goes below the low mark in the next 2 hours */
     LOW_PREDICTED,
 
     /** BG falls faster than [MODEL_FALLING_DELTA_MGDL] per 5 minutes: no advice to give more insulin */
@@ -49,7 +49,7 @@ data class ModelAdvice(
     val units: Double = 0.0,
     /** Grams that would cover the insulin that is too much */
     val carbs: Int = 0,
-    /** The lowest point of the curve, for [ModelAdviceKind.LOW_PREDICTED] */
+    /** The lowest point of the two curves, for [ModelAdviceKind.LOW_PREDICTED] */
     val minPredictedMgdl: Double? = null,
     /** The forecast the advice comes from, for the numbers under it */
     val forecast: LearnedForecast? = null,
@@ -62,7 +62,9 @@ fun modelAdviceOf(forecast: LearnedForecast?, bgMgdl: Double?, lowMgdl: Double, 
     if (bgMgdl != null && bgMgdl < lowMgdl) return ModelAdvice(ModelAdviceKind.LOW_NOW)
     if (forecast == null || now - forecast.timestamp > MODEL_FORECAST_MAX_AGE_MS) return ModelAdvice(ModelAdviceKind.NO_DATA)
     if (!forecast.ready) return ModelAdvice(ModelAdviceKind.NOT_READY, forecast = forecast)
-    val lowest = forecast.points.minOfOrNull { it.mgdl }
+    // v2: both curves. The expected one includes what the loop usually gives next, so it can show a low the
+    // "no more insulin" curve does not. A low on either one is reason enough not to give more.
+    val lowest = (forecast.points + forecast.expectedPoints).minOfOrNull { it.mgdl }
     if (lowest != null && lowest < lowMgdl) return ModelAdvice(ModelAdviceKind.LOW_PREDICTED, minPredictedMgdl = lowest, forecast = forecast)
     // The model may learn an ISF far below the profile from closed loop data (SMBs come while BG rises), which
     // would ask for much more insulin. A dose is never bigger than with the profile ISF: the larger ISF wins.

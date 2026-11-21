@@ -51,8 +51,16 @@ internal fun ModelAdviceCard(advice: ModelAdvice, modifier: Modifier = Modifier)
     val details = buildList {
         if (advice.kind == ModelAdviceKind.MISSING && advice.loopMayGive) add(stringResource(UiStrings.model_adv_loop_may_give))
         if (forecast != null) {
-            for (minutes in listOf(30, 60, 120)) forecast.at(minutes)?.let {
-                add(stringResource(UiStrings.model_adv_in, stringResource(CoreUiStrings.format_mins, minutes), profileUtil.fromMgdlToStringWithUnits(it)))
+            for (minutes in listOf(30, 60, 120)) {
+                val noInsulin = forecast.at(minutes) ?: continue
+                val expected = forecast.expectedAt(minutes)
+                val time = stringResource(CoreUiStrings.format_mins, minutes)
+                add(
+                    if (expected != null) stringResource(
+                        UiStrings.model_adv_in_both, time, profileUtil.fromMgdlToStringWithUnits(expected), profileUtil.fromMgdlToStringWithUnits(noInsulin)
+                    )
+                    else stringResource(UiStrings.model_adv_in, time, profileUtil.fromMgdlToStringWithUnits(noInsulin))
+                )
             }
             add(stringResource(UiStrings.bolus_rec_eventual, profileUtil.fromMgdlToStringWithUnits(forecast.eventualMgdl)))
             add(stringResource(UiStrings.model_adv_isf, profileUtil.fromMgdlToStringWithUnits(forecast.isfMgdl)))

@@ -19,13 +19,16 @@ class ModelAdviceTest {
         timestamp: Long = now - minute,
         isf: Double = 50.0,
         profileIsf: Double = 50.0,
-        delta: Double? = 0.0
+        delta: Double? = 0.0,
+        expected: List<Double> = emptyList()
     ) = LearnedForecast(
         timestamp = timestamp, bgMgdl = 120.0,
         points = points.mapIndexed { k, v -> LearnedPoint(timestamp + (k + 1) * 5 * minute, v) },
         typicalErrorMgdl = List(24) { 10.0 },
         eventualMgdl = eventual, isfMgdl = isf, ic = 12.0, targetMgdl = 100.0, ready = ready, modelTrainedAt = now,
-        profileIsfMgdl = profileIsf, deltaMgdl = delta
+        profileIsfMgdl = profileIsf, deltaMgdl = delta,
+        expectedPoints = expected.mapIndexed { k, v -> LearnedPoint(timestamp + (k + 1) * 5 * minute, v) },
+        expectedTypicalErrorMgdl = expected.map { 8.0 }, expectedReady = expected.isNotEmpty()
     )
 
     private fun advice(forecast: LearnedForecast?, bg: Double? = 120.0, closedLoopSmb: Boolean = false) =
@@ -49,6 +52,21 @@ class ModelAdviceTest {
         val advice = advice(forecast(eventual = 200.0, ready = false))
         assertEquals(ModelAdviceKind.NOT_READY, advice.kind)
         assertEquals(0.0, advice.units)
+    }
+
+    @Test
+    fun `a low on the expected curve says do not bolus`() {
+        // The "no more insulin" curve stays at 120, the expected one (with the loop) goes down to 65
+        val advice = advice(forecast(eventual = 200.0, expected = List(24) { if (it == 14) 65.0 else 110.0 }))
+        assertEquals(ModelAdviceKind.LOW_PREDICTED, advice.kind)
+        assertEquals(65.0, advice.minPredictedMgdl)
+    }
+
+    @Test
+    fun `the expected curve above the low mark changes nothing`() {
+        val advice = advice(forecast(eventual = 200.0, expected = List(24) { 150.0 }))
+        assertEquals(ModelAdviceKind.MISSING, advice.kind)
+        assertEquals(2.0, advice.units, 1e-9)
     }
 
     @Test
