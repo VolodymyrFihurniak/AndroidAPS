@@ -2,10 +2,12 @@ package app.aaps.plugins.aps.learned.compose
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
@@ -41,7 +43,7 @@ import app.aaps.core.ui.compose.LocalDateUtil
 import app.aaps.core.ui.compose.LocalProfileUtil
 import app.aaps.core.ui.compose.ScreenAction
 import app.aaps.core.ui.compose.ToolbarConfig
-import app.aaps.core.ui.compose.log.SyncLogList
+import app.aaps.core.ui.compose.log.syncLogItems
 import app.aaps.core.ui.compose.stringResource
 import app.aaps.plugins.aps.ApsStrings
 import app.aaps.plugins.aps.learned.LearnedPredictionPlugin
@@ -116,37 +118,42 @@ internal fun LearnedPredictionContent(
     modifier: Modifier = Modifier
 ) {
     val training = status.state == LearnedState.TRAINING
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(AapsSpacing.extraLarge),
-        verticalArrangement = Arrangement.spacedBy(AapsSpacing.medium)
+    val dateUtil = LocalDateUtil.current
+    // One list for the whole screen: the cards are taller than a phone screen, and the log goes on below them
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(AapsSpacing.extraLarge),
+        verticalArrangement = Arrangement.spacedBy(AapsSpacing.extraSmall)
     ) {
-        StatusCard(status, autoIsfCopyDays, liveScore)
-        status.model?.let { model ->
-            parts60?.let { PartsCard(it) }
-            liveScore?.let { LiveCard(it, hasGru = model.expected != null) }
-            ErrorsCard(model)
-            LearnedCard(model)
+        item(key = TOP_KEY) {
+            Column(
+                modifier = Modifier.padding(bottom = AapsSpacing.small),
+                verticalArrangement = Arrangement.spacedBy(AapsSpacing.medium)
+            ) {
+                StatusCard(status, autoIsfCopyDays, liveScore)
+                status.model?.let { model ->
+                    parts60?.let { PartsCard(it) }
+                    liveScore?.let { LiveCard(it, hasGru = model.expected != null) }
+                    ErrorsCard(model)
+                    LearnedCard(model)
+                }
+                ActionButtons(
+                    listOf(
+                        ScreenAction(stringResource(ApsStrings.learned_train_now), Icons.Default.PlayArrow, enabled = !training, onClick = onTrain),
+                        ScreenAction(stringResource(ApsStrings.learned_stop), Icons.Default.Stop, visible = training, onClick = onStop),
+                        ScreenAction(stringResource(ApsStrings.learned_reset), Icons.Default.DeleteOutline, visible = status.model != null && !training, onClick = onReset),
+                        ScreenAction(stringResource(ApsStrings.learned_copy_report), Icons.Default.ContentCopy, onClick = onCopyReport)
+                    )
+                )
+                HorizontalDivider()
+            }
         }
-        ActionButtons(
-            listOf(
-                ScreenAction(stringResource(ApsStrings.learned_train_now), Icons.Default.PlayArrow, enabled = !training, onClick = onTrain),
-                ScreenAction(stringResource(ApsStrings.learned_stop), Icons.Default.Stop, visible = training, onClick = onStop),
-                ScreenAction(stringResource(ApsStrings.learned_reset), Icons.Default.DeleteOutline, visible = status.model != null && !training, onClick = onReset),
-                ScreenAction(stringResource(ApsStrings.learned_copy_report), Icons.Default.ContentCopy, onClick = onCopyReport)
-            )
-        )
-        HorizontalDivider()
-        SyncLogList(
-            entries = log,
-            dateUtil = LocalDateUtil.current,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-        )
+        syncLogItems(log, dateUtil)
     }
 }
+
+/** The key of the cards and buttons above the log; the log lines use their own number as the key */
+private const val TOP_KEY = "top"
 
 @Composable
 private fun StatusCard(status: LearnedStatus, autoIsfCopyDays: Int, liveScore: LiveScore?) {

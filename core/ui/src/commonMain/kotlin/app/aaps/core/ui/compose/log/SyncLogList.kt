@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicText
@@ -67,9 +68,20 @@ fun SyncLogList(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(AapsSpacing.extraSmall)
     ) {
-        items(items = entries, key = { it.id }) { entry ->
-            SyncLogRow(entry, dateUtil)
-        }
+        syncLogItems(entries, dateUtil)
+    }
+}
+
+/**
+ * The lines of [SyncLogList] as items of a list that has more above them, so that the whole screen
+ * scrolls as one. It does not scroll to the top when a new line arrives: the user may be reading
+ * higher up.
+ *
+ * @param dateUtil null only in previews and tests
+ */
+fun LazyListScope.syncLogItems(entries: List<SyncLogEntry>, dateUtil: DateUtil?) {
+    items(items = entries, key = { it.id }) { entry ->
+        SyncLogRow(entry, dateUtil)
     }
 }
 
