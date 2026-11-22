@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
@@ -21,7 +22,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -48,6 +51,7 @@ import app.aaps.plugins.aps.learned.model.LearnedModel
 import app.aaps.plugins.aps.learned.model.Metrics
 import app.aaps.plugins.aps.learned.train.Samples
 import app.aaps.plugins.aps.learned.train.Trainer
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /** autoISF build: the screen of the personal prediction: its state, its errors, what it learned and its log */
@@ -79,6 +83,8 @@ internal class LearnedPredictionScreen(private val plugin: LearnedPredictionPlug
         val log by plugin.log.entries.collectAsStateWithLifecycle()
         val autoIsfCopyDays by plugin.autoIsfCopyDays.collectAsStateWithLifecycle()
         val liveScore by plugin.liveScore.collectAsStateWithLifecycle()
+        val clipboard = LocalClipboard.current
+        val scope = rememberCoroutineScope()
         LearnedPredictionContent(
             status = status,
             log = log,
@@ -86,7 +92,8 @@ internal class LearnedPredictionScreen(private val plugin: LearnedPredictionPlug
             liveScore = liveScore,
             onTrain = plugin::trainNow,
             onStop = plugin::stopTraining,
-            onReset = plugin::resetModel
+            onReset = plugin::resetModel,
+            onCopyReport = { scope.launch { clipboard.setClipEntry(plainTextClip(plugin.report())) } }
         )
     }
 }
@@ -100,6 +107,7 @@ internal fun LearnedPredictionContent(
     onTrain: () -> Unit,
     onStop: () -> Unit,
     onReset: () -> Unit,
+    onCopyReport: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val training = status.state == LearnedState.TRAINING
@@ -119,7 +127,8 @@ internal fun LearnedPredictionContent(
             listOf(
                 ScreenAction(stringResource(ApsStrings.learned_train_now), Icons.Default.PlayArrow, enabled = !training, onClick = onTrain),
                 ScreenAction(stringResource(ApsStrings.learned_stop), Icons.Default.Stop, visible = training, onClick = onStop),
-                ScreenAction(stringResource(ApsStrings.learned_reset), Icons.Default.DeleteOutline, visible = status.model != null && !training, onClick = onReset)
+                ScreenAction(stringResource(ApsStrings.learned_reset), Icons.Default.DeleteOutline, visible = status.model != null && !training, onClick = onReset),
+                ScreenAction(stringResource(ApsStrings.learned_copy_report), Icons.Default.ContentCopy, onClick = onCopyReport)
             )
         )
         HorizontalDivider()

@@ -172,6 +172,9 @@ class LearnedPredictionPlugin(
         startTraining()
     }
 
+    /** A plain text report of the model, the checks and the log, for the "Copy report" button */
+    fun report(): String = LearnedReport.build(model, _liveScore.value, _autoIsfCopyDays.value, log.entries.value, dateUtil::dateAndTimeString)
+
     /** Stops a running training. The model saved before stays. */
     fun stopTraining() {
         trainingJob?.cancel()

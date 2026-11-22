@@ -39,6 +39,7 @@
     <string name="learned_train_now">Train now</string>
     <string name="learned_stop">Stop</string>
     <string name="learned_reset">Reset model</string>
+    <string name="learned_copy_report" comment="Button: copies a text report of the model and its log, to send for help">Copy report</string>
     <string name="openapsma_disabled">Plugin is disabled</string>
     <string name="openapsma_no_glucose_data">No glucose data available</string>
     <string name="openaps_no_as_data">No autosens data available</string>

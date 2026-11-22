@@ -39,6 +39,7 @@
     <string name="learned_train_now">Навчити зараз</string>
     <string name="learned_stop">Зупинити</string>
     <string name="learned_reset">Скинути модель</string>
+    <string name="learned_copy_report">Скопіювати звіт</string>
     <string name="openapsma_disabled">Плагін вимкнено</string>
     <string name="openapsma_no_glucose_data">Дані про глюкозу відсутні</string>
     <string name="openaps_no_as_data">Дані Autosens відсутні</string>
