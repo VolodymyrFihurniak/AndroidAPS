@@ -10,13 +10,13 @@ import kotlin.math.roundToInt
 
 /**
  * autoISF build, personal prediction: the plugin's own forecasts of the last [KEEP_MS], one every 5 minutes, for the
- * live check ([LiveScore]). About 90 kB, in a setting that is not exported.
+ * live check ([LiveScore]). About 90 kB, in a file of the plugin.
  */
 @SingleIn(AppScope::class)
 @Inject
-class ForecastArchive(preferences: Preferences) {
+class ForecastArchive(preferences: Preferences, files: LearnedFiles) {
 
-    private val kept = KeptRecords(preferences, LearnedStringKey.Forecasts, KEEP_MS, { it.timestamp }, ::encodeForecast, ::decodeForecast)
+    private val kept = KeptRecords(files, LearnedFiles.FORECASTS, preferences, LearnedStringKey.Forecasts, KEEP_MS, { it.timestamp }, ::encodeForecast, ::decodeForecast)
 
     /** Keeps [forecast] unless one was kept less than 5 minutes before it */
     suspend fun add(forecast: LearnedForecast, now: Long) {

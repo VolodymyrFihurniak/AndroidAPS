@@ -42,9 +42,9 @@ enum class LearnedBooleanKey(
 }
 
 /**
- * autoISF build, personal prediction: the trained model, a copy of the AutoISF predictions of the last 15 days to
- * compare with, and the plugin's own forecasts of the last 8 days for the live check. Not exported: they belong to this
- * phone's history.
+ * autoISF build, personal prediction: where a version before kept the trained model, the copy of the AutoISF
+ * predictions and the kept forecasts. They are in files of the plugin now ([app.aaps.plugins.aps.learned.LearnedFiles]);
+ * a value found here is moved there once and cleared. Not exported: they belong to this phone's history.
  */
 enum class LearnedStringKey(
     override val key: String,

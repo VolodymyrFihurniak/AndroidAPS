@@ -56,8 +56,10 @@ class LearnedPredictionPluginTest {
         typicalErrorMgdl = List(24) { 1.0 }, ready = true, clampHits = 0
     )
 
+    // The model is in its file; the setting a version before used is empty
+    private val files = MemoryLearnedFiles(mutableMapOf(LearnedFiles.MODEL to oldModel.toJson()))
     private val preferences: Preferences = mock {
-        on { get(LearnedStringKey.ModelJson) } doReturn oldModel.toJson()
+        on { get(LearnedStringKey.ModelJson) } doReturn ""
         on { get(LearnedIntKey.TrainingWindowDays) } doReturn 180
     }
     private val bgChanges = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
@@ -75,12 +77,14 @@ class LearnedPredictionPluginTest {
     }
     private val dateUtil: DateUtil = mock { on { now() } doReturn now }
 
-    private val sut = LearnedPredictionPlugin(
+    private fun plugin(preferences: Preferences = this.preferences, files: LearnedFiles = this.files) = LearnedPredictionPlugin(
         aapsLogger = mock<AAPSLogger>(), rh = mock<TextResolver>(), preferences = preferences,
         notificationManager = mock<NotificationManager>(), historyReader = historyReader, runArchive = mock<AutoIsfRunArchive>(), forecastArchive = mock<ForecastArchive>(),
-        receiverStatusStore = mock<ReceiverStatusStore>(), rxBus = rxBus,
+        receiverStatusStore = mock<ReceiverStatusStore>(), files = files, rxBus = rxBus,
         dateUtil = dateUtil, profileUtil = mock<ProfileUtil>(), appScope = scope
     )
+
+    private val sut = plugin()
 
     @AfterEach
     fun tearDown() = scope.cancel()
@@ -97,7 +101,22 @@ class LearnedPredictionPluginTest {
 
         val status = withTimeout(5000) { sut.status.first { it.state != LearnedState.TRAINING } }
         assertThat(status.model).isEqualTo(oldModel)
+        assertThat(files.files[LearnedFiles.MODEL]).isEqualTo(oldModel.toJson())
         verify(preferences, never()).put(eq(LearnedStringKey.ModelJson), any<String>())
+    }
+
+    @Test
+    fun `a model a version before kept in the settings moves to its file`() = runBlocking<Unit> {
+        val oldPreferences: Preferences = mock {
+            on { get(LearnedStringKey.ModelJson) } doReturn oldModel.toJson()
+            on { get(LearnedIntKey.TrainingWindowDays) } doReturn 180
+        }
+        val empty = MemoryLearnedFiles()
+        val moved = plugin(oldPreferences, empty)
+        moved.onStart()
+        assertThat(moved.status.value.model).isEqualTo(oldModel)
+        assertThat(empty.files[LearnedFiles.MODEL]).isEqualTo(oldModel.toJson())
+        verify(oldPreferences).put(LearnedStringKey.ModelJson, "")
     }
 
     @Test

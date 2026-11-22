@@ -224,10 +224,10 @@ delivery**: the loop, SMB, temp basals and all limits work as before, and the lo
   the model sees it, to compare with the TDD) and of both curves every 15 minutes, as on the NSClient
   screen.
 * **Graph.** The BG graph gets two layers (in the layer menu only while the plugin is on, on by
-  default): *Model: expected* as a solid purple line with a dashed band of its typical error, and
-  *Model: no more insulin* as a dashed purple line. The legend says *not better than AutoISF yet* for
-  a curve that is not ready, and the value card shows both values on the future part. A forecast older
-  than 15 minutes is not drawn.
+  default): the GRU curve as a solid purple line with a dashed band of its typical error, and the
+  linear curve as a dashed purple line. The legend shows only the model names, *Model: GRU* and
+  *Model: linear*, and the value card shows both values on the future part. A forecast older than 15
+  minutes is not drawn.
 * **Insulin dialog.** Under the advice of the loop a second block *Model advice (experimental)*:
   the same guards first (BG low now, no fresh forecast, not ready, a low in the next 2 hours on either
   curve, BG falling), then the units missing or too much (with the grams that would cover them), from
@@ -242,6 +242,9 @@ delivery**: the loop, SMB, temp basals and all limits work as before, and the lo
   not a dose. The same warning comes again after 30 minutes at the soonest.
 * **Copy report** on the plugin screen puts a text report of the model, both error tables, the live
   check and the log on the clipboard, to send when something looks wrong.
+* **Its data** (the model, the copy of the AutoISF predictions and its own forecasts) lives in files
+  of the plugin, not in the settings, so a settings export stays small. A model kept in the settings
+  by an older build moves to its file on the first start.
 * It works on AAPSClient too, from the client's own database.
 
 ### Fixes compared to AAPS 4.0

@@ -13,7 +13,7 @@ import kotlin.math.roundToInt
  * autoISF build, personal prediction: a copy of the AutoISF predictions of the last [KEEP_MS], to compare the model
  * with on the test days. The database may keep its loop runs for a shorter time (when it is made smaller, only 2 days
  * stay), so the plugin keeps its own copy: the time and the main curve at 30, 60 and 120 minutes, one run every 5
- * minutes. About 100 kB, in a setting that is not exported.
+ * minutes. About 100 kB, in a file of the plugin.
  *
  * [update] copies the runs stored since the last call; the first call after a start copies what the database still
  * has. The copy is saved at most once an hour, and by [save].
@@ -22,10 +22,11 @@ import kotlin.math.roundToInt
 @Inject
 class AutoIsfRunArchive(
     preferences: Preferences,
+    files: LearnedFiles,
     private val historyReader: HistoryReader
 ) {
 
-    private val kept = KeptRecords(preferences, LearnedStringKey.AutoIsfRuns, KEEP_MS, { it.timestamp }, ::encodeRun, ::decodeRun)
+    private val kept = KeptRecords(files, LearnedFiles.AUTOISF_RUNS, preferences, LearnedStringKey.AutoIsfRuns, KEEP_MS, { it.timestamp }, ::encodeRun, ::decodeRun)
     private var checkedUntil = 0L
 
     /** Copies the AutoISF runs stored since the last call, drops those older than [KEEP_MS], and saves once an hour */

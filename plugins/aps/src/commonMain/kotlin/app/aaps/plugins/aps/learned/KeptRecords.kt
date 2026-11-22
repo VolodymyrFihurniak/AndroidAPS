@@ -6,15 +6,17 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * autoISF build, personal prediction: records the plugin keeps for [keepMs] in a setting that is not exported, at most
- * one every [KEEP_EVERY_MS], oldest first. Saved at most once an hour, and by [save]. Used for the copy of the AutoISF
- * predictions and for the plugin's own forecasts.
+ * autoISF build, personal prediction: records the plugin keeps for [keepMs] in its file [fileName] ([LearnedFiles]), at
+ * most one every [KEEP_EVERY_MS], oldest first. Saved at most once an hour, and by [save]. Used for the copy of the
+ * AutoISF predictions and for the plugin's own forecasts. A version before the files kept them in the setting [oldKey].
  *
  * [encode] must not give a ";", that separates the records. [decode] gives null for a record it cannot read.
  */
 internal class KeptRecords<T>(
+    private val files: LearnedFiles,
+    private val fileName: String,
     private val preferences: Preferences,
-    private val key: StringNonPreferenceKey,
+    private val oldKey: StringNonPreferenceKey,
     private val keepMs: Long,
     private val timeOf: (T) -> Long,
     private val encode: (T) -> String,
@@ -52,13 +54,13 @@ internal class KeptRecords<T>(
 
     private fun loaded(): MutableList<T> = records ?: run {
         val read = mutableListOf<T>()
-        for (entry in preferences.get(key).split(';')) if (entry.isNotEmpty()) decode(entry)?.let { read += it }
+        for (entry in files.readMoving(fileName, preferences, oldKey).split(';')) if (entry.isNotEmpty()) decode(entry)?.let { read += it }
         records = read
         read
     }
 
     private fun store(kept: List<T>, now: Long) {
-        preferences.put(key, kept.joinToString(";") { encode(it) })
+        files.write(fileName, kept.joinToString(";") { encode(it) })
         lastSave = now
     }
 

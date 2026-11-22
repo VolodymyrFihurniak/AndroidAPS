@@ -89,6 +89,7 @@ class LearnedPredictionPlugin(
     private val runArchive: AutoIsfRunArchive,
     private val forecastArchive: ForecastArchive,
     private val receiverStatusStore: ReceiverStatusStore,
+    private val files: LearnedFiles,
     private val rxBus: RxBus,
     private val dateUtil: DateUtil,
     private val profileUtil: ProfileUtil,
@@ -143,7 +144,7 @@ class LearnedPredictionPlugin(
     @OptIn(FlowPreview::class)
     override suspend fun onStart() {
         super.onStart()
-        model = LearnedModel.fromJson(preferences.get(LearnedStringKey.ModelJson))
+        model = LearnedModel.fromJson(files.readMoving(LearnedFiles.MODEL, preferences, LearnedStringKey.ModelJson))
         updateStatus()
         _enabled.value = true
         liveJob?.cancel()
@@ -191,7 +192,7 @@ class LearnedPredictionPlugin(
     fun resetModel() {
         trainingJob?.cancel()
         model = null
-        preferences.put(LearnedStringKey.ModelJson, "")
+        files.delete(LearnedFiles.MODEL)
         _forecast.value = null
         log.add("Model deleted")
         updateStatus()
@@ -261,7 +262,7 @@ class LearnedPredictionPlugin(
                 val trained = withTimeout(TrainingSchedule.TIME_LIMIT_MS) { train() }
                 if (trained != null) {
                     model = trained
-                    preferences.put(LearnedStringKey.ModelJson, trained.toJson())
+                    files.write(LearnedFiles.MODEL, trained.toJson())
                     log.add("Model saved")
                     _forecast.value = computeForecast()
                 }

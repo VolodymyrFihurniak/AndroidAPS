@@ -24,11 +24,10 @@ class AutoIsfRunArchiveTest {
 
     /** What the database holds: one run a minute, as with a 1-minute loop */
     private var database: List<StoredRun> = emptyList()
-    private var saved = ""
+    private val files = MemoryLearnedFiles()
 
     private val preferences: Preferences = mock {
-        on { get(LearnedStringKey.AutoIsfRuns) } doAnswer { saved }
-        on { put(eq(LearnedStringKey.AutoIsfRuns), any<String>()) } doAnswer { saved = it.arguments[1] as String }
+        on { get(LearnedStringKey.AutoIsfRuns) } doAnswer { "" }
     }
     private val historyReader: HistoryReader = mock {
         on { storedRuns(any(), any()) } doSuspendableAnswer { call ->
@@ -43,7 +42,7 @@ class AutoIsfRunArchiveTest {
     @Test
     fun `keeps one run per 5 minutes of the last 15 days`() = runBlocking<Unit> {
         database = (0 until 20 * 24 * 60).map { run(now - it * minute) }
-        val archive = AutoIsfRunArchive(preferences, historyReader)
+        val archive = AutoIsfRunArchive(preferences, files, historyReader)
         archive.update(now)
         val kept = archive.runs(now - 20 * day, now)
         assertThat(kept.minOf { it.timestamp }).isAtLeast(now - AutoIsfRunArchive.KEEP_MS)
@@ -54,12 +53,12 @@ class AutoIsfRunArchiveTest {
     @Test
     fun `the runs survive a restart`() = runBlocking<Unit> {
         database = listOf(run(now - 10 * minute, 110.0), run(now - 2 * minute, 130.0))
-        AutoIsfRunArchive(preferences, historyReader).apply {
+        AutoIsfRunArchive(preferences, files, historyReader).apply {
             update(now)
             save()
         }
         database = emptyList()
-        val restarted = AutoIsfRunArchive(preferences, historyReader)
+        val restarted = AutoIsfRunArchive(preferences, files, historyReader)
         restarted.update(now + minute)
         assertThat(restarted.runs(now - day, now + day)).containsExactly(run(now - 10 * minute, 110.0), run(now - 2 * minute, 130.0)).inOrder()
     }
@@ -67,7 +66,7 @@ class AutoIsfRunArchiveTest {
     @Test
     fun `the database lost runs after they were copied`() = runBlocking<Unit> {
         database = (0 until 3 * 24 * 60).map { run(now - it * minute) }
-        val archive = AutoIsfRunArchive(preferences, historyReader)
+        val archive = AutoIsfRunArchive(preferences, files, historyReader)
         archive.update(now)
         // The database keeps only the last 2 days now, as after a trim
         database = database.filter { it.timestamp >= now - 2 * day }
@@ -78,7 +77,7 @@ class AutoIsfRunArchiveTest {
     @Test
     fun `a second update reads only what is new`() = runBlocking<Unit> {
         database = listOf(run(now - minute))
-        val archive = AutoIsfRunArchive(preferences, historyReader)
+        val archive = AutoIsfRunArchive(preferences, files, historyReader)
         archive.update(now)
         archive.update(now + 6 * minute)
         val from = argumentCaptor<Long>()
