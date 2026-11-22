@@ -1,5 +1,8 @@
 package app.aaps.plugins.aps.learned
 
+import app.aaps.plugins.aps.learned.grid.BgReading
+import app.aaps.plugins.aps.learned.grid.HistoryInput
+import app.aaps.plugins.aps.learned.grid.ProfileTimeline
 import app.aaps.plugins.aps.learned.grid.HistoryGridBuilder
 import app.aaps.plugins.aps.learned.grid.STEP_MS
 import app.aaps.plugins.aps.learned.model.Effects
@@ -93,6 +96,22 @@ class ForecasterTest {
         val liveInputs = FloatArray(Samples.INPUTS)
         Samples.networkInputs(live, Effects(live).atLive(j), linear, j, liveInputs)
         for (k in training.indices) assertEquals(training[k], liveInputs[k], 1e-3f, "input $k")
+    }
+
+    @Test
+    fun `a rise that insulin does not explain goes on in the forecast`() {
+        // No insulin and no carbs: BG rose 4 mg/dl every 5 minutes for the last hour, from a meal nobody entered
+        val start = history.start
+        val readings = (0..144).map { k -> BgReading(start + k * STEP_MS, if (k < 132) 100.0 else 100.0 + 4.0 * (k - 131)) }
+        val input = HistoryInput(readings, emptyList(), emptyList(), emptyList(), emptyList(), ProfileTimeline { SyntheticHistory.profile }, emptyList(), emptyList())
+        val newest = readings.last()
+        val grid = Forecaster.liveGrid(input, newest.timestamp, TimeZone.UTC)
+        // A network that adds nothing, and the prior model has no drift and no trend: without the meal going on the
+        // curve would stay flat
+        val silent = ResidualNetwork(inputs = Samples.INPUTS, seed = 2).also { it.setParameters(DoubleArray(it.parameters().size)) }
+        val forecast = assertNotNull(Forecaster.forecast(model().copy(network = silent.toState()), grid, Forecaster.LIVE_BACK_STEPS))
+        assertTrue(forecast.at(30)!! > newest.mgdl + 10.0, "${forecast.at(30)} after ${newest.mgdl}")
+        assertTrue(forecast.at(120)!! >= forecast.at(30)!!)
     }
 
     @Test

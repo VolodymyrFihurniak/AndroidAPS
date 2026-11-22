@@ -35,10 +35,12 @@ object UnannouncedMeals {
     /** 60 minutes after the rise is explained again */
     const val TAIL_STEPS = 12
 
-    /** Per step of [grid]: true inside a meal that was not entered. [effects] sees all the insulin of the grid. */
-    fun find(grid: HistoryGrid, effects: Effects): BooleanArray {
+    /**
+     * Per step `j` of [grid]: the BG change from `j` to `j + 1` that insulin and entered carbs do not explain, mg/dl, NaN
+     * where BG or the profile is missing. It uses BG of `j + 1`, so for a moment `i` only the steps before `i` are known.
+     */
+    fun unexplained(grid: HistoryGrid, effects: Effects): DoubleArray {
         val n = grid.size
-        // The BG change of each step that insulin and entered carbs do not explain, NaN where BG or the profile is missing
         val unexplained = DoubleArray(n) { Double.NaN }
         for (j in 0 until n - 1) {
             val now = grid.bg[j]
@@ -48,6 +50,13 @@ object UnannouncedMeals {
             val explained = -grid.isf[j] * effects.insulinActing(j, 1) + grid.isf[j] / grid.ic[j] * carbs
             unexplained[j] = next - now - explained
         }
+        return unexplained
+    }
+
+    /** Per step of [grid]: true inside a meal that was not entered. [effects] sees all the insulin of the grid. */
+    fun find(grid: HistoryGrid, effects: Effects): BooleanArray {
+        val n = grid.size
+        val unexplained = unexplained(grid, effects)
         val average = DoubleArray(n) { average(unexplained, it) }
         val meal = BooleanArray(n)
         var j = 0

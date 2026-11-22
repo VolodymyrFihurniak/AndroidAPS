@@ -14,7 +14,9 @@ import app.aaps.plugins.aps.learned.model.LearnedModel
 import app.aaps.plugins.aps.learned.model.ResidualNetwork
 import app.aaps.plugins.aps.learned.train.Samples
 import app.aaps.plugins.aps.learned.train.Scaling
+import app.aaps.plugins.aps.learned.train.MealInProgress
 import app.aaps.plugins.aps.learned.train.SequenceFeatures
+import app.aaps.plugins.aps.learned.train.UnannouncedMeals
 import kotlinx.datetime.TimeZone
 import kotlin.math.min
 
@@ -68,6 +70,8 @@ object Forecaster {
         if (bg.isNaN() || !grid.hasProfile(i) || grid.isf[i] <= 0.0 || grid.ic[i] <= 0.0) return null
 
         val effects = Effects(grid)
+        // A meal that goes on now, from the rise insulin and entered carbs did not explain in the last 30 minutes
+        val meal = MealInProgress.rise(UnannouncedMeals.unexplained(grid, effects), i)
         val live = effects.atLive(i)
         val inputs = FloatArray(Samples.INPUTS)
         Samples.networkInputs(grid, live, model.linear, i, inputs)
@@ -79,7 +83,7 @@ object Forecaster {
 
         val time = grid.timeOf(i)
         val points = (1..HORIZONS).map { h ->
-            val value = bg + model.linear.delta(grid, effects, i, h) + Samples.residualAt(knots, h)
+            val value = bg + model.linear.delta(grid, effects, i, h) + meal[h - 1] + Samples.residualAt(knots, h)
             LearnedPoint(time + h * STEP_MS, value.coerceIn(MIN_BG, MAX_BG))
         }
 

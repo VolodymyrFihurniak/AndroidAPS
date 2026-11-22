@@ -92,6 +92,7 @@ class Trainer(
         val accAll = RidgeAccumulator(LinearFeatures.SIZE)
         val x = DoubleArray(LinearFeatures.SIZE)
         // Meals that were not entered are left out: in them insulin comes while BG keeps rising
+        val unexplained = UnannouncedMeals.unexplained(grid, effects)
         val meals = UnannouncedMeals.find(grid, effects)
         val mealsUpTo = IntArray(grid.size + 1).also { count -> for (j in 0 until grid.size) count[j + 1] = count[j] + if (meals[j]) 1 else 0 }
         var rows = 0
@@ -120,8 +121,8 @@ class Trainer(
 
         // Network on the learning days, early stop on the test days
         val networkStart = timeSource.markNow()
-        val learnSet = networkSet(grid, effects, linearLearn, learn, futures, weights)
-        val testSet = networkSet(grid, effects, linearLearn, test, futures, weights)
+        val learnSet = networkSet(grid, effects, unexplained, linearLearn, learn, futures, weights)
+        val testSet = networkSet(grid, effects, unexplained, linearLearn, test, futures, weights)
         val scaling = Scaling.of(learnSet.x)
         scaling.apply(learnSet.x)
         scaling.apply(testSet.x)
@@ -157,7 +158,7 @@ class Trainer(
         progress("Measuring")
         val measureStart = timeSource.markNow()
         val expected: ((Int) -> DoubleArray?)? = gruFit?.let { fit -> { i -> gru.predict(gruData, fit, linearLearn, 0, i) } }
-        val evaluation = evaluate(grid, effects, linearLearn, network, scaling, test, futures, autoIsfRuns, expected, now - Samples.TEST_DAYS * DAY_MS)
+        val evaluation = evaluate(grid, effects, unexplained, linearLearn, network, scaling, test, futures, autoIsfRuns, expected, now - Samples.TEST_DAYS * DAY_MS)
         // Ready only when it beats AutoISF on the same moments, and those cover at least half of the test days.
         // Without enough stored AutoISF runs there is nothing fair to compare with, so it is not ready.
         val autoIsf = evaluation.autoIsf
@@ -170,7 +171,7 @@ class Trainer(
         // The model used: the linear part of all days, the network trained again on all days
         progress("Final training")
         val finalStart = timeSource.markNow()
-        val allSet = networkSet(grid, effects, linearAll, samples, futures, weights)
+        val allSet = networkSet(grid, effects, unexplained, linearAll, samples, futures, weights)
         val finalScaling = Scaling.of(allSet.x)
         finalScaling.apply(allSet.x)
         val finalNetwork = ResidualNetwork(inputs = Samples.INPUTS, seed = SEED)
@@ -282,8 +283,9 @@ class Trainer(
     }
 
     /** Inputs (live, as known at the step) and targets (what the linear part left over with the real insulin) */
+    /** [unexplained] from [UnannouncedMeals.unexplained]: the network learns what is left after the meal in progress too */
     private suspend fun networkSet(
-        grid: HistoryGrid, effects: Effects, linear: LinearModel, steps: List<Int>, futures: Map<Int, DoubleArray>, weights: DoubleArray
+        grid: HistoryGrid, effects: Effects, unexplained: DoubleArray, linear: LinearModel, steps: List<Int>, futures: Map<Int, DoubleArray>, weights: DoubleArray
     ): NetworkSet {
         val x = Array(steps.size) { FloatArray(Samples.INPUTS) }
         val y = Array(steps.size) { FloatArray(Samples.KNOTS.size) }
@@ -292,8 +294,9 @@ class Trainer(
             if (n % CHECK_EVERY == 0) yield()
             Samples.networkInputs(grid, effects.atLive(i), linear, i, x[n])
             val future = futures.getValue(i)
+            val meal = MealInProgress.rise(unexplained, i)
             Samples.KNOTS.forEachIndexed { k, h ->
-                y[n][k] = ((future[h - 1] - grid.bg[i] - linear.delta(grid, effects, i, h)) / LearnedModel.OUTPUT_SCALE).toFloat()
+                y[n][k] = ((future[h - 1] - grid.bg[i] - linear.delta(grid, effects, i, h) - meal[h - 1]) / LearnedModel.OUTPUT_SCALE).toFloat()
             }
             w[n] = weights[i].toFloat()
         }
@@ -310,7 +313,7 @@ class Trainer(
 
     /** [expected] gives the BG change of the expected curve at step `i`, mg/dl, as known at that step */
     private suspend fun evaluate(
-        grid: HistoryGrid, effects: Effects, linear: LinearModel, network: ResidualNetwork, scaling: Scaling,
+        grid: HistoryGrid, effects: Effects, unexplained: DoubleArray, linear: LinearModel, network: ResidualNetwork, scaling: Scaling,
         test: List<Int>, futures: Map<Int, DoubleArray>, runs: List<StoredRun>, expected: ((Int) -> DoubleArray?)?, testStart: Long
     ): Evaluation {
         val dayMoments = IntArray(Samples.TEST_DAYS)
@@ -340,6 +343,7 @@ class Trainer(
                 knots[k] = raw.coerceIn(-Samples.MAX_RESIDUAL, Samples.MAX_RESIDUAL)
             }
             val future = futures.getValue(i)
+            val meal = MealInProgress.rise(unexplained, i)
             val run = sortedRuns.nearestTo(grid.timeOf(i), RUN_MATCH_MS) { it.timestamp }
             val day = ((grid.timeOf(i) - testStart) / DAY_MS).toInt().coerceIn(0, Samples.TEST_DAYS - 1)
             dayMoments[day]++
@@ -351,7 +355,7 @@ class Trainer(
             val expectedChange = expected?.invoke(i)
             for (h in 1..HORIZONS) {
                 val actual = future[h - 1]
-                val predicted = (grid.bg[i] + linear.delta(grid, live, i, h) + Samples.residualAt(knots, h)).coerceIn(MIN_BG, MAX_BG)
+                val predicted = (grid.bg[i] + linear.delta(grid, live, i, h) + meal[h - 1] + Samples.residualAt(knots, h)).coerceIn(MIN_BG, MAX_BG)
                 val modelError = abs(predicted - actual)
                 val naiveError = abs(grid.bg[i] - actual)
                 val expectedError = expectedChange?.let { abs((grid.bg[i] + it[h - 1]).coerceIn(MIN_BG, MAX_BG) - actual) } ?: 0.0

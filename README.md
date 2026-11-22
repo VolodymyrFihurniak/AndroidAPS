@@ -192,6 +192,9 @@ delivery**: the loop, SMB, temp basals and all limits work as before, and the lo
   carbs, the profile active at that time). Priming boluses are not counted. Meals that were eaten but
   not entered are found from BG alone (a rise faster than insulin and entered carbs explain) and left
   out of the linear part, so a full closed loop without carb entries does not make insulin look weak.
+  A meal that goes on now (BG rose faster than insulin and entered carbs explain in the last 30
+  minutes) goes on in the curve and fades as fast as it already slows down, as oref's UAM does; the
+  GRU gets that rise as an input too. What BG does on its own is kept within 1 mmol/l per hour.
   With a 1-minute sensor
   the grid is built 5 times, shifted by 0 to 4 minutes (for the last 180 days at most), so the
   expected curve sees 5 times more moments; it keeps at most 100 000 of them.

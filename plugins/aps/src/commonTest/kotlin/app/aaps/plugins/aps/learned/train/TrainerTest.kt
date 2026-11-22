@@ -177,7 +177,7 @@ class TrainerTest {
     }
 
     @Test
-    fun `a version 2 model is not read`() {
+    fun `an older model is not read`() {
         val model = LearnedModel(
             trainedAt = 123L, windowDays = 180, samples = 5000,
             linear = LinearModel(LinearFeatures.PRIOR.toList()),
@@ -186,8 +186,9 @@ class TrainerTest {
             model = Metrics(10.0, 20.0, 30.0), autoIsf = null, naive = Metrics(11.0, 22.0, 33.0), autoIsfCoverage = 0.0,
             typicalErrorMgdl = List(24) { 0.0 }, ready = false, clampHits = 0
         )
-        assertEquals(3, LearnedModel.VERSION)
-        assertNull(LearnedModel.fromJson(model.toJson().replace("\"version\":3", "\"version\":2")))
+        // 3: the GRU had one input per step less
+        assertEquals(4, LearnedModel.VERSION)
+        for (old in 2..3) assertNull(LearnedModel.fromJson(model.toJson().replace("\"version\":4", "\"version\":$old")))
     }
 
     /** A clock on which everything takes 10 minutes */

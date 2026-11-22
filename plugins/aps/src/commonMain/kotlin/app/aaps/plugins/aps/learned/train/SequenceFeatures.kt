@@ -21,7 +21,7 @@ object SequenceFeatures {
     const val STEPS = 36
 
     /** Values per step, see [steps] */
-    const val STEP_INPUTS = 11
+    const val STEP_INPUTS = 12
 
     /** Context values per sample, see [context] */
     const val CONTEXT = 15
@@ -43,12 +43,14 @@ object SequenceFeatures {
     /**
      * One row per step of [grid], with these values: BG, BG change from the step before, net insulin given in the step,
      * insulin that acts in the next step, IOB, carbs eaten in the step, carbs absorbed in the next step (3 h absorption),
-     * COB (3 h), the temp basal ratio, sin and cos of the time of day.
+     * COB (3 h), the temp basal ratio, sin and cos of the time of day, and the change of the step before that insulin
+     * and entered carbs do not explain (a meal going on, see [UnannouncedMeals.unexplained]).
      *
      * A BG gap keeps the last BG, with change 0. Steps before the first reading take the first reading.
      * [effects] is made without a live index: row `j` only counts doses and carbs up to step `j` anyway.
      */
     fun steps(grid: HistoryGrid, effects: Effects): Array<FloatArray> {
+        val unexplained = UnannouncedMeals.unexplained(grid, effects)
         val first = grid.bg.firstOrNull { !it.isNaN() } ?: 0.0
         var last = first
         return Array(grid.size) { j ->
@@ -68,7 +70,9 @@ object SequenceFeatures {
                 effects.cob(j, CARB_HOURS).toFloat(),
                 Samples.tempBasalRatio(grid, j),
                 sin(angle).toFloat(),
-                cos(angle).toFloat()
+                cos(angle).toFloat(),
+                // The change of the step before that insulin and entered carbs do not explain: a meal going on
+                (if (j > 0 && !unexplained[j - 1].isNaN()) unexplained[j - 1] else 0.0).toFloat()
             )
         }
     }
