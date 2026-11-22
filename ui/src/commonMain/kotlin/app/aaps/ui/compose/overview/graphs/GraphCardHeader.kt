@@ -89,18 +89,11 @@ internal fun GraphCardHeader(
         LegendItem(AapsTheme.generalColors.bgInRange, glucoseMark, stringResource(CoreUiStrings.glucose))
         if (SeriesType.PREDICTIONS in bgOverlays) LegendItem(AapsTheme.generalColors.iobPrediction, LegendMark.DASHED, stringResource(CoreUiStrings.predictions_shortname))
         if (SeriesType.BG_PARABOLA in bgOverlays) LegendItem(AapsTheme.generalColors.bgParabola, LegendMark.LINE, stringResource(CoreUiStrings.bg_parabola_shortname))
-        if (learned != null && learned.expected.isNotEmpty()) {
-            LegendItem(
-                AapsTheme.generalColors.learnedPrediction, LegendMark.LINE,
-                stringResource(if (learned.expectedReady) CoreUiStrings.learned_expected_shortname else CoreUiStrings.learned_expected_not_ready_legend)
-            )
-        }
-        if (learned != null && learned.noInsulin.isNotEmpty()) {
-            LegendItem(
-                AapsTheme.generalColors.learnedPrediction, LegendMark.DASHED,
-                stringResource(if (learned.noInsulinReady) CoreUiStrings.learned_no_insulin_shortname else CoreUiStrings.learned_no_insulin_not_ready_legend)
-            )
-        }
+        // Only the name of each model: whether it is better than AutoISF is on the plugin screen and in the Insulin dialog
+        if (learned != null && learned.expected.isNotEmpty())
+            LegendItem(AapsTheme.generalColors.learnedPrediction, LegendMark.LINE, stringResource(CoreUiStrings.learned_expected_shortname))
+        if (learned != null && learned.noInsulin.isNotEmpty())
+            LegendItem(AapsTheme.generalColors.learnedPrediction, LegendMark.DASHED, stringResource(CoreUiStrings.learned_no_insulin_shortname))
         // IOB and COB are areas at the bottom of the BG graph, the basal a band at its top
         if (SeriesType.IOB in bgOverlays) LegendItem(AapsTheme.generalColors.iobPrediction, LegendMark.SQUARE, stringResource(CoreUiStrings.iob))
         if (SeriesType.COB in bgOverlays) LegendItem(AapsTheme.generalColors.cobPrediction, LegendMark.SQUARE, stringResource(CoreUiStrings.cob))

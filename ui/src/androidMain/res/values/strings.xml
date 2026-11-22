@@ -466,7 +466,7 @@
     <string name="model_adv_none">No bolus needed.</string>
     <string name="model_adv_falling">No advice to give more insulin: BG is falling.</string>
     <string name="model_adv_in" comment="%1$s=time with unit, %2$s=BG with unit. Example: In 30 min: 6.2 mmol/l">In %1$s: %2$s</string>
-    <string name="model_adv_in_both" comment="%1$s=time with unit, %2$s=BG with unit of the expected curve (with the loop), %3$s=BG with unit if no more insulin is given. Example: In 30 min: 6.2 mmol/l expected, 7.0 mmol/l with no more insulin">In %1$s: %2$s expected, %3$s with no more insulin</string>
+    <string name="model_adv_in_both" comment="%1$s=time with unit, %2$s=BG with unit of the GRU model, %3$s=BG with unit of the linear model. GRU is a name, do not translate. Example: In 30 min: GRU 6.2 mmol/l, linear 7.0 mmol/l">In %1$s: GRU %2$s, linear %3$s</string>
     <string name="model_adv_isf" comment="%1$s=BG with unit. Example: Personal ISF: 2.8 mmol/l per U">Personal ISF: %1$s per U</string>
     <string name="model_adv_error" comment="%1$s=BG with unit. Example: 1.0 mmol/l">Typical error at 60 min: %1$s</string>
     <string name="model_adv_trained" comment="%1$s=date and time">Model trained: %1$s</string>

@@ -434,7 +434,7 @@
     <string name="model_adv_none">Болюс не потрібен.</string>
     <string name="model_adv_falling">Поради дати ще інсулін немає: глюкоза падає.</string>
     <string name="model_adv_in">Через %1$s: %2$s</string>
-    <string name="model_adv_in_both">Через %1$s: %2$s очікувано, %3$s без додаткового інсуліну</string>
+    <string name="model_adv_in_both">Через %1$s: GRU %2$s, лінійна %3$s</string>
     <string name="model_adv_isf">Персональний ISF: %1$s на 1 Од</string>
     <string name="model_adv_error">Типова похибка на 60 хв: %1$s</string>
     <string name="model_adv_trained">Модель навчена: %1$s</string>

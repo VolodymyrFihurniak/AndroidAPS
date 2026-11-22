@@ -110,6 +110,10 @@ class LearnedPredictionPlugin(
     private val _status = MutableStateFlow(LearnedStatus(LearnedState.NO_MODEL))
     val status: StateFlow<LearnedStatus> = _status.asStateFlow()
 
+    /** Days of AutoISF predictions the plugin keeps itself, for its screen */
+    private val _autoIsfCopyDays = MutableStateFlow(0)
+    val autoIsfCopyDays: StateFlow<Int> = _autoIsfCopyDays.asStateFlow()
+
     private var model: LearnedModel? = null
     private var liveJob: Job? = null
     private var trainingJob: Job? = null
@@ -179,7 +183,9 @@ class LearnedPredictionPlugin(
     private suspend fun refresh() {
         _forecast.value = computeForecast()
         try {
-            runArchive.update(dateUtil.now())
+            val now = dateUtil.now()
+            runArchive.update(now)
+            _autoIsfCopyDays.value = runArchive.days(now)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

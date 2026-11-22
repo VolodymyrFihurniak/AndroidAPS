@@ -45,6 +45,7 @@ import app.aaps.plugins.aps.learned.LearnedStatus
 import app.aaps.plugins.aps.learned.model.CARB_HOURS
 import app.aaps.plugins.aps.learned.model.LearnedModel
 import app.aaps.plugins.aps.learned.model.Metrics
+import app.aaps.plugins.aps.learned.train.Samples
 import app.aaps.plugins.aps.learned.train.Trainer
 import kotlin.math.roundToInt
 
@@ -75,9 +76,11 @@ internal class LearnedPredictionScreen(private val plugin: LearnedPredictionPlug
         }
         val status by plugin.status.collectAsStateWithLifecycle()
         val log by plugin.log.entries.collectAsStateWithLifecycle()
+        val autoIsfCopyDays by plugin.autoIsfCopyDays.collectAsStateWithLifecycle()
         LearnedPredictionContent(
             status = status,
             log = log,
+            autoIsfCopyDays = autoIsfCopyDays,
             onTrain = plugin::trainNow,
             onStop = plugin::stopTraining,
             onReset = plugin::resetModel
@@ -89,6 +92,7 @@ internal class LearnedPredictionScreen(private val plugin: LearnedPredictionPlug
 internal fun LearnedPredictionContent(
     status: LearnedStatus,
     log: List<SyncLogEntry>,
+    autoIsfCopyDays: Int,
     onTrain: () -> Unit,
     onStop: () -> Unit,
     onReset: () -> Unit,
@@ -101,7 +105,7 @@ internal fun LearnedPredictionContent(
             .padding(AapsSpacing.extraLarge),
         verticalArrangement = Arrangement.spacedBy(AapsSpacing.medium)
     ) {
-        StatusCard(status)
+        StatusCard(status, autoIsfCopyDays)
         status.model?.let { model ->
             ErrorsCard(model)
             LearnedCard(model)
@@ -125,7 +129,7 @@ internal fun LearnedPredictionContent(
 }
 
 @Composable
-private fun StatusCard(status: LearnedStatus) {
+private fun StatusCard(status: LearnedStatus, autoIsfCopyDays: Int) {
     val dateUtil = LocalDateUtil.current
     AapsCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(AapsSpacing.extraLarge), verticalArrangement = Arrangement.spacedBy(AapsSpacing.small)) {
@@ -185,6 +189,14 @@ private fun StatusCard(status: LearnedStatus) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+                // How far the plugin's own copy of the AutoISF predictions goes back: the comparison needs the test days
+                if (model.autoIsfCoverage < Trainer.MIN_COVERAGE) {
+                    Text(
+                        text = stringResource(ApsStrings.learned_autoisf_copy, minOf(autoIsfCopyDays, Samples.TEST_DAYS), Samples.TEST_DAYS),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
@@ -205,17 +217,22 @@ private fun ErrorsCard(model: LearnedModel) {
             ErrorRow("", listOf(30, 60, 120).map { stringResource(CoreUiStrings.format_mins, it) }, bold = true)
             fun values(metrics: Metrics?) = listOf(metrics?.mae30, metrics?.mae60, metrics?.mae120)
                 .map { value -> value?.let { profileUtil.fromMgdlToStringWithUnits(it) } ?: "–" }
-            // All rows on the moments with a stored AutoISF run, so they compare fairly
-            val paired = model.modelOnAutoIsfMoments != null
+            // With enough AutoISF runs all rows are on their moments, so they compare fairly. With too few the models
+            // and "BG stays the same" are shown on all moments of the test days: a few hours say little.
+            val percent = (model.autoIsfCoverage * 100).roundToInt()
+            val paired = model.modelOnAutoIsfMoments != null && model.autoIsfCoverage >= Trainer.MIN_COVERAGE
             if (model.expected != null) {
-                ErrorRow(stringResource(ApsStrings.learned_row_expected), values(model.expectedOnAutoIsfMoments ?: model.expectedMetrics), bold = true)
+                ErrorRow(stringResource(ApsStrings.learned_row_expected), values(if (paired) model.expectedOnAutoIsfMoments else model.expectedMetrics), bold = true)
             }
-            ErrorRow(stringResource(ApsStrings.learned_row_no_insulin), values(model.modelOnAutoIsfMoments ?: model.model), bold = true)
-            ErrorRow(stringResource(ApsStrings.openaps_auto_isf), values(model.autoIsf))
-            ErrorRow(stringResource(ApsStrings.learned_row_naive), values(model.naiveOnAutoIsfMoments ?: model.naive))
+            ErrorRow(stringResource(ApsStrings.learned_row_no_insulin), values(if (paired) model.modelOnAutoIsfMoments else model.model), bold = true)
+            ErrorRow(stringResource(ApsStrings.openaps_auto_isf), values(if (paired) model.autoIsf else null))
+            ErrorRow(stringResource(ApsStrings.learned_row_naive), values(if (paired) model.naiveOnAutoIsfMoments else model.naive))
             Text(
-                text = if (paired) stringResource(ApsStrings.learned_compared_on, (model.autoIsfCoverage * 100).roundToInt())
-                else stringResource(ApsStrings.learned_no_autoisf_runs),
+                text = when {
+                    paired                         -> stringResource(ApsStrings.learned_compared_on, percent)
+                    model.autoIsf != null          -> stringResource(ApsStrings.learned_all_moments, percent)
+                    else                           -> stringResource(ApsStrings.learned_no_autoisf_runs)
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

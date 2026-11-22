@@ -1247,12 +1247,10 @@
     <string name="bg_parabola_shortname" comment="Short label for the BG parabola of autoISF on the BG graph">PARAB</string>
     <string name="graph_series_bg_line" comment="Switch of the BG graph: draw the glucose readings as one line instead of dots">Glucose as a line</string>
     <string name="bg_line_shortname" comment="Short label of the switch that draws the glucose as a line">LINE</string>
-    <string name="graph_series_learned" comment="Layer of the BG graph: the curve of the personal prediction plugin if no more insulin is given">Personal prediction: no more insulin (experimental)</string>
-    <string name="graph_series_learned_expected" comment="Layer of the BG graph: the curve of the personal prediction plugin of where BG really goes, with the loop">Personal prediction: expected (experimental)</string>
-    <string name="learned_expected_shortname" comment="Short name of the personal prediction curve of where BG really goes, with the loop. In the graph legend and the value card">Model: expected</string>
-    <string name="learned_no_insulin_shortname" comment="Short name of the personal prediction curve if no more insulin is given. In the graph legend and the value card">Model: no more insulin</string>
-    <string name="learned_expected_not_ready_legend" comment="Graph legend when the expected curve of the personal prediction is not yet better than AutoISF">Model: expected, not better than AutoISF yet</string>
-    <string name="learned_no_insulin_not_ready_legend" comment="Graph legend when the no-more-insulin curve of the personal prediction is not yet better than AutoISF">Model: no more insulin, not better than AutoISF yet</string>
+    <string name="graph_series_learned" comment="Layer of the BG graph: the curve of the linear model of the personal prediction (what happens with no more insulin). Linear is the name of the model">Personal prediction: linear model (experimental)</string>
+    <string name="graph_series_learned_expected" comment="Layer of the BG graph: the curve of the GRU model of the personal prediction (where BG goes, with the loop). GRU is the name of the model, do not translate">Personal prediction: GRU model (experimental)</string>
+    <string name="learned_expected_shortname" comment="Graph legend and value card: the curve of the GRU model. GRU is a name, do not translate">Model: GRU</string>
+    <string name="learned_no_insulin_shortname" comment="Graph legend and value card: the curve of the linear model">Model: linear</string>
     <string name="graph_series_predictions">Predictions</string>
 
 

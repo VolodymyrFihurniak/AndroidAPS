@@ -51,6 +51,11 @@ class AutoIsfRunArchive(
     /** The kept runs of [from]..[to], oldest first */
     suspend fun runs(from: Long, to: Long): List<StoredRun> = lock.withLock { loaded().filter { it.timestamp in from..to } }
 
+    /** Whole days back from [now] to the oldest kept run, for the plugin screen */
+    suspend fun days(now: Long): Int = lock.withLock {
+        loaded().firstOrNull()?.let { ((now - it.timestamp) / DAY_MS).toInt() } ?: 0
+    }
+
     /** Saves the copy now, for example when the plugin stops */
     suspend fun save() = lock.withLock { store(loaded(), lastSave) }
 
@@ -73,6 +78,7 @@ class AutoIsfRunArchive(
         private const val SAVE_EVERY_MS = 3_600_000L
         private const val LATE_MS = 120_000L
         private const val MINUTE_MS = 60_000L
+        private const val DAY_MS = 86_400_000L
 
         /** "minute,30,60,120" per run, with ";" between runs; BG in whole mg/dl */
         fun encode(runs: List<StoredRun>): String = runs.joinToString(";") { run ->
