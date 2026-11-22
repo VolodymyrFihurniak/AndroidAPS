@@ -6,6 +6,25 @@ import kotlinx.coroutines.flow.StateFlow
 data class LearnedPoint(val timestamp: Long, val mgdl: Double)
 
 /**
+ * autoISF build, personal prediction: what makes the linear curve ("no more insulin") change by a time, mg/dl. The
+ * parts add up to the change of the curve, before it is kept within 39..400.
+ */
+data class LearnedParts(
+    /** The insulin given so far, with the personal ISF */
+    val insulin: Double,
+    /** Entered carbs */
+    val carbs: Double,
+    /** A meal that goes on now, from the rise insulin and entered carbs do not explain */
+    val meal: Double,
+    /** What BG does on its own at this time of day */
+    val drift: Double,
+    /** The BG trend now going on */
+    val trend: Double,
+    /** What the small network adds */
+    val network: Double
+)
+
+/**
  * autoISF build, personal prediction: what the model of the user's own history predicts from now on. Two curves:
  * [points] if no more insulin is given than what is given already (and the running temp basal until its end), and
  * [expectedPoints], where BG really goes with the loop acting as it usually does. All BG values in mg/dl.
@@ -39,7 +58,9 @@ data class LearnedForecast(
     /** Mean absolute error of the expected curve on the test days, one per point of [expectedPoints] */
     val expectedTypicalErrorMgdl: List<Double> = emptyList(),
     /** True when the expected curve was better than AutoISF on the test days */
-    val expectedReady: Boolean = false
+    val expectedReady: Boolean = false,
+    /** What makes the linear curve change by +60 minutes; null without it */
+    val parts60: LearnedParts? = null
 ) {
 
     /** The point [minutes] after [timestamp], for 5, 10, ... 120 */

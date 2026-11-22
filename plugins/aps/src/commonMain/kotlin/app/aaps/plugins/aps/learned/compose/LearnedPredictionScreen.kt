@@ -28,6 +28,8 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.aaps.core.data.model.GlucoseUnit
+import app.aaps.core.interfaces.aps.LearnedParts
 import app.aaps.core.interfaces.sync.SyncLogEntry
 import app.aaps.core.ui.CoreUiStrings
 import app.aaps.core.ui.compose.AapsCard
@@ -83,6 +85,7 @@ internal class LearnedPredictionScreen(private val plugin: LearnedPredictionPlug
         val log by plugin.log.entries.collectAsStateWithLifecycle()
         val autoIsfCopyDays by plugin.autoIsfCopyDays.collectAsStateWithLifecycle()
         val liveScore by plugin.liveScore.collectAsStateWithLifecycle()
+        val forecast by plugin.forecast.collectAsStateWithLifecycle()
         val clipboard = LocalClipboard.current
         val scope = rememberCoroutineScope()
         LearnedPredictionContent(
@@ -90,6 +93,7 @@ internal class LearnedPredictionScreen(private val plugin: LearnedPredictionPlug
             log = log,
             autoIsfCopyDays = autoIsfCopyDays,
             liveScore = liveScore,
+            parts60 = forecast?.parts60,
             onTrain = plugin::trainNow,
             onStop = plugin::stopTraining,
             onReset = plugin::resetModel,
@@ -104,6 +108,7 @@ internal fun LearnedPredictionContent(
     log: List<SyncLogEntry>,
     autoIsfCopyDays: Int,
     liveScore: LiveScore?,
+    parts60: LearnedParts?,
     onTrain: () -> Unit,
     onStop: () -> Unit,
     onReset: () -> Unit,
@@ -119,6 +124,7 @@ internal fun LearnedPredictionContent(
     ) {
         StatusCard(status, autoIsfCopyDays, liveScore)
         status.model?.let { model ->
+            parts60?.let { PartsCard(it) }
             liveScore?.let { LiveCard(it, hasGru = model.expected != null) }
             ErrorsCard(model)
             LearnedCard(model)
@@ -239,6 +245,26 @@ private fun LiveCard(score: LiveScore, hasGru: Boolean) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+/** What makes the linear curve change by +60 minutes now, one row per part */
+@Composable
+private fun PartsCard(parts: LearnedParts) {
+    val profileUtil = LocalProfileUtil.current
+    val unit = stringResource(if (profileUtil.units == GlucoseUnit.MGDL) CoreUiStrings.mgdl else CoreUiStrings.mmol)
+    AapsCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(AapsSpacing.extraLarge), verticalArrangement = Arrangement.spacedBy(AapsSpacing.extraSmall)) {
+            Text(stringResource(ApsStrings.learned_parts_title, unit), style = MaterialTheme.typography.titleSmall)
+            listOf(
+                ApsStrings.learned_parts_insulin to parts.insulin,
+                ApsStrings.learned_parts_carbs to parts.carbs,
+                ApsStrings.learned_parts_meal to parts.meal,
+                ApsStrings.learned_parts_drift to parts.drift,
+                ApsStrings.learned_parts_trend to parts.trend,
+                ApsStrings.learned_parts_network to parts.network
+            ).forEach { (label, mgdl) -> ErrorRow(stringResource(label), listOf(profileUtil.fromMgdlToSignedStringInUnits(mgdl))) }
         }
     }
 }

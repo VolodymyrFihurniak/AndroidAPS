@@ -45,6 +45,13 @@
     <string name="learned_high_alert_summary">Коли модель бачить глюкозу вище верхньої межі в найближчі 60 хв</string>
     <string name="learned_alert_low">Модель: глюкоза %1$s приблизно через %2$d хв</string>
     <string name="learned_alert_high">Модель: глюкоза %1$s приблизно через %2$d хв</string>
+    <string name="learned_parts_title">Лінійна модель, зміна за 60 хв зараз, %1$s</string>
+    <string name="learned_parts_insulin">Інсулін</string>
+    <string name="learned_parts_carbs">Внесені вуглеводи</string>
+    <string name="learned_parts_meal">Їжа, що триває</string>
+    <string name="learned_parts_drift">Глюкоза сама по собі</string>
+    <string name="learned_parts_trend">Тренд</string>
+    <string name="learned_parts_network">Мережа</string>
     <string name="learned_copy_report">Скопіювати звіт</string>
     <string name="openapsma_disabled">Плагін вимкнено</string>
     <string name="openapsma_no_glucose_data">Дані про глюкозу відсутні</string>

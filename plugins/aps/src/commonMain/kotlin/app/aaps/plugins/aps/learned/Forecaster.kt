@@ -1,6 +1,7 @@
 package app.aaps.plugins.aps.learned
 
 import app.aaps.core.interfaces.aps.LearnedForecast
+import app.aaps.core.interfaces.aps.LearnedParts
 import app.aaps.core.interfaces.aps.LearnedPoint
 import app.aaps.plugins.aps.learned.grid.HistoryGrid
 import app.aaps.plugins.aps.learned.grid.HistoryGridBuilder
@@ -34,6 +35,9 @@ object Forecaster {
 
     private const val MIN_BG = 39.0
     private const val MAX_BG = 400.0
+
+    /** The parts of the curve are shown for +60 minutes */
+    private const val PARTS_STEPS = 12
 
     /** A reading older than this gives no live forecast */
     const val MAX_BG_AGE_MS = 10 * 60_000L
@@ -112,7 +116,13 @@ object Forecaster {
             deltaMgdl = if (i > 0 && !grid.bg[i - 1].isNaN()) bg - grid.bg[i - 1] else null,
             expectedPoints = expected ?: emptyList(),
             expectedTypicalErrorMgdl = if (expected != null) model.expectedTypicalErrorMgdl else emptyList(),
-            expectedReady = expected != null && model.expectedReady
+            expectedReady = expected != null && model.expectedReady,
+            parts60 = model.linear.parts(grid, effects, i, PARTS_STEPS).let { linear ->
+                LearnedParts(
+                    insulin = linear.insulin, carbs = linear.carbs, meal = meal[PARTS_STEPS - 1], drift = linear.drift, trend = linear.trend,
+                    network = Samples.residualAt(knots, PARTS_STEPS)
+                )
+            }
         )
     }
 

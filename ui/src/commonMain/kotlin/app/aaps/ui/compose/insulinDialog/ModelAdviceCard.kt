@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import app.aaps.core.data.model.GlucoseUnit
 import app.aaps.core.interfaces.InterfacesStrings
 import app.aaps.core.ui.CoreUiStrings
 import app.aaps.core.ui.compose.AapsSpacing
@@ -63,6 +64,16 @@ internal fun ModelAdviceCard(advice: ModelAdvice, modifier: Modifier = Modifier)
                 )
             }
             add(stringResource(UiStrings.bolus_rec_eventual, profileUtil.fromMgdlToStringWithUnits(forecast.eventualMgdl)))
+            forecast.parts60?.let { parts ->
+                fun signed(mgdl: Double) = profileUtil.fromMgdlToSignedStringInUnits(mgdl)
+                val unit = stringResource(if (profileUtil.units == GlucoseUnit.MGDL) CoreUiStrings.mgdl else CoreUiStrings.mmol)
+                add(
+                    stringResource(
+                        UiStrings.model_adv_parts, unit, signed(parts.insulin), signed(parts.carbs), signed(parts.meal), signed(parts.drift),
+                        signed(parts.trend), signed(parts.network)
+                    )
+                )
+            }
             add(stringResource(UiStrings.model_adv_isf, profileUtil.fromMgdlToStringWithUnits(forecast.isfMgdl)))
             forecast.typicalErrorMgdl.getOrNull(11)?.let { add(stringResource(UiStrings.model_adv_error, profileUtil.fromMgdlToStringWithUnits(it))) }
             add(stringResource(UiStrings.model_adv_trained, dateUtil.dateAndTimeString(forecast.modelTrainedAt)))

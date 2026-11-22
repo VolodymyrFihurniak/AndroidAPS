@@ -115,6 +115,16 @@ class ForecasterTest {
     }
 
     @Test
+    fun `the parts at 60 minutes add up to the curve`() {
+        val now = history.start + 30 * hour
+        val grid = liveGrid(now)
+        val forecast = assertNotNull(Forecaster.forecast(model(), grid, grid.indexOf(now)))
+        val parts = assertNotNull(forecast.parts60)
+        val sum = parts.insulin + parts.carbs + parts.meal + parts.drift + parts.trend + parts.network
+        assertEquals(forecast.at(60)!!, (forecast.bgMgdl + sum).coerceIn(39.0, 400.0), 1e-6)
+    }
+
+    @Test
     fun `forecast has the expected curve`() {
         val now = history.start + 30 * hour
         val grid = liveGrid(now)

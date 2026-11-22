@@ -434,6 +434,7 @@
     <string name="model_adv_none">Болюс не потрібен.</string>
     <string name="model_adv_falling">Поради дати ще інсулін немає: глюкоза падає.</string>
     <string name="model_adv_in">Через %1$s: %2$s</string>
+    <string name="model_adv_parts">Лінійна модель через 60 хв, у %1$s: інсулін %2$s, вуглеводи %3$s, їжа, що триває, %4$s, глюкоза сама по собі %5$s, тренд %6$s, мережа %7$s</string>
     <string name="model_adv_in_both">Через %1$s: GRU %2$s, лінійна %3$s</string>
     <string name="model_adv_isf">Персональний ISF: %1$s на 1 Од</string>
     <string name="model_adv_error">Типова похибка на 60 хв: %1$s</string>

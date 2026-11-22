@@ -76,24 +76,38 @@ object LinearFeatures {
     private fun phi(h: Int, tau: Double) = tau * (1.0 - exp(-h / tau))
 }
 
+/** autoISF build, personal prediction: the parts of a predicted BG change of the linear model, mg/dl */
+data class LinearParts(val insulin: Double, val carbs: Double, val drift: Double, val trend: Double) {
+
+    val sum: Double get() = insulin + carbs + drift + trend
+}
+
 /** The fitted weights of [LinearFeatures], in that order */
 @Serializable
 data class LinearModel(val theta: List<Double>) {
 
     /**
-     * Predicted `BG(i + h) - BG(i)` in mg/dl. The insulin part uses the clamped [isfMultiplier] and the drift the
-     * clamped [driftPerHour], as shown to the user.
+     * Predicted `BG(i + h) - BG(i)` in mg/dl, the sum of [parts]. The insulin part uses the clamped [isfMultiplier] and
+     * the drift the clamped [driftPerHour], as shown to the user.
      */
-    fun delta(grid: HistoryGrid, effects: Effects, i: Int, h: Int): Double {
+    fun delta(grid: HistoryGrid, effects: Effects, i: Int, h: Int): Double = parts(grid, effects, i, h).sum
+
+    /** What [delta] is made of, mg/dl: insulin, entered carbs, BG on its own and the trend now */
+    fun parts(grid: HistoryGrid, effects: Effects, i: Int, h: Int): LinearParts {
         val x = DoubleArray(LinearFeatures.SIZE)
         LinearFeatures.fill(grid, effects, i, h, x)
         val angle = grid.dayAngle[i]
-        // x[INSULIN] is minus profile ISF times the insulin that acts
-        var sum = x[LinearFeatures.INSULIN] * isfMultiplier(angle)
-        for (k in LinearFeatures.CARBS until LinearFeatures.DRIFT) sum += theta[k] * x[k]
-        sum += driftPerHour(angle) * h * 5.0 / 60.0
-        for (k in LinearFeatures.TREND until LinearFeatures.SIZE) sum += theta[k] * x[k]
-        return sum
+        var carbs = 0.0
+        for (k in LinearFeatures.CARBS until LinearFeatures.DRIFT) carbs += theta[k] * x[k]
+        var trend = 0.0
+        for (k in LinearFeatures.TREND until LinearFeatures.SIZE) trend += theta[k] * x[k]
+        return LinearParts(
+            // x[INSULIN] is minus profile ISF times the insulin that acts
+            insulin = x[LinearFeatures.INSULIN] * isfMultiplier(angle),
+            carbs = carbs,
+            drift = driftPerHour(angle) * h * 5.0 / 60.0,
+            trend = trend
+        )
     }
 
     /** The personal ISF is the profile ISF times this, at the time of day [angle]. Kept in 0.5..2.0. */
