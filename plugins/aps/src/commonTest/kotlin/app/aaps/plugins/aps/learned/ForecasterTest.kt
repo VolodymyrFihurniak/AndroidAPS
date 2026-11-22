@@ -71,12 +71,13 @@ class ForecasterTest {
 
     @Test
     fun `forecast stays inside 39 to 400`() {
-        val theta = LinearFeatures.PRIOR.copyOf().also { it[LinearFeatures.DRIFT] = 1e4 }
+        // The drift is limited, so a huge trend weight pushes the curve to a limit, up or down with the trend now
+        val theta = LinearFeatures.PRIOR.copyOf().also { for (k in LinearFeatures.TREND until LinearFeatures.SIZE) it[k] = 1e4 }
         val now = history.start + 30 * hour
         val grid = liveGrid(now)
         val forecast = assertNotNull(Forecaster.forecast(model(theta), grid, grid.indexOf(now)))
         assertTrue(forecast.points.all { it.mgdl in 39.0..400.0 })
-        assertEquals(400.0, forecast.points.last().mgdl)
+        assertTrue(forecast.points.last().mgdl == 400.0 || forecast.points.last().mgdl == 39.0, "${forecast.points.last()}")
     }
 
     @Test

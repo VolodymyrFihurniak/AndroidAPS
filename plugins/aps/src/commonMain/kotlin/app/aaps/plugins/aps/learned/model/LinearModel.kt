@@ -80,13 +80,19 @@ object LinearFeatures {
 @Serializable
 data class LinearModel(val theta: List<Double>) {
 
-    /** Predicted `BG(i + h) - BG(i)` in mg/dl. The insulin part uses the clamped [isfMultiplier], as shown to the user. */
+    /**
+     * Predicted `BG(i + h) - BG(i)` in mg/dl. The insulin part uses the clamped [isfMultiplier] and the drift the
+     * clamped [driftPerHour], as shown to the user.
+     */
     fun delta(grid: HistoryGrid, effects: Effects, i: Int, h: Int): Double {
         val x = DoubleArray(LinearFeatures.SIZE)
         LinearFeatures.fill(grid, effects, i, h, x)
+        val angle = grid.dayAngle[i]
         // x[INSULIN] is minus profile ISF times the insulin that acts
-        var sum = x[LinearFeatures.INSULIN] * isfMultiplier(grid.dayAngle[i])
-        for (k in LinearFeatures.CARBS until LinearFeatures.SIZE) sum += theta[k] * x[k]
+        var sum = x[LinearFeatures.INSULIN] * isfMultiplier(angle)
+        for (k in LinearFeatures.CARBS until LinearFeatures.DRIFT) sum += theta[k] * x[k]
+        sum += driftPerHour(angle) * h * 5.0 / 60.0
+        for (k in LinearFeatures.TREND until LinearFeatures.SIZE) sum += theta[k] * x[k]
         return sum
     }
 
@@ -102,8 +108,11 @@ data class LinearModel(val theta: List<Double>) {
     /** The carb weights, one per [CARB_HOURS] */
     fun carbWeights(): List<Double> = (LinearFeatures.CARBS until LinearFeatures.DRIFT).map { theta[it] }
 
-    /** BG change per hour with no insulin and no carbs, at the time of day [angle] */
-    fun driftPerHour(angle: Double): Double = weighted(LinearFeatures.DRIFT, angle)
+    /** BG change per hour with no insulin and no carbs, at the time of day [angle]. Kept within [MAX_DRIFT_MGDL_PER_HOUR]. */
+    fun driftPerHour(angle: Double): Double = rawDriftPerHour(angle).coerceIn(-MAX_DRIFT_MGDL_PER_HOUR, MAX_DRIFT_MGDL_PER_HOUR)
+
+    /** The drift before the limit, for the warning in the log */
+    fun rawDriftPerHour(angle: Double): Double = weighted(LinearFeatures.DRIFT, angle)
 
     private fun weighted(first: Int, angle: Double): Double {
         val terms = LinearFeatures.dayTerms(angle)
@@ -115,5 +124,11 @@ data class LinearModel(val theta: List<Double>) {
         // v2: narrower than v1 (0.3-3.0); a phone learned 0.3 from closed loop data
         const val MIN_ISF_MULTIPLIER = 0.5
         const val MAX_ISF_MULTIPLIER = 2.0
+
+        /**
+         * 1 mmol/l per hour: more than BG does on its own (the dawn effect is less). A fit with meals that were not
+         * entered learned -3 mmol/l per hour on a real phone, and both curves went down while BG rose.
+         */
+        const val MAX_DRIFT_MGDL_PER_HOUR = 18.0
     }
 }

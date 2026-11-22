@@ -270,6 +270,9 @@ class Trainer(
         )
         if (raw.any { it < LinearModel.MIN_ISF_MULTIPLIER || it > LinearModel.MAX_ISF_MULTIPLIER })
             log("Warning: the ISF multiplier is outside ${LinearModel.MIN_ISF_MULTIPLIER}..${LinearModel.MAX_ISF_MULTIPLIER} and is limited")
+        val rawDrift = DAY_PARTS.map { linear.rawDriftPerHour(angleOfHour(it)) }
+        if (rawDrift.any { abs(it) > LinearModel.MAX_DRIFT_MGDL_PER_HOUR })
+            log("Warning: BG on its own came out as ${rawDrift.joinToString(", ") { bg(it) }} per hour and is limited to ${bg(LinearModel.MAX_DRIFT_MGDL_PER_HOUR)}")
     }
 
     private fun mainCarbHours(linear: LinearModel): Int {

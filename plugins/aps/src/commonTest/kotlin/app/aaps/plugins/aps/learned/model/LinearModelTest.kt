@@ -45,6 +45,25 @@ class LinearModelTest {
     }
 
     @Test
+    fun `drift is limited`() {
+        // A fit with meals in it learned -3 mmol/l per hour on a real phone
+        val theta = LinearFeatures.PRIOR.copyOf().also { it[LinearFeatures.DRIFT] = -100.0 }
+        val model = LinearModel(theta.toList())
+        assertEquals(-100.0, model.rawDriftPerHour(0.0), 1e-9)
+        assertEquals(-LinearModel.MAX_DRIFT_MGDL_PER_HOUR, model.driftPerHour(0.0), 1e-9)
+        val grid = HistoryGridBuilder.build(
+            HistoryInput(
+                bg = (0 until 60).map { BgReading(t0 + it * STEP_MS, 100.0) },
+                doses = emptyList(), tempBasals = emptyList(), extended = emptyList(), carbs = emptyList(),
+                profile = ProfileTimeline { profile }, sensorStarts = emptyList(), calibrations = emptyList()
+            ),
+            t0, t0 + 150 * STEP_MS, TimeZone.UTC
+        )
+        // One hour ahead with no insulin, no carbs and no trend: only the limited drift
+        assertEquals(-LinearModel.MAX_DRIFT_MGDL_PER_HOUR, model.delta(grid, Effects(grid), 20, 12), 1e-6)
+    }
+
+    @Test
     fun `isf multiplier is clamped`() {
         val theta = LinearFeatures.PRIOR.copyOf().also { it[0] = 5.0 }
         assertEquals(2.0, LinearModel(theta.toList()).isfMultiplier(0.0))
