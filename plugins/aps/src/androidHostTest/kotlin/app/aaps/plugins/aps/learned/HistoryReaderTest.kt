@@ -60,6 +60,8 @@ class HistoryReaderTest {
         on { getTemporaryBasalsStartingFromTimeToTime(any(), any(), any()) } doReturn tempBasals
         on { getExtendedBolusesStartingFromTimeToTime(any(), any(), any()) } doReturn emptyList()
         on { getCarbsFromTimeToTimeExpanded(any(), any(), any()) } doReturn emptyList()
+        on { getStepsCountFromTimeToTime(any(), any()) } doReturn emptyList()
+        on { getHeartRatesFromTimeToTime(any(), any()) } doReturn emptyList()
         on { getEffectiveProfileSwitchesFromTimeToTime(any(), any(), any()) } doReturn switches
         on { getEffectiveProfileSwitchActiveAt(any()) } doReturn null
         on { getTherapyEventDataFromToTime(any(), any()) } doReturn emptyList()

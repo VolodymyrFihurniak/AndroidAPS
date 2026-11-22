@@ -1,6 +1,7 @@
 package app.aaps.plugins.aps.learned.train
 
 import app.aaps.core.data.model.ICfg
+import app.aaps.plugins.aps.learned.grid.ActivityReading
 import app.aaps.plugins.aps.learned.grid.BgReading
 import app.aaps.plugins.aps.learned.grid.CarbEntry
 import app.aaps.plugins.aps.learned.grid.HistoryGrid
@@ -52,6 +53,30 @@ class SequenceFeaturesTest {
         assertEquals(2f, b[50][2], 1e-6f)
         assertEquals(40f, b[50][5], 1e-6f)
         assertTrue(b[51][4] > 0f, "IOB after the dose")
+    }
+
+    @Test
+    fun `steps and heart rate go into the rows, a missing heart rate takes the usual one`() {
+        val plain = grid(20, { 100.0 })
+        val input = HistoryInput(
+            (0 until 20).map { BgReading(t0 + it * STEP_MS, 100.0) }, emptyList(), emptyList(), emptyList(), emptyList(),
+            ProfileTimeline { profile }, emptyList(), emptyList(),
+            steps = listOf(ActivityReading(t0 + 3 * STEP_MS, 400.0)),
+            heartRate = listOf(60.0, 70.0, 120.0).mapIndexed { k, bpm -> ActivityReading(t0 + (5 + k) * STEP_MS, bpm) }
+        )
+        val grid = HistoryGridBuilder.build(input, t0, t0 + 20 * STEP_MS, TimeZone.UTC)
+        val rows = SequenceFeatures.steps(grid, Effects(grid))
+        val stepsInput = SequenceFeatures.STEP_INPUTS - 2
+        val heartInput = SequenceFeatures.STEP_INPUTS - 1
+        assertEquals(400f, rows[2][stepsInput])
+        assertEquals(0f, rows[10][stepsInput])
+        assertEquals(120f, rows[7][heartInput])
+        // The middle of 60, 70 and 120
+        assertEquals(70f, rows[15][heartInput])
+        // Without any activity data: 0 steps and 0 heart rate
+        val noWatch = SequenceFeatures.steps(plain, Effects(plain))
+        assertEquals(0f, noWatch[5][stepsInput])
+        assertEquals(0f, noWatch[5][heartInput])
     }
 
     @Test

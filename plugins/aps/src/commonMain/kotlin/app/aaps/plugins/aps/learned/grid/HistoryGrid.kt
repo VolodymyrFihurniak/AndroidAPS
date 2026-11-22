@@ -28,7 +28,11 @@ class HistoryGrid(
     /** Steps not used for learning: the start of a sensor, right after a calibration */
     val excluded: BooleanArray,
     /** Local time of day as an angle, 0 at midnight, 2 * PI after 24 h */
-    val dayAngle: DoubleArray
+    val dayAngle: DoubleArray,
+    /** Steps in each step, NaN without data */
+    val steps: DoubleArray = DoubleArray(size) { Double.NaN },
+    /** Mean heart rate in each step, NaN without data */
+    val heartRate: DoubleArray = DoubleArray(size) { Double.NaN }
 ) {
 
     fun timeOf(index: Int): Long = start + index * STEP_MS

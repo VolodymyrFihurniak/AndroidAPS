@@ -20,6 +20,9 @@ data class ExtendedSegment(val start: Long, val end: Long, val unitsPerHour: Dou
 /** Carbs, spread over [durationMs] when that is not 0 */
 data class CarbEntry(val timestamp: Long, val grams: Double, val durationMs: Long)
 
+/** A value of a watch or phone at a time: steps in the last 5 minutes, or the heart rate in beats per minute */
+data class ActivityReading(val timestamp: Long, val value: Double)
+
 /** The profile at one moment: ISF and target in mg/dl, IC in g/U, basal in U/h, and the insulin of the profile */
 data class ProfileValues(val isfMgdl: Double, val ic: Double, val basal: Double, val targetMgdl: Double, val iCfg: ICfg)
 
@@ -43,5 +46,9 @@ data class HistoryInput(
     /** Times of a sensor change or start */
     val sensorStarts: List<Long>,
     /** Times of a calibration */
-    val calibrations: List<Long>
+    val calibrations: List<Long>,
+    /** Steps in the 5 minutes before each time, from a watch or the phone; empty without them */
+    val steps: List<ActivityReading> = emptyList(),
+    /** Heart rate, from a watch; empty without one */
+    val heartRate: List<ActivityReading> = emptyList()
 )

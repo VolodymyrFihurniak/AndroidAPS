@@ -204,9 +204,9 @@ class TrainerTest {
             model = Metrics(10.0, 20.0, 30.0), autoIsf = null, naive = Metrics(11.0, 22.0, 33.0), autoIsfCoverage = 0.0,
             typicalErrorMgdl = List(24) { 0.0 }, ready = false, clampHits = 0
         )
-        // 3: the GRU had one input per step less
-        assertEquals(4, LearnedModel.VERSION)
-        for (old in 2..3) assertNull(LearnedModel.fromJson(model.toJson().replace("\"version\":4", "\"version\":$old")))
+        // 3 and 4: the GRU had fewer inputs per step
+        assertEquals(5, LearnedModel.VERSION)
+        for (old in 2..4) assertNull(LearnedModel.fromJson(model.toJson().replace("\"version\":5", "\"version\":$old")))
     }
 
     /** A clock on which everything takes 10 minutes */

@@ -32,6 +32,23 @@ class HistoryGridBuilderTest {
     private fun build(input: HistoryInput, steps: Int = 36) = HistoryGridBuilder.build(input, t0, t0 + steps * STEP_MS, TimeZone.UTC)
 
     @Test
+    fun `steps and heart rate go on the grid`() {
+        val grid = build(
+            input().copy(
+                // Readings every minute: each holds the steps of the 5 minutes before it, the largest of a step counts
+                steps = listOf(ActivityReading(t0 + 2 * minute, 30.0), ActivityReading(t0 + 5 * minute, 50.0), ActivityReading(t0 + 7 * minute, 10.0)),
+                heartRate = listOf(ActivityReading(t0 + minute, 70.0), ActivityReading(t0 + 3 * minute, 80.0), ActivityReading(t0 + 11 * minute, 0.0))
+            )
+        )
+        assertEquals(50.0, grid.steps[0])
+        assertEquals(10.0, grid.steps[1])
+        assertTrue(grid.steps[2].isNaN())
+        assertEquals(75.0, grid.heartRate[0])
+        // A heart rate of 0 is no reading
+        assertTrue(grid.heartRate[2].isNaN())
+    }
+
+    @Test
     fun `closest reading within three minutes, else a gap`() {
         val grid = build(input(bg = listOf(BgReading(t0 + minute, 100.0), BgReading(t0 + 4 * minute, 120.0))))
         assertEquals(100.0, grid.bg[0])

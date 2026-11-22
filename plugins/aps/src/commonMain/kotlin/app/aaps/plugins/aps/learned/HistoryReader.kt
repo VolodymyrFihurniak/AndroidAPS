@@ -8,6 +8,7 @@ import app.aaps.core.data.model.TT
 import app.aaps.core.interfaces.db.PersistenceLayer
 import app.aaps.core.objects.profile.ProfileSealed
 import app.aaps.core.utils.MidnightUtils
+import app.aaps.plugins.aps.learned.grid.ActivityReading
 import app.aaps.plugins.aps.learned.grid.BgReading
 import app.aaps.plugins.aps.learned.grid.CarbEntry
 import app.aaps.plugins.aps.learned.grid.ExtendedSegment
@@ -120,6 +121,8 @@ class HistoryReader(private val persistenceLayer: PersistenceLayer) {
 
     private suspend fun read(from: Long, to: Long, liveAt: Long?): HistoryInput {
         val bg = mutableListOf<BgReading>()
+        val steps = mutableListOf<ActivityReading>()
+        val heartRate = mutableListOf<ActivityReading>()
         val doses = mutableListOf<InsulinDose>()
         val carbs = mutableListOf<CarbEntry>()
         val tempBasals = mutableListOf<TempBasalSegment>()
@@ -135,6 +138,12 @@ class HistoryReader(private val persistenceLayer: PersistenceLayer) {
             persistenceLayer.getCarbsFromTimeToTimeExpanded(start, end, true)
                 .filter { it.isValid && it.amount > 0.0 }
                 .mapTo(carbs) { CarbEntry(it.timestamp, it.amount, it.duration) }
+            persistenceLayer.getStepsCountFromTimeToTime(start, end)
+                .filter { it.isValid }
+                .mapTo(steps) { ActivityReading(it.timestamp, it.steps5min.toDouble()) }
+            persistenceLayer.getHeartRatesFromTimeToTime(start, end)
+                .filter { it.isValid }
+                .mapTo(heartRate) { ActivityReading(it.timestamp, it.beatsPerMinute) }
         }
         // Temp basals and extended boluses by their start, from a day earlier, so the ones running at [from] count
         chunks(from - DAY_MS, to) { start, end ->
@@ -165,7 +174,9 @@ class HistoryReader(private val persistenceLayer: PersistenceLayer) {
             carbs = carbs,
             profile = timeline(switches, tempTarget),
             sensorStarts = sensorStarts,
-            calibrations = calibrations
+            calibrations = calibrations,
+            steps = steps,
+            heartRate = heartRate
         )
     }
 

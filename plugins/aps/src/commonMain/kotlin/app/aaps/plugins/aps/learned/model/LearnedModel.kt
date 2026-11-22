@@ -71,8 +71,9 @@ data class LearnedModel(
          * 2: the ready rule needs AutoISF on the same moments; a model of version 1 may say ready wrongly.
          * 3: the expected curve; a model of version 2 has none, so it is learned again.
          * 4: the GRU has one more input per step (a meal going on), so a model of version 3 does not fit.
+         * 5: and two more (steps and heart rate).
          */
-        const val VERSION = 4
+        const val VERSION = 5
         const val OUTPUT_SCALE = 50f
 
         private val json = Json { ignoreUnknownKeys = true }

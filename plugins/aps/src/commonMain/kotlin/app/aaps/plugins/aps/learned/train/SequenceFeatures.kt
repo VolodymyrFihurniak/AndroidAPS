@@ -21,7 +21,7 @@ object SequenceFeatures {
     const val STEPS = 36
 
     /** Values per step, see [steps] */
-    const val STEP_INPUTS = 12
+    const val STEP_INPUTS = 14
 
     /** Context values per sample, see [context] */
     const val CONTEXT = 15
@@ -43,14 +43,17 @@ object SequenceFeatures {
     /**
      * One row per step of [grid], with these values: BG, BG change from the step before, net insulin given in the step,
      * insulin that acts in the next step, IOB, carbs eaten in the step, carbs absorbed in the next step (3 h absorption),
-     * COB (3 h), the temp basal ratio, sin and cos of the time of day, and the change of the step before that insulin
-     * and entered carbs do not explain (a meal going on, see [UnannouncedMeals.unexplained]).
+     * COB (3 h), the temp basal ratio, sin and cos of the time of day, the change of the step before that insulin
+     * and entered carbs do not explain (a meal going on, see [UnannouncedMeals.unexplained]), the steps and the heart
+     * rate. Without steps the row has 0; without a heart rate it has the middle heart rate of the grid (0 without any),
+     * so a missing watch does not look like a high or a low pulse.
      *
      * A BG gap keeps the last BG, with change 0. Steps before the first reading take the first reading.
      * [effects] is made without a live index: row `j` only counts doses and carbs up to step `j` anyway.
      */
     fun steps(grid: HistoryGrid, effects: Effects): Array<FloatArray> {
         val unexplained = UnannouncedMeals.unexplained(grid, effects)
+        val usualHeartRate = grid.heartRate.filter { !it.isNaN() }.sorted().let { if (it.isEmpty()) 0.0 else it[it.size / 2] }
         val first = grid.bg.firstOrNull { !it.isNaN() } ?: 0.0
         var last = first
         return Array(grid.size) { j ->
@@ -72,7 +75,9 @@ object SequenceFeatures {
                 sin(angle).toFloat(),
                 cos(angle).toFloat(),
                 // The change of the step before that insulin and entered carbs do not explain: a meal going on
-                (if (j > 0 && !unexplained[j - 1].isNaN()) unexplained[j - 1] else 0.0).toFloat()
+                (if (j > 0 && !unexplained[j - 1].isNaN()) unexplained[j - 1] else 0.0).toFloat(),
+                (if (grid.steps[j].isNaN()) 0.0 else grid.steps[j]).toFloat(),
+                (if (grid.heartRate[j].isNaN()) usualHeartRate else grid.heartRate[j]).toFloat()
             )
         }
     }

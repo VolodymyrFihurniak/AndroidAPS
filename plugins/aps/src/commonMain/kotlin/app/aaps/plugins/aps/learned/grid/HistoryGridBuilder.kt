@@ -111,8 +111,37 @@ object HistoryGridBuilder {
             basal = DoubleArray(size) { profiles[it]?.basal ?: Double.NaN },
             target = DoubleArray(size) { profiles[it]?.targetMgdl ?: Double.NaN },
             excluded = excluded,
-            dayAngle = DoubleArray(size) { dayAngle(start + it * STEP_MS, timeZone) }
+            dayAngle = DoubleArray(size) { dayAngle(start + it * STEP_MS, timeZone) },
+            steps = stepsOnGrid(input.steps, start, size),
+            heartRate = meanOnGrid(input.heartRate, start, size)
         )
+    }
+
+    /**
+     * Steps per step of the grid. A reading holds the steps of the 5 minutes before it, so it belongs to the step it
+     * ends in; with readings every minute their 5-minute windows overlap, and the largest one of a step is taken.
+     */
+    private fun stepsOnGrid(readings: List<ActivityReading>, start: Long, size: Int): DoubleArray {
+        val out = DoubleArray(size) { Double.NaN }
+        for (reading in readings) {
+            val i = ((reading.timestamp - 1 - start).floorDiv(STEP_MS)).toInt()
+            if (i !in 0 until size || reading.value < 0.0) continue
+            out[i] = if (out[i].isNaN()) reading.value else max(out[i], reading.value)
+        }
+        return out
+    }
+
+    /** The mean of the readings in each step of the grid, NaN for a step without one */
+    private fun meanOnGrid(readings: List<ActivityReading>, start: Long, size: Int): DoubleArray {
+        val sum = DoubleArray(size)
+        val count = IntArray(size)
+        for (reading in readings) {
+            val i = ((reading.timestamp - start).floorDiv(STEP_MS)).toInt()
+            if (i !in 0 until size || reading.value <= 0.0) continue
+            sum[i] += reading.value
+            count[i]++
+        }
+        return DoubleArray(size) { if (count[it] > 0) sum[it] / count[it] else Double.NaN }
     }
 
     /** Local time of day of [timestamp] as an angle: 0 at midnight, PI at noon */
