@@ -13,7 +13,9 @@ import app.aaps.plugins.aps.learned.model.CarbKernel
 import app.aaps.plugins.aps.learned.model.InsulinKernel
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.ln
 import kotlin.math.max
+import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
@@ -26,6 +28,9 @@ import kotlin.random.Random
  *   from them, as it does in real closed loop data, which makes insulin look weak to a naive fit
  * - with `noCarbsEntered`, no meal is entered and none gets a bolus: a full closed loop, where all the insulin for a
  *   meal comes as SMBs while BG rises (the user of this build lives like this)
+ * - with `variability`, BG also goes up and down by itself, as much up as down, slowly (the standard deviation of that
+ *   change, mg/dl per step); with `sensorNoise` the readings are off the true BG by a slowly changing error (its
+ *   standard deviation, mg/dl). Real data have both.
  */
 object SyntheticHistory {
 
@@ -37,7 +42,10 @@ object SyntheticHistory {
 
     class Result(val input: HistoryInput, val start: Long, val end: Long)
 
-    fun generate(days: Int, seed: Int = 7, unannouncedMeals: Boolean = false, tbrLoop: Boolean = false, noCarbsEntered: Boolean = false): Result {
+    fun generate(
+        days: Int, seed: Int = 7, unannouncedMeals: Boolean = false, tbrLoop: Boolean = false, noCarbsEntered: Boolean = false,
+        variability: Double = 0.0, sensorNoise: Double = 0.0
+    ): Result {
         val random = Random(seed)
         val start = 1_767_225_600_000L // 2026-01-01 00:00 UTC
         val steps = days * 288
@@ -61,11 +69,16 @@ object SyntheticHistory {
             hiddenSteps[day * 288 + step + random.nextInt(-12, 13)] = size * random.nextDouble(0.6, 1.4)
         }
         var bg = 110.0
+        var disturbance = 0.0
+        var sensorError = 0.0
         var lastSmb = -100
         var zeroTempUntil = -1
         for (k in 0 until steps) {
             val time = start + k * STEP_MS
-            readings += BgReading(time, bg)
+            // Both change slowly: each step keeps most of the step before
+            sensorError = 0.8 * sensorError + sensorNoise * 0.6 * gaussian(random)
+            disturbance = 0.9 * disturbance + variability * 0.44 * gaussian(random)
+            readings += BgReading(time, (bg + sensorError).coerceIn(40.0, 400.0))
             mealSteps[k]?.let { g ->
                 grams[k] += g
                 if (!noCarbsEntered) {
@@ -109,12 +122,14 @@ object SyntheticHistory {
             val drift = if (hour in 4..6) 6.0 / 12.0 else 0.0
             bg += -profile.isfMgdl * trueIsfMultiplier(angle) * acting +
                 CARB_FACTOR * profile.isfMgdl / profile.ic * absorbed +
-                drift + random.nextDouble(-1.0, 1.0)
+                drift + disturbance + random.nextDouble(-1.0, 1.0)
             bg = bg.coerceIn(45.0, 380.0)
         }
         val input = HistoryInput(readings, doses, tempBasals, emptyList(), carbs, ProfileTimeline { profile }, emptyList(), emptyList())
         return Result(input, start, start + steps * STEP_MS)
     }
+
+    private fun gaussian(random: Random): Double = sqrt(-2.0 * ln(1.0 - random.nextDouble())) * cos(2 * PI * random.nextDouble())
 
     private fun iob(units: DoubleArray, kernel: InsulinKernel, k: Int): Double {
         var sum = 0.0

@@ -115,7 +115,11 @@ class TrainerTest {
     fun `meals that were not entered do not move the ISF`() = runTest(timeout = 10.minutes) {
         for ((name, history) in listOf(
             "no carbs" to SyntheticHistory.generate(days = 40, noCarbsEntered = true),
-            "no carbs, temp basal loop" to SyntheticHistory.generate(days = 40, noCarbsEntered = true, tbrLoop = true)
+            // A sensor that is a little off and a body that goes up and down by itself: leaving out every short rise
+            // gave a drift of -61 mg/dl per hour here, and -3 mmol/l per hour on a real phone
+            "no carbs, noisy" to SyntheticHistory.generate(days = 40, noCarbsEntered = true, variability = 1.5, sensorNoise = 6.0),
+            "no carbs, temp basal loop, noisy" to
+                SyntheticHistory.generate(days = 40, noCarbsEntered = true, tbrLoop = true, variability = 1.5, sensorNoise = 6.0)
         )) {
             val grid = HistoryGridBuilder.build(history.input, history.start, history.end, TimeZone.UTC)
             val model = assertNotNull(trainer.train(grid, history.end, 40, emptyList()))
@@ -123,9 +127,9 @@ class TrainerTest {
             for (hour in Trainer.DAY_PARTS) {
                 val angle = Trainer.angleOfHour(hour)
                 val ratio = model.linear.rawIsfMultiplier(angle) / SyntheticHistory.trueIsfMultiplier(angle)
-                assertTrue(ratio in 0.75..1.33, "$name at $hour:00: ISF $ratio of the truth\n$log")
-                // The made-up body has no drift by day
-                if (hour == 9 || hour == 15) assertTrue(abs(model.linear.driftPerHour(angle)) < 15.0, "$name at $hour:00: drift ${model.linear.driftPerHour(angle)}\n$log")
+                assertTrue(ratio in 0.7..1.35, "$name at $hour:00: ISF $ratio of the truth\n$log")
+                // The made-up body has no drift after 7:00
+                if (hour != 3) assertTrue(abs(model.linear.driftPerHour(angle)) < 20.0, "$name at $hour:00: drift ${model.linear.driftPerHour(angle)}\n$log")
             }
             assertTrue(lines.any { it.startsWith("Meals not entered:") }, log)
         }
