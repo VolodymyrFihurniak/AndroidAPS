@@ -219,7 +219,9 @@ class Trainer(
             expectedTypicalErrorMgdl = evaluation.expectedPerHorizon?.toList() ?: emptyList(),
             expectedReady = expectedReady && finalGru != null,
             phases = grids.size,
-            trainingSeconds = seconds
+            trainingSeconds = seconds,
+            typicalErrorByChange = evaluation.perHorizonByChange,
+            expectedTypicalErrorByChange = evaluation.expectedPerHorizonByChange
         )
     }
 
@@ -308,7 +310,10 @@ class Trainer(
         val coverage: Double, val perHorizon: DoubleArray, val clampHits: Int,
         val expected: Metrics?, val expectedOnAutoIsf: Metrics?, val expectedPerHorizon: DoubleArray?,
         /** Per test day, oldest first: the part of its moments with a stored AutoISF run */
-        val coveragePerDay: List<Double>
+        val coveragePerDay: List<Double>,
+        /** Per group of [ErrorBands]: the mean error per point, empty for a group with too few moments */
+        val perHorizonByChange: List<List<Double>>,
+        val expectedPerHorizonByChange: List<List<Double>>
     )
 
     /** [expected] gives the BG change of the expected curve at step `i`, mg/dl, as known at that step */
@@ -318,6 +323,9 @@ class Trainer(
     ): Evaluation {
         val dayMoments = IntArray(Samples.TEST_DAYS)
         val dayCovered = IntArray(Samples.TEST_DAYS)
+        val groupMoments = IntArray(ErrorBands.COUNT)
+        val groupModelSum = Array(ErrorBands.COUNT) { DoubleArray(HORIZONS) }
+        val groupExpectedSum = Array(ErrorBands.COUNT) { DoubleArray(HORIZONS) }
         val sortedRuns = runs.sortedBy { it.timestamp }
         val modelSum = DoubleArray(HORIZONS)
         val naiveSum = DoubleArray(HORIZONS)
@@ -347,6 +355,8 @@ class Trainer(
             val run = sortedRuns.nearestTo(grid.timeOf(i), RUN_MATCH_MS) { it.timestamp }
             val day = ((grid.timeOf(i) - testStart) / DAY_MS).toInt().coerceIn(0, Samples.TEST_DAYS - 1)
             dayMoments[day]++
+            val group = ErrorBands.of(grid, i)
+            groupMoments[group]++
             if (run != null) {
                 covered++
                 dayCovered[day]++
@@ -362,6 +372,8 @@ class Trainer(
                 modelSum[h - 1] += modelError
                 naiveSum[h - 1] += naiveError
                 expectedSum[h - 1] += expectedError
+                groupModelSum[group][h - 1] += modelError
+                groupExpectedSum[group][h - 1] += expectedError
                 // Only at 30, 60 and 120 minutes, the points of the metrics
                 run?.atStep(h)?.let {
                     autoIsfSum[h - 1] += abs(it - actual)
@@ -387,8 +399,15 @@ class Trainer(
             expected = expectedPerHorizon?.let { metrics(it) },
             expectedOnAutoIsf = if (expected != null) paired(pairedExpectedSum) else null,
             expectedPerHorizon = expectedPerHorizon,
-            coveragePerDay = List(Samples.TEST_DAYS) { if (dayMoments[it] > 0) dayCovered[it].toDouble() / dayMoments[it] else 0.0 }
+            coveragePerDay = List(Samples.TEST_DAYS) { if (dayMoments[it] > 0) dayCovered[it].toDouble() / dayMoments[it] else 0.0 },
+            perHorizonByChange = byGroup(groupModelSum, groupMoments),
+            expectedPerHorizonByChange = if (expected != null) byGroup(groupExpectedSum, groupMoments) else emptyList()
         )
+    }
+
+    /** The mean per point of each group, an empty list for a group with fewer than [ErrorBands.MIN_MOMENTS] */
+    private fun byGroup(sums: Array<DoubleArray>, moments: IntArray): List<List<Double>> = sums.indices.map { group ->
+        if (moments[group] < ErrorBands.MIN_MOMENTS) emptyList() else sums[group].map { it / moments[group] }
     }
 
     private fun metrics(perHorizon: DoubleArray) = Metrics(perHorizon[5], perHorizon[11], perHorizon[23])

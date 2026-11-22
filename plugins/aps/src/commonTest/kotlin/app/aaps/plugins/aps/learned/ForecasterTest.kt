@@ -12,6 +12,7 @@ import app.aaps.plugins.aps.learned.model.LinearFeatures
 import app.aaps.plugins.aps.learned.model.LinearModel
 import app.aaps.plugins.aps.learned.model.Metrics
 import app.aaps.plugins.aps.learned.model.ResidualNetwork
+import app.aaps.plugins.aps.learned.train.ErrorBands
 import app.aaps.plugins.aps.learned.train.Samples
 import app.aaps.plugins.aps.learned.train.SequenceFeatures
 import kotlinx.datetime.TimeZone
@@ -112,6 +113,16 @@ class ForecasterTest {
         val forecast = assertNotNull(Forecaster.forecast(model().copy(network = silent.toState()), grid, Forecaster.LIVE_BACK_STEPS))
         assertTrue(forecast.at(30)!! > newest.mgdl + 10.0, "${forecast.at(30)} after ${newest.mgdl}")
         assertTrue(forecast.at(120)!! >= forecast.at(30)!!)
+    }
+
+    @Test
+    fun `the band is the one of how fast BG changes now`() {
+        val now = history.start + 30 * hour
+        val grid = liveGrid(now)
+        val i = grid.indexOf(now)
+        val byChange = listOf(List(24) { 1.0 }, List(24) { 2.0 }, List(24) { 3.0 })
+        val forecast = assertNotNull(Forecaster.forecast(model().copy(typicalErrorByChange = byChange), grid, i))
+        assertEquals((ErrorBands.of(grid, i) + 1).toDouble(), forecast.typicalErrorMgdl.first())
     }
 
     @Test

@@ -15,6 +15,7 @@ import app.aaps.plugins.aps.learned.model.LearnedModel
 import app.aaps.plugins.aps.learned.model.ResidualNetwork
 import app.aaps.plugins.aps.learned.train.Samples
 import app.aaps.plugins.aps.learned.train.Scaling
+import app.aaps.plugins.aps.learned.train.ErrorBands
 import app.aaps.plugins.aps.learned.train.MealInProgress
 import app.aaps.plugins.aps.learned.train.SequenceFeatures
 import app.aaps.plugins.aps.learned.train.UnannouncedMeals
@@ -92,6 +93,7 @@ object Forecaster {
         }
 
         val expected = expectedCurve(model, grid, effects, i, bg, time)
+        val group = ErrorBands.of(grid, i)
 
         // Where the curve ends once the insulin and carbs still on board at +120 min have acted
         val isfNow = grid.isf[i] * model.linear.isfMultiplier(grid.dayAngle[i])
@@ -105,7 +107,8 @@ object Forecaster {
             timestamp = time,
             bgMgdl = bg,
             points = points,
-            typicalErrorMgdl = model.typicalErrorMgdl,
+            // The band of how fast BG changes now: steady, moderate or fast
+            typicalErrorMgdl = ErrorBands.pick(model.typicalErrorByChange, group, model.typicalErrorMgdl),
             eventualMgdl = eventual,
             isfMgdl = isfNow,
             ic = grid.ic[i],
@@ -115,7 +118,7 @@ object Forecaster {
             profileIsfMgdl = grid.isf[i],
             deltaMgdl = if (i > 0 && !grid.bg[i - 1].isNaN()) bg - grid.bg[i - 1] else null,
             expectedPoints = expected ?: emptyList(),
-            expectedTypicalErrorMgdl = if (expected != null) model.expectedTypicalErrorMgdl else emptyList(),
+            expectedTypicalErrorMgdl = if (expected != null) ErrorBands.pick(model.expectedTypicalErrorByChange, group, model.expectedTypicalErrorMgdl) else emptyList(),
             expectedReady = expected != null && model.expectedReady,
             parts60 = model.linear.parts(grid, effects, i, PARTS_STEPS).let { linear ->
                 LearnedParts(

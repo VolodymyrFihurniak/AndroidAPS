@@ -60,7 +60,13 @@ data class LearnedModel(
     /** How many 1-minute phases of the history it learned from: 5 with a 1-minute sensor, else 1 */
     val phases: Int = 1,
     /** Seconds of each part of the training: "linear", "network", "gru", "measure" */
-    val trainingSeconds: Map<String, Int> = emptyMap()
+    val trainingSeconds: Map<String, Int> = emptyMap(),
+    /**
+     * The typical errors per point of each curve for each group of `ErrorBands` (steady, moderate, fast BG change); an
+     * empty list for a group with too few test moments
+     */
+    val typicalErrorByChange: List<List<Double>> = emptyList(),
+    val expectedTypicalErrorByChange: List<List<Double>> = emptyList()
 ) {
 
     fun toJson(): String = json.encodeToString(serializer(), this)

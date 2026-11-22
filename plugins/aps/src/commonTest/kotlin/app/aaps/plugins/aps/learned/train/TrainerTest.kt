@@ -46,6 +46,9 @@ class TrainerTest {
         assertTrue(model.model.mae60 < model.naive.mae60, "model ${model.model}, naive ${model.naive}")
         assertTrue(model.ready)
         assertEquals(24, model.typicalErrorMgdl.size)
+        // A band per group of BG change; the steady group always has enough test moments here
+        assertEquals(ErrorBands.COUNT, model.typicalErrorByChange.size)
+        assertEquals(24, model.typicalErrorByChange[ErrorBands.STEADY].size)
         assertTrue(lines.any { it.startsWith("Test days") }, lines.joinToString("\n"))
     }
 
