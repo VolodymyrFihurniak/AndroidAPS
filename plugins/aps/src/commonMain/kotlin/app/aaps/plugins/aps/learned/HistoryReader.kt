@@ -38,6 +38,17 @@ import kotlin.math.min
 @Inject
 class HistoryReader(private val persistenceLayer: PersistenceLayer) {
 
+    /** The valid BG readings of [from]..[to], oldest first, for the live check */
+    suspend fun bgReadings(from: Long, to: Long): List<BgReading> {
+        val readings = mutableListOf<BgReading>()
+        chunks(from, to) { start, end ->
+            persistenceLayer.getBgReadingsDataFromTimeToTime(start, end, true)
+                .filter { it.isValid }
+                .mapTo(readings) { BgReading(it.timestamp, it.value) }
+        }
+        return readings.distinctBy { it.timestamp }.sortedBy { it.timestamp }
+    }
+
     /** Emits when BG readings are added or changed: with a 1-minute sensor, every minute */
     fun bgChanges(): Flow<Unit> = persistenceLayer.observeChanges(GV::class).map { }
 

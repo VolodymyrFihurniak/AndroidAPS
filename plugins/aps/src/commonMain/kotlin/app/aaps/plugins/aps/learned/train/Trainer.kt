@@ -1,6 +1,7 @@
 package app.aaps.plugins.aps.learned.train
 
 import app.aaps.plugins.aps.learned.grid.HistoryGrid
+import app.aaps.plugins.aps.learned.nearestTo
 import app.aaps.plugins.aps.learned.model.CARB_HOURS
 import app.aaps.plugins.aps.learned.model.Effects
 import app.aaps.plugins.aps.learned.model.HORIZONS
@@ -339,7 +340,7 @@ class Trainer(
                 knots[k] = raw.coerceIn(-Samples.MAX_RESIDUAL, Samples.MAX_RESIDUAL)
             }
             val future = futures.getValue(i)
-            val run = nearestRun(sortedRuns, grid.timeOf(i))
+            val run = sortedRuns.nearestTo(grid.timeOf(i), RUN_MATCH_MS) { it.timestamp }
             val day = ((grid.timeOf(i) - testStart) / DAY_MS).toInt().coerceIn(0, Samples.TEST_DAYS - 1)
             dayMoments[day]++
             if (run != null) {
@@ -384,19 +385,6 @@ class Trainer(
             expectedPerHorizon = expectedPerHorizon,
             coveragePerDay = List(Samples.TEST_DAYS) { if (dayMoments[it] > 0) dayCovered[it].toDouble() / dayMoments[it] else 0.0 }
         )
-    }
-
-    private fun nearestRun(runs: List<StoredRun>, time: Long): StoredRun? {
-        if (runs.isEmpty()) return null
-        var low = 0
-        var high = runs.size
-        while (low < high) {
-            val mid = (low + high) ushr 1
-            if (runs[mid].timestamp < time) low = mid + 1 else high = mid
-        }
-        return listOfNotNull(runs.getOrNull(low - 1), runs.getOrNull(low))
-            .filter { abs(it.timestamp - time) <= RUN_MATCH_MS }
-            .minByOrNull { abs(it.timestamp - time) }
     }
 
     private fun metrics(perHorizon: DoubleArray) = Metrics(perHorizon[5], perHorizon[11], perHorizon[23])

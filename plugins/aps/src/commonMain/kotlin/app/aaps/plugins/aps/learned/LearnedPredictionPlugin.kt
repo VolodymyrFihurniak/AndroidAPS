@@ -83,6 +83,7 @@ class LearnedPredictionPlugin(
     notificationManager: NotificationManager,
     private val historyReader: HistoryReader,
     private val runArchive: AutoIsfRunArchive,
+    private val forecastArchive: ForecastArchive,
     private val rxBus: RxBus,
     private val dateUtil: DateUtil,
     private val profileUtil: ProfileUtil,
@@ -109,6 +110,11 @@ class LearnedPredictionPlugin(
 
     private val _status = MutableStateFlow(LearnedStatus(LearnedState.NO_MODEL))
     val status: StateFlow<LearnedStatus> = _status.asStateFlow()
+
+    /** The live check of the plugin's own forecasts, made again every hour; null before the first */
+    private val _liveScore = MutableStateFlow<LiveScore?>(null)
+    val liveScore: StateFlow<LiveScore?> = _liveScore.asStateFlow()
+    private var lastScore = 0L
 
     /** Days of AutoISF predictions the plugin keeps itself, for its screen */
     private val _autoIsfCopyDays = MutableStateFlow(0)
@@ -151,6 +157,7 @@ class LearnedPredictionPlugin(
         _forecast.value = null
         try {
             runArchive.save()
+            forecastArchive.save()
         } catch (e: Exception) {
             aapsLogger.error(LTag.APS, "Personal prediction: saving the AutoISF runs failed", e)
         }
@@ -181,15 +188,22 @@ class LearnedPredictionPlugin(
     }
 
     private suspend fun refresh() {
-        _forecast.value = computeForecast()
+        val forecast = computeForecast()
+        _forecast.value = forecast
         try {
             val now = dateUtil.now()
+            forecast?.let { forecastArchive.add(it, now) }
             runArchive.update(now)
             _autoIsfCopyDays.value = runArchive.days(now)
+            if (now - lastScore >= SCORE_EVERY_MS) {
+                lastScore = now
+                _liveScore.value = scoreLive(now)
+                updateStatus()
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            aapsLogger.error(LTag.APS, "Personal prediction: copying the AutoISF runs failed", e)
+            aapsLogger.error(LTag.APS, "Personal prediction: keeping or checking the forecasts failed", e)
         }
         if (TrainingSchedule.shouldStart(dateUtil.now(), model, lastAttempt, trainingJob?.isActive == true)) startTraining()
     }
@@ -203,7 +217,11 @@ class LearnedPredictionPlugin(
             if (now - newest > Forecaster.MAX_BG_AGE_MS) return null
             val grid = Forecaster.liveGrid(input, newest, TimeZone.currentSystemDefault())
             val index = Forecaster.liveIndex(grid, newest, now) ?: return null
-            Forecaster.forecast(current, grid, index)?.also { logPrediction(it) }
+            // A curve may give a dose only once the live check found it better than AutoISF
+            val live = _liveScore.value
+            Forecaster.forecast(current, grid, index)
+                ?.let { it.copy(ready = live?.linearReady == true, expectedReady = it.expectedPoints.isNotEmpty() && live?.gruReady == true) }
+                ?.also { logPrediction(it) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -317,11 +335,20 @@ class LearnedPredictionPlugin(
     private fun updateStatus(training: Boolean = trainingJob?.isActive == true) {
         val current = model
         _status.value = when {
-            training                      -> LearnedStatus(LearnedState.TRAINING, _status.value.progress, current)
-            current == null               -> LearnedStatus(LearnedState.NO_MODEL)
-            current.ready                 -> LearnedStatus(LearnedState.READY, model = current)
-            else                          -> LearnedStatus(LearnedState.NOT_READY, model = current)
+            training                            -> LearnedStatus(LearnedState.TRAINING, _status.value.progress, current)
+            current == null                     -> LearnedStatus(LearnedState.NO_MODEL)
+            _liveScore.value?.linearReady == true -> LearnedStatus(LearnedState.READY, model = current)
+            else                                -> LearnedStatus(LearnedState.NOT_READY, model = current)
         }
+    }
+
+    /** The live check of the forecasts of the last [LiveScore.WINDOW_MS] that are at least 2 hours old */
+    private suspend fun scoreLive(now: Long): LiveScore {
+        val from = now - LiveScore.WINDOW_MS - SCORED_AFTER_MS
+        val forecasts = forecastArchive.range(from, now - SCORED_AFTER_MS)
+        val score = LiveScore.compute(forecasts, runArchive.runs(from, now), historyReader.bgReadings(from, now))
+        log.add("Live check", "${score.moments} forecasts with real BG, ${score.pairedMoments} of them with an AutoISF prediction")
+        return score
     }
 
     private companion object {
@@ -330,5 +357,9 @@ class LearnedPredictionPlugin(
         const val LIVE_BACK_MS = 12 * 3_600_000L
         const val DEBOUNCE_MS = 5_000L
         const val PREDICTION_LOG_MS = 15 * 60_000L
+        const val SCORE_EVERY_MS = 3_600_000L
+
+        /** A forecast can be checked once its last point, 2 hours later, has a real BG */
+        const val SCORED_AFTER_MS = 2 * 3_600_000L
     }
 }

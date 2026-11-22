@@ -42,6 +42,7 @@ import app.aaps.plugins.aps.ApsStrings
 import app.aaps.plugins.aps.learned.LearnedPredictionPlugin
 import app.aaps.plugins.aps.learned.LearnedState
 import app.aaps.plugins.aps.learned.LearnedStatus
+import app.aaps.plugins.aps.learned.LiveScore
 import app.aaps.plugins.aps.learned.model.CARB_HOURS
 import app.aaps.plugins.aps.learned.model.LearnedModel
 import app.aaps.plugins.aps.learned.model.Metrics
@@ -77,10 +78,12 @@ internal class LearnedPredictionScreen(private val plugin: LearnedPredictionPlug
         val status by plugin.status.collectAsStateWithLifecycle()
         val log by plugin.log.entries.collectAsStateWithLifecycle()
         val autoIsfCopyDays by plugin.autoIsfCopyDays.collectAsStateWithLifecycle()
+        val liveScore by plugin.liveScore.collectAsStateWithLifecycle()
         LearnedPredictionContent(
             status = status,
             log = log,
             autoIsfCopyDays = autoIsfCopyDays,
+            liveScore = liveScore,
             onTrain = plugin::trainNow,
             onStop = plugin::stopTraining,
             onReset = plugin::resetModel
@@ -93,6 +96,7 @@ internal fun LearnedPredictionContent(
     status: LearnedStatus,
     log: List<SyncLogEntry>,
     autoIsfCopyDays: Int,
+    liveScore: LiveScore?,
     onTrain: () -> Unit,
     onStop: () -> Unit,
     onReset: () -> Unit,
@@ -105,8 +109,9 @@ internal fun LearnedPredictionContent(
             .padding(AapsSpacing.extraLarge),
         verticalArrangement = Arrangement.spacedBy(AapsSpacing.medium)
     ) {
-        StatusCard(status, autoIsfCopyDays)
+        StatusCard(status, autoIsfCopyDays, liveScore)
         status.model?.let { model ->
+            liveScore?.let { LiveCard(it, hasGru = model.expected != null) }
             ErrorsCard(model)
             LearnedCard(model)
         }
@@ -129,25 +134,25 @@ internal fun LearnedPredictionContent(
 }
 
 @Composable
-private fun StatusCard(status: LearnedStatus, autoIsfCopyDays: Int) {
+private fun StatusCard(status: LearnedStatus, autoIsfCopyDays: Int, liveScore: LiveScore?) {
     val dateUtil = LocalDateUtil.current
     AapsCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(AapsSpacing.extraLarge), verticalArrangement = Arrangement.spacedBy(AapsSpacing.small)) {
             val model = status.model
-            // One line per curve, the expected one first. Too few stored AutoISF runs is a different reason than
-            // losing to AutoISF, and the same for both curves.
+            // One line per model, from the live check of the last 7 days. Before it has enough moments with an AutoISF
+            // prediction, one line says how far it is: that is not the same as losing to AutoISF.
             val lines: List<Pair<String, Boolean>> = when {
                 status.state == LearnedState.NO_MODEL -> listOf(stringResource(ApsStrings.learned_state_no_model) to false)
                 status.state == LearnedState.TRAINING -> listOf(stringResource(ApsStrings.learned_state_training) to false)
                 model == null                         -> emptyList()
-                model.autoIsfCoverage < Trainer.MIN_COVERAGE ->
-                    listOf(stringResource(ApsStrings.learned_state_no_comparison, (model.autoIsfCoverage * 100).roundToInt()) to true)
+                liveScore == null || !liveScore.enough ->
+                    listOf(stringResource(ApsStrings.learned_live_collecting, liveScore?.pairedMoments ?: 0, LiveScore.MIN_PAIRED_MOMENTS) to true)
 
                 else                                  -> listOfNotNull(
                     if (model.expected == null) null
-                    else if (model.expectedReady) stringResource(ApsStrings.learned_state_ready_expected) to false
+                    else if (liveScore.gruReady) stringResource(ApsStrings.learned_state_ready_expected) to false
                     else stringResource(ApsStrings.learned_state_not_ready_expected) to true,
-                    if (model.ready) stringResource(ApsStrings.learned_state_ready) to false
+                    if (liveScore.linearReady) stringResource(ApsStrings.learned_state_ready) to false
                     else stringResource(ApsStrings.learned_state_not_ready) to true
                 )
             }
@@ -189,8 +194,8 @@ private fun StatusCard(status: LearnedStatus, autoIsfCopyDays: Int) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                // How far the plugin's own copy of the AutoISF predictions goes back: the comparison needs the test days
-                if (model.autoIsfCoverage < Trainer.MIN_COVERAGE) {
+                // How far the plugin's own copy of the AutoISF predictions goes back, while the checks need more of it
+                if (liveScore?.enough != true) {
                     Text(
                         text = stringResource(ApsStrings.learned_autoisf_copy, minOf(autoIsfCopyDays, Samples.TEST_DAYS), Samples.TEST_DAYS),
                         style = MaterialTheme.typography.bodySmall,
@@ -198,6 +203,33 @@ private fun StatusCard(status: LearnedStatus, autoIsfCopyDays: Int) {
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * The live check of the last 7 days: the models next to AutoISF and "BG stays the same" on the moments with an AutoISF
+ * prediction, or, before there are enough of those, the models and "BG stays the same" on all moments.
+ */
+@Composable
+private fun LiveCard(score: LiveScore, hasGru: Boolean) {
+    val profileUtil = LocalProfileUtil.current
+    AapsCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(AapsSpacing.extraLarge), verticalArrangement = Arrangement.spacedBy(AapsSpacing.small)) {
+            Text(stringResource(ApsStrings.learned_live_title), style = MaterialTheme.typography.titleSmall)
+            ErrorRow("", listOf(30, 60, 120).map { stringResource(CoreUiStrings.format_mins, it) }, bold = true)
+            fun values(metrics: Metrics?) = listOf(metrics?.mae30, metrics?.mae60, metrics?.mae120)
+                .map { value -> value?.let { profileUtil.fromMgdlToStringWithUnits(it) } ?: "–" }
+            val paired = score.enough
+            if (hasGru) ErrorRow(stringResource(ApsStrings.learned_row_expected), values(if (paired) score.pairedGru else score.gru), bold = true)
+            ErrorRow(stringResource(ApsStrings.learned_row_no_insulin), values(if (paired) score.pairedLinear else score.linear), bold = true)
+            ErrorRow(stringResource(ApsStrings.openaps_auto_isf), values(if (paired) score.pairedAutoIsf else null))
+            ErrorRow(stringResource(ApsStrings.learned_row_naive), values(if (paired) score.pairedNaive else score.naive))
+            Text(
+                text = stringResource(ApsStrings.learned_live_moments, score.moments, score.pairedMoments),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

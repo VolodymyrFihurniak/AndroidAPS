@@ -10,11 +10,13 @@
     <string name="learned_window_days">Days of history to learn from</string>
     <string name="learned_state_no_model">No model yet. It learns when there is enough history (about 2 weeks or more).</string>
     <string name="learned_state_training">Learning…</string>
-    <string name="learned_state_ready" comment="Linear is the name of the model that gives the dose">Linear model: better than AutoISF on the test days</string>
-    <string name="learned_state_not_ready" comment="Linear is the name of the model that gives the dose">Linear model: not better than AutoISF yet, so it gives no dose</string>
-    <string name="learned_state_ready_expected" comment="GRU is a name, do not translate">GRU model: better than AutoISF on the test days</string>
-    <string name="learned_state_not_ready_expected" comment="GRU is a name, do not translate">GRU model: not better than AutoISF yet</string>
-    <string name="learned_state_no_comparison" comment="%1$d=percent of the test moments with a stored AutoISF prediction. Example: 35">It learns from all your data. Only %1$d %% of the test moments have a stored AutoISF prediction to compare with, so it gives no dose yet.</string>
+    <string name="learned_state_ready" comment="Linear is the name of the model that gives the dose">Linear model: better than AutoISF in the live check</string>
+    <string name="learned_state_not_ready" comment="Linear is the name of the model that gives the dose">Linear model: not better than AutoISF in the live check, so it gives no dose</string>
+    <string name="learned_state_ready_expected" comment="GRU is a name, do not translate">GRU model: better than AutoISF in the live check</string>
+    <string name="learned_state_not_ready_expected" comment="GRU is a name, do not translate">GRU model: not better than AutoISF in the live check</string>
+    <string name="learned_live_collecting" comment="%1$d=moments so far, %2$d=moments needed. Example: Live check: 120 of 432 moments">It learns from all your data. Live check: %1$d of %2$d moments with an AutoISF prediction so far. It gives no dose until then.</string>
+    <string name="learned_live_title">Live forecasts, last 7 days</string>
+    <string name="learned_live_moments" comment="%1$d=forecasts checked, %2$d=of them with an AutoISF prediction. Example: 1500 moments, 600 of them with an AutoISF prediction">%1$d moments, %2$d of them with an AutoISF prediction</string>
     <string name="learned_autoisf_copy" comment="%1$d=days, %2$d=days needed. Example: AutoISF predictions kept by this plugin: 3 of 14 days">AutoISF predictions kept by this plugin: %1$d of %2$d days</string>
     <string name="learned_compared_on" comment="%1$d=percent. Example: Compared on 97 % of the test moments, where an AutoISF run was stored">Compared on %1$d %% of the test moments, where an AutoISF run was stored</string>
     <string name="learned_no_autoisf_runs">No stored AutoISF runs on the test days</string>
