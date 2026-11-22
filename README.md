@@ -236,6 +236,12 @@ delivery**: the loop, SMB, temp basals and all limits work as before, and the lo
   part of it. The expected curve gives no dose: it already holds what the loop gives next. Under it
   BG in 30, 60 and 120 minutes on both curves, the eventual BG, the personal ISF, the typical error
   and when the model learned. There is no button: a dose is typed by hand.
+* **Warnings.** In the settings of the plugin two switches, off by default: *Warn of a low* (the
+  forecast goes below the low mark in the next 30 minutes) and *Warn of a high* (above the high mark
+  in the next 60 minutes). They use the GRU curve, and do not wait for the live check: a warning is
+  not a dose. The same warning comes again after 30 minutes at the soonest.
+* **Copy report** on the plugin screen puts a text report of the model, both error tables, the live
+  check and the log on the clipboard, to send when something looks wrong.
 * It works on AAPSClient too, from the client's own database.
 
 ### Fixes compared to AAPS 4.0

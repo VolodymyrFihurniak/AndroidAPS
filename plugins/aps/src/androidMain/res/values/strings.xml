@@ -39,6 +39,12 @@
     <string name="learned_train_now">Train now</string>
     <string name="learned_stop">Stop</string>
     <string name="learned_reset">Reset model</string>
+    <string name="learned_low_alert">Warn of a low</string>
+    <string name="learned_low_alert_summary">When the model sees BG below the low mark in the next 30 minutes</string>
+    <string name="learned_high_alert">Warn of a high</string>
+    <string name="learned_high_alert_summary">When the model sees BG above the high mark in the next 60 minutes</string>
+    <string name="learned_alert_low" comment="%1$s=BG with unit, %2$d=minutes. Example: Model: BG 3.6 mmol/l in about 25 min">Model: BG %1$s in about %2$d min</string>
+    <string name="learned_alert_high" comment="%1$s=BG with unit, %2$d=minutes. Example: Model: BG 10.4 mmol/l in about 55 min">Model: BG %1$s in about %2$d min</string>
     <string name="learned_copy_report" comment="Button: copies a text report of the model and its log, to send for help">Copy report</string>
     <string name="openapsma_disabled">Plugin is disabled</string>
     <string name="openapsma_no_glucose_data">No glucose data available</string>

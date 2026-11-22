@@ -8,6 +8,7 @@ import app.aaps.core.interfaces.aps.LearnedPrediction
 import app.aaps.core.interfaces.di.ApplicationScope
 import app.aaps.core.interfaces.logging.AAPSLogger
 import app.aaps.core.interfaces.logging.LTag
+import app.aaps.core.interfaces.notifications.NotificationId
 import app.aaps.core.interfaces.notifications.NotificationManager
 import app.aaps.core.interfaces.plugin.PluginBase
 import app.aaps.core.interfaces.plugin.PluginBaseWithPreferences
@@ -19,6 +20,7 @@ import app.aaps.core.interfaces.rx.bus.RxBus
 import app.aaps.core.interfaces.rx.events.EventBucketedDataCreated
 import app.aaps.core.interfaces.sync.SyncLogBuffer
 import app.aaps.core.interfaces.utils.DateUtil
+import app.aaps.core.keys.UnitDoubleKey
 import app.aaps.core.keys.interfaces.Preferences
 import app.aaps.core.ui.compose.preference.PreferenceSubScreenDef
 import app.aaps.plugins.aps.ApsStrings
@@ -28,6 +30,7 @@ import app.aaps.plugins.aps.learned.grid.HistoryGridBuilder
 import app.aaps.plugins.aps.learned.grid.HistoryInput
 import app.aaps.plugins.aps.learned.grid.Phases
 import app.aaps.plugins.aps.learned.grid.STEP_MS
+import app.aaps.plugins.aps.learned.keys.LearnedBooleanKey
 import app.aaps.plugins.aps.learned.keys.LearnedIntKey
 import app.aaps.plugins.aps.learned.keys.LearnedStringKey
 import app.aaps.plugins.aps.learned.model.LearnedModel
@@ -97,7 +100,7 @@ class LearnedPredictionPlugin(
         .pluginName(ApsStrings.learned_prediction)
         .description(ApsStrings.learned_prediction_description)
         .composeContent { plugin -> LearnedPredictionScreen(plugin as LearnedPredictionPlugin) },
-    ownPreferences = LearnedIntKey.entries + LearnedStringKey.entries,
+    ownPreferences = LearnedIntKey.entries + LearnedBooleanKey.entries + LearnedStringKey.entries,
     aapsLogger, rh, preferences, notificationManager
 ), LearnedPrediction {
 
@@ -117,6 +120,8 @@ class LearnedPredictionPlugin(
     private val _liveScore = MutableStateFlow<LiveScore?>(null)
     val liveScore: StateFlow<LiveScore?> = _liveScore.asStateFlow()
     private var lastScore = 0L
+    private var lastLowAlert = 0L
+    private var lastHighAlert = 0L
 
     /** Days of AutoISF predictions the plugin keeps itself, for its screen */
     private val _autoIsfCopyDays = MutableStateFlow(0)
@@ -131,7 +136,7 @@ class LearnedPredictionPlugin(
     override fun getPreferenceScreenContent() = PreferenceSubScreenDef(
         key = "learned_prediction_settings",
         title = ApsStrings.learned_prediction,
-        items = listOf(LearnedIntKey.TrainingWindowDays),
+        items = listOf(LearnedIntKey.TrainingWindowDays, LearnedBooleanKey.LowAlert, LearnedBooleanKey.HighAlert),
         icon = pluginDescription.icon
     )
 
@@ -197,7 +202,10 @@ class LearnedPredictionPlugin(
         _forecast.value = forecast
         try {
             val now = dateUtil.now()
-            forecast?.let { forecastArchive.add(it, now) }
+            forecast?.let {
+                forecastArchive.add(it, now)
+                warn(it, now)
+            }
             runArchive.update(now)
             _autoIsfCopyDays.value = runArchive.days(now)
             if (now - lastScore >= SCORE_EVERY_MS) {
@@ -347,6 +355,31 @@ class LearnedPredictionPlugin(
         }
     }
 
+    /** A warning when the forecast sees a low or a high coming and the user switched that warning on */
+    private fun warn(forecast: LearnedForecast, now: Long) {
+        fun mark(key: UnitDoubleKey) = profileUtil.convertToMgdl(preferences.get(key), profileUtil.units)
+        if (preferences.get(LearnedBooleanKey.LowAlert) && now - lastLowAlert >= ForecastAlerts.REPEAT_MS) {
+            ForecastAlerts.low(forecast, mark(UnitDoubleKey.OverviewLowMark))?.let { alert ->
+                lastLowAlert = now
+                notificationManager.post(
+                    NotificationId.LEARNED_LOW_PREDICTED,
+                    rh.gs(ApsStrings.learned_alert_low, profileUtil.fromMgdlToStringWithUnits(alert.mgdl), alert.minutes),
+                    validMinutes = ALERT_VALID_MIN
+                )
+            }
+        }
+        if (preferences.get(LearnedBooleanKey.HighAlert) && now - lastHighAlert >= ForecastAlerts.REPEAT_MS) {
+            ForecastAlerts.high(forecast, mark(UnitDoubleKey.OverviewHighMark))?.let { alert ->
+                lastHighAlert = now
+                notificationManager.post(
+                    NotificationId.LEARNED_HIGH_PREDICTED,
+                    rh.gs(ApsStrings.learned_alert_high, profileUtil.fromMgdlToStringWithUnits(alert.mgdl), alert.minutes),
+                    validMinutes = ALERT_VALID_MIN
+                )
+            }
+        }
+    }
+
     /** The live check of the forecasts of the last [LiveScore.WINDOW_MS] that are at least 2 hours old */
     private suspend fun scoreLive(now: Long): LiveScore {
         val from = now - LiveScore.WINDOW_MS - SCORED_AFTER_MS
@@ -363,6 +396,7 @@ class LearnedPredictionPlugin(
         const val DEBOUNCE_MS = 5_000L
         const val PREDICTION_LOG_MS = 15 * 60_000L
         const val SCORE_EVERY_MS = 3_600_000L
+        const val ALERT_VALID_MIN = 30
 
         /** A forecast can be checked once its last point, 2 hours later, has a real BG */
         const val SCORED_AFTER_MS = 2 * 3_600_000L

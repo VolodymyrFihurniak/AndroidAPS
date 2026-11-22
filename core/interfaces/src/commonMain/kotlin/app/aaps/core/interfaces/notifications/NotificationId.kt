@@ -147,6 +147,9 @@ enum class NotificationId(
     CARBS_REQUIRED(NORMAL, LOOP),
     SMB_FALLBACK(NORMAL, LOOP),
     DYN_ISF_FALLBACK(NORMAL, LOOP),
+    // autoISF build: the personal prediction (experimental) sees a low or a high coming; switched on by the user
+    LEARNED_LOW_PREDICTED(IMPORTANT, LOOP),
+    LEARNED_HIGH_PREDICTED(NORMAL, LOOP),
 
     // Sync — Nightscout
     OLD_NS(IMPORTANT, SYNC),

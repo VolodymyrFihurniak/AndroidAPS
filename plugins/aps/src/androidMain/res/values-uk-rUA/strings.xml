@@ -39,6 +39,12 @@
     <string name="learned_train_now">Навчити зараз</string>
     <string name="learned_stop">Зупинити</string>
     <string name="learned_reset">Скинути модель</string>
+    <string name="learned_low_alert">Попереджати про низьку глюкозу</string>
+    <string name="learned_low_alert_summary">Коли модель бачить глюкозу нижче нижньої межі в найближчі 30 хв</string>
+    <string name="learned_high_alert">Попереджати про високу глюкозу</string>
+    <string name="learned_high_alert_summary">Коли модель бачить глюкозу вище верхньої межі в найближчі 60 хв</string>
+    <string name="learned_alert_low">Модель: глюкоза %1$s приблизно через %2$d хв</string>
+    <string name="learned_alert_high">Модель: глюкоза %1$s приблизно через %2$d хв</string>
     <string name="learned_copy_report">Скопіювати звіт</string>
     <string name="openapsma_disabled">Плагін вимкнено</string>
     <string name="openapsma_no_glucose_data">Дані про глюкозу відсутні</string>
