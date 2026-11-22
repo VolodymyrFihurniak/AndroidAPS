@@ -13,6 +13,7 @@ import app.aaps.core.interfaces.plugin.PluginBase
 import app.aaps.core.interfaces.plugin.PluginBaseWithPreferences
 import app.aaps.core.interfaces.plugin.PluginDescription
 import app.aaps.core.interfaces.profile.ProfileUtil
+import app.aaps.core.interfaces.receivers.ReceiverStatusStore
 import app.aaps.core.interfaces.resources.TextResolver
 import app.aaps.core.interfaces.rx.bus.RxBus
 import app.aaps.core.interfaces.rx.events.EventBucketedDataCreated
@@ -68,7 +69,7 @@ data class LearnedStatus(val state: LearnedState, val progress: String? = null, 
  * insulin, carbs and the time of day, draws its own 2-hour prediction and gives a dose advice in the Insulin dialog.
  *
  * It never changes insulin delivery and the loop never waits for it: training and predictions run on their own
- * coroutines. Training starts when the plugin is switched on without a model, then once a day, or when the user taps
+ * coroutines. Training starts when the plugin is switched on without a model, then once a day while the phone is charging (after two days also without), or when the user taps
  * "Train now", and is stopped after [TrainingSchedule.TIME_LIMIT_MS].
  */
 @ContributesIntoMap(AppScope::class, binding = binding<PluginBase>())
@@ -84,6 +85,7 @@ class LearnedPredictionPlugin(
     private val historyReader: HistoryReader,
     private val runArchive: AutoIsfRunArchive,
     private val forecastArchive: ForecastArchive,
+    private val receiverStatusStore: ReceiverStatusStore,
     private val rxBus: RxBus,
     private val dateUtil: DateUtil,
     private val profileUtil: ProfileUtil,
@@ -208,7 +210,7 @@ class LearnedPredictionPlugin(
         } catch (e: Exception) {
             aapsLogger.error(LTag.APS, "Personal prediction: keeping or checking the forecasts failed", e)
         }
-        if (TrainingSchedule.shouldStart(dateUtil.now(), model, lastAttempt, trainingJob?.isActive == true)) startTraining()
+        if (TrainingSchedule.shouldStart(dateUtil.now(), model, lastAttempt, trainingJob?.isActive == true, receiverStatusStore.isCharging)) startTraining()
     }
 
     private suspend fun computeForecast(): LearnedForecast? {
@@ -298,7 +300,7 @@ class LearnedPredictionPlugin(
             progress = { progress(it) },
             bg = { profileUtil.fromMgdlToStringWithUnits(it) }
         )
-        return trainer.train(grids, now, days, runs)
+        return trainer.train(grids, now, days, runs, previous = model)
     }
 
     /**

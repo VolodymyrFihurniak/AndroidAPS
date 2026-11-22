@@ -136,6 +136,24 @@ class TrainerTest {
     }
 
     @Test
+    fun `the gru continues from the last model`() = runTest(timeout = 10.minutes) {
+        val history = SyntheticHistory.generate(days = 40)
+        val grid = HistoryGridBuilder.build(history.input, history.start, history.end, TimeZone.UTC)
+        val first = assertNotNull(trainer.train(grid, now = history.end, windowDays = 40, autoIsfRuns = emptyList()))
+        lines.clear()
+        assertNotNull(trainer.train(listOf(grid), now = history.end, windowDays = 40, autoIsfRuns = emptyList(), previous = first))
+        assertTrue(lines.any { "starts from the last model" in it }, lines.joinToString("\n"))
+        // A model of another size is not continued
+        lines.clear()
+        val other = Trainer(
+            log = { lines += it }, progress = {}, bg = { "${it.toInt()} mg/dl" },
+            expectedCurve = ExpectedCurveTrainer.Settings(maxSamples = 2000, maxEpochs = 2, units = 6)
+        )
+        assertNotNull(other.train(listOf(grid), now = history.end, windowDays = 40, autoIsfRuns = emptyList(), previous = first))
+        assertFalse(lines.any { "starts from the last model" in it }, lines.joinToString("\n"))
+    }
+
+    @Test
     fun `the log gives the seconds of each part`() = runTest(timeout = 10.minutes) {
         val history = SyntheticHistory.generate(days = 40)
         val grid = HistoryGridBuilder.build(history.input, history.start, history.end, TimeZone.UTC)

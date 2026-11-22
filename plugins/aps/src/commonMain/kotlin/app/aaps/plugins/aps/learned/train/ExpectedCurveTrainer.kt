@@ -4,6 +4,7 @@ import app.aaps.plugins.aps.learned.grid.HistoryGrid
 import app.aaps.plugins.aps.learned.model.Effects
 import app.aaps.plugins.aps.learned.model.GruNetwork
 import app.aaps.plugins.aps.learned.model.GruSample
+import app.aaps.plugins.aps.learned.model.GruState
 import app.aaps.plugins.aps.learned.model.HORIZONS
 import app.aaps.plugins.aps.learned.model.LinearModel
 import kotlinx.coroutines.currentCoroutineContext
@@ -88,8 +89,11 @@ class ExpectedCurveTrainer(
         return Data(grids, effects, rows, stepScaling, phase.toIntArray(), step.toIntArray(), weight, test)
     }
 
-    /** Trains on the learning days and stops when the test days stop getting better. Null with too few samples. */
-    suspend fun learn(data: Data, linear: LinearModel): Fit? {
+    /**
+     * Trains on the learning days and stops when the test days stop getting better. Null with too few samples. Starts
+     * from [start], the GRU of the last model, when it has the same size: a day more of data needs few epochs then.
+     */
+    suspend fun learn(data: Data, linear: LinearModel, start: GruState? = null): Fit? {
         val learn = data.test.indices.filter { !data.test[it] }
         val test = data.test.indices.filter { data.test[it] }
         if (learn.isEmpty() || test.isEmpty()) {
@@ -99,7 +103,8 @@ class ExpectedCurveTrainer(
         val contexts = contexts(data, linear)
         val contextScaling = Scaling.of(Array(learn.size) { contexts[learn[it]] })
         contextScaling.apply(contexts)
-        val network = newNetwork()
+        val network = newNetwork(start)
+        if (start != null && network.parameters().contentEquals(start.parameters.toDoubleArray())) log("Expected curve: starts from the last model")
         fun testLoss() = network.loss(test.size) { sample(data, contexts, test[it]) }
         var bestLoss = testLoss()
         var bestEpoch = 0
@@ -126,13 +131,13 @@ class ExpectedCurveTrainer(
         return Fit(network, contextScaling, bestEpoch)
     }
 
-    /** Trains a new GRU on all days for [epochs] epochs, or until the time limit */
-    suspend fun final(data: Data, linear: LinearModel, epochs: Int): Fit {
+    /** Trains a GRU on all days for [epochs] epochs, or until the time limit, from [start] when it has the same size */
+    suspend fun final(data: Data, linear: LinearModel, epochs: Int, start: GruState? = null): Fit {
         progress("Expected curve: final training")
         val contexts = contexts(data, linear)
         val contextScaling = Scaling.of(contexts)
         contextScaling.apply(contexts)
-        val network = newNetwork()
+        val network = newNetwork(start)
         val start = timeSource.markNow()
         for (epoch in 1..epochs) {
             currentCoroutineContext().ensureActive()
@@ -187,10 +192,17 @@ class ExpectedCurveTrainer(
         )
     }
 
-    private fun newNetwork() = GruNetwork(
-        steps = SequenceFeatures.STEPS, inputs = SequenceFeatures.STEP_INPUTS, context = SequenceFeatures.CONTEXT,
-        units = settings.units, dense = settings.units, outputs = HORIZONS, seed = SEED
-    )
+    /** A new GRU, with the parameters of [start] when it has exactly this size */
+    private fun newNetwork(start: GruState? = null): GruNetwork {
+        val network = GruNetwork(
+            steps = SequenceFeatures.STEPS, inputs = SequenceFeatures.STEP_INPUTS, context = SequenceFeatures.CONTEXT,
+            units = settings.units, dense = settings.units, outputs = HORIZONS, seed = SEED
+        )
+        val same = start != null && start.steps == network.steps && start.inputs == network.inputs && start.context == network.context &&
+            start.units == network.units && start.dense == network.dense && start.outputs == network.outputs
+        if (same) network.setParameters(start.parameters.toDoubleArray())
+        return network
+    }
 
     companion object {
 

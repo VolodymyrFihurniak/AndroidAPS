@@ -25,17 +25,29 @@ class TrainingScheduleTest {
     )
 
     @Test
-    fun `no model and no attempt starts`() = assertTrue(TrainingSchedule.shouldStart(now, null, lastAttempt = 0L, running = false))
+    fun `no model and no attempt starts`() = assertTrue(TrainingSchedule.shouldStart(now, null, lastAttempt = 0L, running = false, charging = false))
 
     @Test
-    fun `no model but a recent attempt waits`() = assertFalse(TrainingSchedule.shouldStart(now, null, lastAttempt = now - hour / 2, running = false))
+    fun `no model but a recent attempt waits`() = assertFalse(TrainingSchedule.shouldStart(now, null, lastAttempt = now - hour / 2, running = false, charging = false))
 
     @Test
-    fun `a model younger than a day waits`() = assertFalse(TrainingSchedule.shouldStart(now, model(now - 23 * hour), lastAttempt = 0L, running = false))
+    fun `a model younger than a day waits`() = assertFalse(TrainingSchedule.shouldStart(now, model(now - 23 * hour), lastAttempt = 0L, running = false, charging = false))
 
     @Test
-    fun `a model older than a day starts`() = assertTrue(TrainingSchedule.shouldStart(now, model(now - 25 * hour), lastAttempt = now - 2 * hour, running = false))
+    fun `a model older than a day waits for the charger`() =
+        assertFalse(TrainingSchedule.shouldStart(now, model(now - 25 * hour), lastAttempt = now - 2 * hour, running = false, charging = false))
 
     @Test
-    fun `a running training is not started again`() = assertFalse(TrainingSchedule.shouldStart(now, null, lastAttempt = 0L, running = true))
+    fun `a model older than a day trains while charging`() =
+        assertTrue(TrainingSchedule.shouldStart(now, model(now - 25 * hour), lastAttempt = now - 2 * hour, running = false, charging = true))
+
+    @Test
+    fun `a model two days old trains without the charger`() =
+        assertTrue(TrainingSchedule.shouldStart(now, model(now - 49 * hour), lastAttempt = now - 2 * hour, running = false, charging = false))
+
+    @Test
+    fun `no model trains without the charger`() = assertTrue(TrainingSchedule.shouldStart(now, null, lastAttempt = 0L, running = false, charging = false))
+
+    @Test
+    fun `a running training is not started again`() = assertFalse(TrainingSchedule.shouldStart(now, null, lastAttempt = 0L, running = true, charging = true))
 }

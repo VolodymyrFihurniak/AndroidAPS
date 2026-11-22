@@ -3,6 +3,7 @@ package app.aaps.plugins.aps.learned
 import app.aaps.core.interfaces.logging.AAPSLogger
 import app.aaps.core.interfaces.notifications.NotificationManager
 import app.aaps.core.interfaces.profile.ProfileUtil
+import app.aaps.core.interfaces.receivers.ReceiverStatusStore
 import app.aaps.core.interfaces.resources.TextResolver
 import app.aaps.core.interfaces.rx.bus.RxBus
 import app.aaps.core.interfaces.rx.events.EventBucketedDataCreated
@@ -76,7 +77,8 @@ class LearnedPredictionPluginTest {
 
     private val sut = LearnedPredictionPlugin(
         aapsLogger = mock<AAPSLogger>(), rh = mock<TextResolver>(), preferences = preferences,
-        notificationManager = mock<NotificationManager>(), historyReader = historyReader, runArchive = mock<AutoIsfRunArchive>(), forecastArchive = mock<ForecastArchive>(), rxBus = rxBus,
+        notificationManager = mock<NotificationManager>(), historyReader = historyReader, runArchive = mock<AutoIsfRunArchive>(), forecastArchive = mock<ForecastArchive>(),
+        receiverStatusStore = mock<ReceiverStatusStore>(), rxBus = rxBus,
         dateUtil = dateUtil, profileUtil = mock<ProfileUtil>(), appScope = scope
     )
 

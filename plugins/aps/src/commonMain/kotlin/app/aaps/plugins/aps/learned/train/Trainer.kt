@@ -54,8 +54,8 @@ class Trainer(
     suspend fun train(grid: HistoryGrid, now: Long, windowDays: Int, autoIsfRuns: List<StoredRun>): LearnedModel? =
         train(listOf(grid), now, windowDays, autoIsfRuns)
 
-    /** [grids] holds one grid per phase, phase 0 first */
-    suspend fun train(grids: List<HistoryGrid>, now: Long, windowDays: Int, autoIsfRuns: List<StoredRun>): LearnedModel? {
+    /** [grids] holds one grid per phase, phase 0 first. The GRU starts from the one of [previous] when it fits. */
+    suspend fun train(grids: List<HistoryGrid>, now: Long, windowDays: Int, autoIsfRuns: List<StoredRun>, previous: LearnedModel? = null): LearnedModel? {
         val grid = grids.first()
         val effects = Effects(grid)
         val first = max(Samples.LEAD_STEPS, grid.indexOf(now - windowDays * DAY_MS))
@@ -151,7 +151,7 @@ class Trainer(
         val windowStart = now - windowDays * DAY_MS
         val gru = ExpectedCurveTrainer(expectedCurve, threads, timeSource, log, progress, bg)
         val gruData = gru.prepare(grids, now, windowStart, now - Samples.TEST_DAYS * DAY_MS)
-        val gruFit = gru.learn(gruData, linearLearn)
+        val gruFit = gru.learn(gruData, linearLearn, previous?.expected)
         times.add(GRU, gruStart)
 
         // Measure on the test days, as live
@@ -184,7 +184,7 @@ class Trainer(
 
         // And the GRU trained again on all days
         val finalGruStart = timeSource.markNow()
-        val finalGru = gruFit?.let { gru.final(gruData, linearAll, max(ExpectedCurveTrainer.MIN_FINAL_EPOCHS, it.bestEpoch)) }
+        val finalGru = gruFit?.let { gru.final(gruData, linearAll, max(ExpectedCurveTrainer.MIN_FINAL_EPOCHS, it.bestEpoch), previous?.expected) }
         times.add(GRU, finalGruStart)
         val seconds = times.mapValues { it.value.inWholeSeconds.toInt() }
         log(

@@ -209,7 +209,9 @@ delivery**: the loop, SMB, temp basals and all limits work as before, and the lo
   hour against the real BG, next to AutoISF and "BG stays the same" on the same moments. A model may
   give a dose only when it is better than AutoISF at 60 minutes in this live check, on at least 3
   days of moments with an AutoISF prediction. The screen shows the table of the last 7 days.
-* **When it learns.** When it is switched on without a model, then once a day, or on *Train now*.
+* **When it learns.** When it is switched on without a model, then once a day while the phone is
+  charging (after two days also without a charger), or on *Train now*. The GRU starts from the one
+  of the last model when it has the same size, so one more day of data needs few epochs.
   A training stops after 20 minutes at most (each of the two passes of the expected curve after 6
   minutes), and *Stop* ends it; the old model stays until a new one is ready. It needs at least about
   2 weeks of history. A model saved by an older version is not used; it learns again.
