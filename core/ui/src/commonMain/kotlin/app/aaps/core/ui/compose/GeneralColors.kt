@@ -120,48 +120,52 @@ data class GeneralColors(
 /**
  * Light mode color scheme for general elements.
  * Colors match the light theme values from colors.xml.
+ *
+ * autoISF build: the colours the user sees most (BG ranges, predictions, warnings, loop) are the "Graphite" palette the
+ * user chose: all of the same lightness and a little muted, so they do not fight each other. The comments after the
+ * values still name the AAPS colour each one replaced.
  */
 val LightGeneralColors = GeneralColors(
-    activeInsulinText = Color(0xFF1E88E5),  // iob color
-    calculator = Color(0xFF66BB6A),          // colorCalculatorButton
+    activeInsulinText = Color(0xFF2F66D0),  // iob color
+    calculator = Color(0xFF1E8A50),          // colorCalculatorButton
     futureRecord = Color(0xFF66BB6A),        // green for scheduled/future items
     invalidatedRecord = Color(0xFFE53935),   // red for invalid/deleted items
-    statusNormal = Color(0xFF4CAF50),        // green for normal status
-    statusWarning = Color(0xFFFB8C00),       // matches highColor attr (orange)
-    statusCritical = Color(0xFFFF0000),      // matches lowColor attr (pure red)
-    inProgress = Color(0xFFF4D700),          // ribbonWarning - amber for modified/temporary items
-    onInProgress = Color(0xFF303030),        // ribbonTextWarning - dark text on amber background
-    ttEatingSoon = Color(0xFFFB8C00),        // orange/carbs color for Eating Soon (matches TempTargetDialog)
-    ttActivity = Color(0xFF42A5F5),          // blue/exercise color for Activity (matches TempTargetDialog)
-    ttHypoglycemia = Color(0xFFFF0000),      // red/low color for Hypoglycemia (matches TempTargetDialog)
-    ttCustom = Color(0xFF9C27B0),            // purple for Custom/Automation/Manual
-    adjusted = Color(0xFF4CAF50),            // green for APS-adjusted target chip
+    statusNormal = Color(0xFF1E8A50),        // green for normal status
+    statusWarning = Color(0xFFA86B00),       // matches highColor attr (orange)
+    statusCritical = Color(0xFFC8283E),      // matches lowColor attr (pure red)
+    inProgress = Color(0xFFA86B00),          // ribbonWarning - amber for modified/temporary items
+    onInProgress = Color(0xFFFFFFFF),        // ribbonTextWarning - dark text on amber background
+    ttEatingSoon = Color(0xFFB8620A),        // orange/carbs color for Eating Soon (matches TempTargetDialog)
+    ttActivity = Color(0xFF2F66D0),          // blue/exercise color for Activity (matches TempTargetDialog)
+    ttHypoglycemia = Color(0xFFC8283E),      // red/low color for Hypoglycemia (matches TempTargetDialog)
+    ttCustom = Color(0xFF7A4FC2),            // purple for Custom/Automation/Manual
+    adjusted = Color(0xFF1E8A50),            // green for APS-adjusted target chip
     onAdjusted = Color(0xFFFFFFFF),          // white text on adjusted target
     onBadge = Color(0xFFFFFFFF),             // white text on colored badges
-    bgHigh = Color(0xFFFB8C00),              // orange for high BG (matches @color/high in values)
-    bgInRange = Color(0xFF00FF00),           // pure green for in-range BG (matches @color/inRange)
-    bgLow = Color(0xFFFF0000),               // pure red for low BG (matches @color/low)
-    bgVeryLow = Color(0xFF8B0000),           // dark red for very low BG (Dexcom TIR 5-range)
-    bgVeryHigh = Color(0xFFD84315),          // deep orange-red for very high BG (Dexcom TIR 5-range)
-    bgTargetRangeArea = Color(0x2800FF00),   // green with ~16% alpha for target range area (matches @color/inRangeBackground)
+    bgHigh = Color(0xFFA86B00),              // orange for high BG (matches @color/high in values)
+    bgInRange = Color(0xFF1E8A50),           // pure green for in-range BG (matches @color/inRange)
+    bgLow = Color(0xFFC8283E),               // pure red for low BG (matches @color/low)
+    bgVeryLow = Color(0xFF8E1A2B),           // dark red for very low BG (Dexcom TIR 5-range)
+    bgVeryHigh = Color(0xFFB8620A),          // deep orange-red for very high BG (Dexcom TIR 5-range)
+    bgTargetRangeArea = Color(0x201E8A50),   // green with ~16% alpha for target range area (matches @color/inRangeBackground)
     originalBgValue = Color(0xFFFFFFFF),     // white for regular CGM readings (matches originalBgValueColor attr)
-    iobPrediction = Color(0xFF1E88E5),       // blue for IOB predictions (matches iobColor attr)
-    cobPrediction = Color(0xFFFB8C00),       // orange for COB predictions (matches cobColor attr)
-    aCobPrediction = Color(0x80FB8C00),      // lighter orange for absorbed COB (50% alpha)
-    uamPrediction = Color(0xFFC9BD60),       // yellow-ish for UAM predictions (matches uamColor attr)
-    ztPrediction = Color(0xFF00D2D2),        // cyan for zero-temp predictions (matches ztColor attr)
-    bgParabola = Color(0xFFFF00FF),          // magenta for the autoISF BG parabola (bgParabolaColor of aisf)
+    iobPrediction = Color(0xFF2F66D0),       // blue for IOB predictions (matches iobColor attr)
+    cobPrediction = Color(0xFFB8620A),       // orange for COB predictions (matches cobColor attr)
+    aCobPrediction = Color(0x80B8620A),      // lighter orange for absorbed COB (50% alpha)
+    uamPrediction = Color(0xFF9A8420),       // yellow-ish for UAM predictions (matches uamColor attr)
+    ztPrediction = Color(0xFF0E8282),        // cyan for zero-temp predictions (matches ztColor attr)
+    bgParabola = Color(0xFFB0409E),          // magenta for the autoISF BG parabola (bgParabolaColor of aisf)
     learnedPrediction = Color(0xFF7E57C2),   // deep purple for the personal prediction
-    basalIncrease = Color(0x66FB8C00),       // orange at 40%: more basal than the profile
-    basalDecrease = Color(0x6642A5F5),       // blue at 40%: less basal than the profile
+    basalIncrease = Color(0x66B8620A),       // orange at 40%: more basal than the profile
+    basalDecrease = Color(0x662F66D0),       // blue at 40%: less basal than the profile
     graphGrid = Color(0x80CAC4D0),           // Material outlineVariant at 50%
     // Loop mode colors
-    loopClosed = Color(0xFF00C03E),          // green for closed loop
-    loopOpened = Color(0xFF4983D7),          // blue for open loop
-    loopDisabled = Color(0xFFFF1313),        // red for disabled/paused loop
-    loopDisconnected = Color(0xFF939393),    // gray for disconnected pump
-    loopLgs = Color(0xFF800080),             // purple for LGS mode
-    loopSuperBolus = Color(0xFFFB8C00),      // orange for super bolus
+    loopClosed = Color(0xFF1E8A50),          // green for closed loop
+    loopOpened = Color(0xFF2F66D0),          // blue for open loop
+    loopDisabled = Color(0xFFC8283E),        // red for disabled/paused loop
+    loopDisconnected = Color(0xFF8A909C),    // gray for disconnected pump
+    loopLgs = Color(0xFF7A4FC2),             // purple for LGS mode
+    loopSuperBolus = Color(0xFFB8620A),      // orange for super bolus
     flavorClient1Tint = Color(0x30E8C50C),   // yellow tint (AAPSClient) — alpha ~19%
     flavorClient2Tint = Color(0x300FBBE0),   // blue tint (AAPSClient2)
     flavorClient3Tint = Color(0x304CAF50),   // green tint (AAPSClient3)
@@ -176,54 +180,58 @@ val LightGeneralColors = GeneralColors(
     notificationInfo = Color(0xFF009705),         // green for info notifications
     notificationAnnouncement = Color(0xFFFF8C00), // orange for announcements
     onNotification = Color(0xFFFFFFFF),            // white text on notification backgrounds
-    toggleOn = Color(0xFF4CAF50)                    // green for active/selected toggles
+    toggleOn = Color(0xFF1E8A50)                    // green for active/selected toggles
 )
 
 /**
  * Dark mode color scheme for general elements.
  * Colors match the dark theme values from colors.xml (night folder).
+ *
+ * autoISF build: the colours the user sees most (BG ranges, predictions, warnings, loop) are the "Graphite" palette the
+ * user chose: all of the same lightness and a little muted, so they do not fight each other. The comments after the
+ * values still name the AAPS colour each one replaced.
  */
 val DarkGeneralColors = GeneralColors(
-    activeInsulinText = Color(0xFF1E88E5),  // iob color (same in both modes)
-    calculator = Color(0xFF67E86A),          // colorCalculatorButton (night)
+    activeInsulinText = Color(0xFF79A8FF),  // iob color (same in both modes)
+    calculator = Color(0xFF5FD08E),          // colorCalculatorButton (night)
     futureRecord = Color(0xFF6AE86D),        // green for scheduled/future items (night)
     invalidatedRecord = Color(0xFFEF5350),   // red for invalid/deleted items (night)
-    statusNormal = Color(0xFF81C784),        // lighter green for dark mode
-    statusWarning = Color(0xFFFFFF00),       // matches highColor attr night (yellow)
-    statusCritical = Color(0xFFFF0000),      // matches lowColor attr (pure red)
-    inProgress = Color(0xFFF4D700),          // ribbonWarning - same in both modes
-    onInProgress = Color(0xFF303030),        // ribbonTextWarning - same in both modes
-    ttEatingSoon = Color(0xFFFFB74D),        // lighter orange/carbs for Eating Soon (dark mode)
-    ttActivity = Color(0xFF64B5F6),          // lighter blue/exercise for Activity (dark mode)
-    ttHypoglycemia = Color(0xFFEF5350),      // lighter red/low for Hypoglycemia (dark mode)
-    ttCustom = Color(0xFFBA68C8),            // lighter purple for Custom/Automation/Manual (dark mode)
-    adjusted = Color(0xFF81C784),            // lighter green for APS-adjusted target chip (dark mode)
-    onAdjusted = Color(0xFF000000),          // dark text on adjusted target (dark mode)
+    statusNormal = Color(0xFF5FD08E),        // lighter green for dark mode
+    statusWarning = Color(0xFFE9B949),       // matches highColor attr night (yellow)
+    statusCritical = Color(0xFFF2667A),      // matches lowColor attr (pure red)
+    inProgress = Color(0xFFE9B949),          // ribbonWarning - same in both modes
+    onInProgress = Color(0xFF1A1406),        // ribbonTextWarning - same in both modes
+    ttEatingSoon = Color(0xFFEFA35E),        // lighter orange/carbs for Eating Soon (dark mode)
+    ttActivity = Color(0xFF79A8FF),          // lighter blue/exercise for Activity (dark mode)
+    ttHypoglycemia = Color(0xFFF2667A),      // lighter red/low for Hypoglycemia (dark mode)
+    ttCustom = Color(0xFFB48CF0),            // lighter purple for Custom/Automation/Manual (dark mode)
+    adjusted = Color(0xFF5FD08E),            // lighter green for APS-adjusted target chip (dark mode)
+    onAdjusted = Color(0xFF06140C),          // dark text on adjusted target (dark mode)
     onBadge = Color(0xFFFFFFFF),             // white text on colored badges
-    bgHigh = Color(0xFFFFFF00),              // yellow for high BG (dark mode, matches @color/high in values-night)
-    bgInRange = Color(0xFF00FF00),           // pure green for in-range BG (matches @color/inRange - same in both modes)
-    bgLow = Color(0xFFFF0000),               // pure red for low BG (matches @color/low - same in both modes)
-    bgVeryLow = Color(0xFFB71C1C),           // dark red for very low BG (dark mode, Dexcom TIR 5-range)
-    bgVeryHigh = Color(0xFFFB8C00),          // orange for very high BG (dark mode, differentiates from yellow bgHigh)
-    bgTargetRangeArea = Color(0x4000FF00),   // green with ~25% alpha for target range area (matches @color/inRangeBackground in values-night)
+    bgHigh = Color(0xFFE9B949),              // yellow for high BG (dark mode, matches @color/high in values-night)
+    bgInRange = Color(0xFF5FD08E),           // pure green for in-range BG (matches @color/inRange - same in both modes)
+    bgLow = Color(0xFFF2667A),               // pure red for low BG (matches @color/low - same in both modes)
+    bgVeryLow = Color(0xFFC2445A),           // dark red for very low BG (dark mode, Dexcom TIR 5-range)
+    bgVeryHigh = Color(0xFFEFA35E),          // orange for very high BG (dark mode, differentiates from yellow bgHigh)
+    bgTargetRangeArea = Color(0x245FD08E),   // green with ~25% alpha for target range area (matches @color/inRangeBackground in values-night)
     originalBgValue = Color(0xFFFFFFFF),     // white for regular CGM readings (same in both modes)
-    iobPrediction = Color(0xFF64B5F6),       // lighter blue for IOB predictions (dark mode)
-    cobPrediction = Color(0xFFFFB74D),       // lighter orange for COB predictions (dark mode)
-    aCobPrediction = Color(0x80FFB74D),      // lighter orange for absorbed COB (50% alpha, dark mode)
-    uamPrediction = Color(0xFFE6D39A),       // lighter yellow for UAM predictions (dark mode)
-    ztPrediction = Color(0xFF4DD4D4),        // lighter cyan for zero-temp predictions (dark mode)
-    bgParabola = Color(0xFFFF00FF),          // magenta for the autoISF BG parabola (same in both modes, as in aisf)
+    iobPrediction = Color(0xFF79A8FF),       // lighter blue for IOB predictions (dark mode)
+    cobPrediction = Color(0xFFEFA35E),       // lighter orange for COB predictions (dark mode)
+    aCobPrediction = Color(0x80EFA35E),      // lighter orange for absorbed COB (50% alpha, dark mode)
+    uamPrediction = Color(0xFFD9C77A),       // lighter yellow for UAM predictions (dark mode)
+    ztPrediction = Color(0xFF56C6C6),        // lighter cyan for zero-temp predictions (dark mode)
+    bgParabola = Color(0xFFE07BE0),          // magenta for the autoISF BG parabola (same in both modes, as in aisf)
     learnedPrediction = Color(0xFFB39DDB),   // lighter purple for the personal prediction (dark mode)
-    basalIncrease = Color(0x66FFB74D),       // lighter orange at 40% for dark mode
-    basalDecrease = Color(0x6664B5F6),       // lighter blue at 40% for dark mode
+    basalIncrease = Color(0x66EFA35E),       // lighter orange at 40% for dark mode
+    basalDecrease = Color(0x6679A8FF),       // lighter blue at 40% for dark mode
     graphGrid = Color(0x40938F99),           // Material outline at 25%: outlineVariant at 50% was barely visible on the dark surface
     // Loop mode colors (same in both modes)
-    loopClosed = Color(0xFF00C03E),          // green for closed loop
-    loopOpened = Color(0xFF4983D7),          // blue for open loop
-    loopDisabled = Color(0xFFFF1313),        // red for disabled/paused loop
-    loopDisconnected = Color(0xFF939393),    // gray for disconnected pump
-    loopLgs = Color(0xFF800080),             // purple for LGS mode
-    loopSuperBolus = Color(0xFFFB8C00),      // orange for super bolus
+    loopClosed = Color(0xFF5FD08E),          // green for closed loop
+    loopOpened = Color(0xFF79A8FF),          // blue for open loop
+    loopDisabled = Color(0xFFF2667A),        // red for disabled/paused loop
+    loopDisconnected = Color(0xFF8A90A0),    // gray for disconnected pump
+    loopLgs = Color(0xFFB48CF0),             // purple for LGS mode
+    loopSuperBolus = Color(0xFFEFA35E),      // orange for super bolus
     flavorClient1Tint = Color(0x30E8C50C),   // yellow tint (AAPSClient)
     flavorClient2Tint = Color(0x300FBBE0),   // blue tint (AAPSClient2)
     flavorClient3Tint = Color(0x304CAF50),   // green tint (AAPSClient3)
@@ -238,7 +246,7 @@ val DarkGeneralColors = GeneralColors(
     notificationInfo = Color(0xFF009705),
     notificationAnnouncement = Color(0xFFFF8C00),
     onNotification = Color(0xFFFFFFFF),
-    toggleOn = Color(0xFF81C784)                    // lighter green for active/selected toggles (dark mode)
+    toggleOn = Color(0xFF5FD08E)                    // lighter green for active/selected toggles (dark mode)
 )
 
 /**

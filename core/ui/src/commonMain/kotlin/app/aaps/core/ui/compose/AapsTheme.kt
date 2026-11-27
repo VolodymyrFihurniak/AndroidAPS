@@ -319,10 +319,8 @@ fun AapsTheme(
     val darkModeValue by preferences.observe(StringKey.GeneralDarkMode).collectAsState()
     val uiMode = UiMode.fromString(darkModeValue)
 
-    val lightColors = lightColorScheme()
-    val darkColors = darkColorScheme(
-        secondaryContainer = Color(0xFF635F6A)
-    )
+    val lightColors = GraphiteLight
+    val darkColors = GraphiteDark
 
     val isDark = when (uiMode) {
         UiMode.LIGHT  -> false
@@ -372,3 +370,89 @@ fun AapsTheme(
         }
     }
 }
+
+/**
+ * autoISF build: the "Graphite" palette the user chose for the white theme: a pure white page, cool light grey
+ * surfaces and one blue accent.
+ */
+private val GraphiteLight = lightColorScheme(
+    primary = Color(0xFF2F5FD0),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFDCE6FB),
+    onPrimaryContainer = Color(0xFF0E2A6B),
+    secondary = Color(0xFF4F5B73),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFFE3E8F2),
+    onSecondaryContainer = Color(0xFF1A2233),
+    tertiary = Color(0xFF0E8282),
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFD5F0F0),
+    onTertiaryContainer = Color(0xFF053B3B),
+    error = Color(0xFFC8283E),
+    onError = Color(0xFFFFFFFF),
+    errorContainer = Color(0xFFFCE1E4),
+    onErrorContainer = Color(0xFF5C0A16),
+    background = Color(0xFFFFFFFF),
+    onBackground = Color(0xFF14161A),
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF14161A),
+    surfaceVariant = Color(0xFFE3E6EB),
+    onSurfaceVariant = Color(0xFF5F6675),
+    surfaceTint = Color(0xFF2F5FD0),
+    inverseSurface = Color(0xFF24272D),
+    inverseOnSurface = Color(0xFFECEEF2),
+    inversePrimary = Color(0xFF7FA7FF),
+    outline = Color(0xFF8A909C),
+    outlineVariant = Color(0xFFE3E6EB),
+    scrim = Color(0xFF000000),
+    surfaceBright = Color(0xFFFFFFFF),
+    surfaceDim = Color(0xFFE3E6EB),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFF7F8FA),
+    surfaceContainer = Color(0xFFF4F5F8),
+    surfaceContainerHigh = Color(0xFFF2F4F7),
+    surfaceContainerHighest = Color(0xFFE9ECF0)
+)
+
+/**
+ * autoISF build: the "Graphite" palette for the black theme: a pure black page (dark pixels are off on an OLED screen),
+ * surfaces of a cool near-black and one blue accent.
+ */
+private val GraphiteDark = darkColorScheme(
+    primary = Color(0xFF7FA7FF),
+    onPrimary = Color(0xFF0B1020),
+    primaryContainer = Color(0xFF1A2747),
+    onPrimaryContainer = Color(0xFFD6E2FF),
+    secondary = Color(0xFFA9B4CC),
+    onSecondary = Color(0xFF141A26),
+    secondaryContainer = Color(0xFF262C38),
+    onSecondaryContainer = Color(0xFFDCE2F0),
+    tertiary = Color(0xFF56C6C6),
+    onTertiary = Color(0xFF032020),
+    tertiaryContainer = Color(0xFF123333),
+    onTertiaryContainer = Color(0xFFC6F0F0),
+    error = Color(0xFFF2667A),
+    onError = Color(0xFF2A0008),
+    errorContainer = Color(0xFF4A1520),
+    onErrorContainer = Color(0xFFFFD9DE),
+    background = Color(0xFF000000),
+    onBackground = Color(0xFFECEEF2),
+    surface = Color(0xFF000000),
+    onSurface = Color(0xFFECEEF2),
+    surfaceVariant = Color(0xFF24272D),
+    onSurfaceVariant = Color(0xFF8A90A0),
+    surfaceTint = Color(0xFF7FA7FF),
+    inverseSurface = Color(0xFFECEEF2),
+    inverseOnSurface = Color(0xFF15171B),
+    inversePrimary = Color(0xFF2F5FD0),
+    outline = Color(0xFF5A606C),
+    outlineVariant = Color(0xFF24272D),
+    scrim = Color(0xFF000000),
+    surfaceBright = Color(0xFF24272D),
+    surfaceDim = Color(0xFF000000),
+    surfaceContainerLowest = Color(0xFF000000),
+    surfaceContainerLow = Color(0xFF0C0D10),
+    surfaceContainer = Color(0xFF111317),
+    surfaceContainerHigh = Color(0xFF15171B),
+    surfaceContainerHighest = Color(0xFF1C1F24)
+)

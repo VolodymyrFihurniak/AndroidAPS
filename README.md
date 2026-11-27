@@ -104,6 +104,11 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
   (Fiasp about 91 min, Lyumjev about 120 min), and the loop would then give more insulin.
 
 ### Basal card on the main screen
+* **Colours "Graphite"**, chosen by the user: the black theme has a pure black page (dark pixels are off on an
+  OLED screen) and cool near-black tiles, the white theme a pure white page and light grey tiles, both with one blue
+  accent. The BG ranges, the predictions, the loop, insulin, carbs and basal have colours of the same lightness and a
+  little muted (in range green, high amber, low red), so they no longer fight each other like the neon green and
+  yellow did. Only the Compose screens use them; the old XML screens keep the AAPS colours.
 * On a phone the top of the overview is a grid of tiles. Each tile has an icon, a title and a small
   arrow, and a tap opens what the tile shows:
   - *BG* (wide): the value in the colour of its range, its unit, the trend, the age of the reading and
