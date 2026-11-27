@@ -134,13 +134,19 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
   names. The card stands at the top on the side away from the finger. Under the BG graph a strip
   shows the whole loaded range with the shown part framed; a tap moves the graph there, a drag moves
   it with the finger. The BG graph grows to fill the screen, with at least 200 dp. Under the graphs: the statistics of today (time in the
-  overview's range, CV and the average, each with a bar; tap opens the statistics). Tablets and
-  landscape keep the BG circle with the chips beside it.
+  overview's range, CV and the average, each with a bar; tap opens the statistics).
+* **Landscape and tablets** show the same cards: on the left the cards (a tablet has a large clock
+  above them), on the right the graph card with the statistics of today. The BG graph there fills the
+  height of the screen too. Before, a turned phone showed the old screen with the BG circle and the
+  chips. The status card (sensor, insulin, cannula, battery) starts collapsed in every layout.
+* **Pump button** in the status card, next to the arrow that opens it: one tap opens the screen of
+  the active pump (before it was *Manage → Pump*). It is not shown where the Manage sheet has no
+  pump either (AAPSClient).
 * The bottom menu: *Home*, *Log* (the treatment history), *Statistics*, *History*, *Scenes* and
   *Manage*, and the buttons that need the user (pump setup, BG source, objectives, loop request,
   permissions). It holds at most 6 buttons: when more are needed, History, then Statistics, then
   Log, then Home give way (they are in the side menu too). The treatments themselves are on the
-  *Bolus* card; the tablet layout, which has no such card, keeps a *Treatments* button.
+  *Bolus* card; the tablet layout keeps a *Treatments* button as well.
 * **Who gave it**, in the treatment history: each bolus and each temp basal gets a small line
   *Algorithm* (an SMB or a TBR of the loop), *Automation*, *Client: <device name>*, or *You* with the
   screen it came from (*You · Bolus wizard*, *You · Wear*, ...). It is read from the user entry log,

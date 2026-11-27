@@ -44,8 +44,8 @@ fun MainNavigationBar(
     /** autoISF build: the treatment history needs a profile, as in the side menu */
     treatmentsHistoryEnabled: Boolean = true,
     /**
-     * autoISF build: the button that opens the treatments sheet, only where the overview has no Bolus card (the tablet
-     * layout). Null leaves it out: on a phone the Bolus card opens the sheet.
+     * autoISF build: the button that opens the treatments sheet, only in the tablet layout, which has the room for it.
+     * Null leaves it out: on a phone the Bolus card opens the Insulin dialog.
      */
     onTreatmentClick: (() -> Unit)? = null,
     onAutomationClick: () -> Unit = {},

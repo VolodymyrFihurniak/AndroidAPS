@@ -1,6 +1,5 @@
 package app.aaps.ui.compose.overview
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,7 +16,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -27,24 +25,19 @@ import app.aaps.core.data.model.ActiveSceneState
 import app.aaps.core.data.model.RM
 import app.aaps.core.data.model.TT
 import app.aaps.core.ui.compose.AapsSpacing
-import app.aaps.core.ui.compose.AapsTheme
-import app.aaps.core.ui.compose.LocalConfig
 import app.aaps.core.ui.compose.navigation.NavigationRequest
 import app.aaps.core.ui.compose.preference.PreferenceSubScreenDef
 import app.aaps.ui.compose.main.TempTargetChipState
 import app.aaps.ui.compose.manageSheet.ManageViewModel
-import app.aaps.ui.compose.overview.aapsClient.AapsClientStatusCard
 import app.aaps.ui.compose.overview.chips.ChipsViewModel
 import app.aaps.ui.compose.overview.graphs.GraphViewModel
-import app.aaps.ui.compose.overview.graphs.GraphsSection
 import app.aaps.ui.compose.overview.statusLights.StatusViewModel
 import app.aaps.ui.compose.scenes.ActiveSceneBanner
 
 /**
  * Tablet variant of the overview screen.
  *
- * Differs from [OverviewScreenSplit] (phone landscape) by a larger [LargeClock] that carries the age
- * of the BG reading, so the BG circle leaves its own age line out. Both put the clock above the chips.
+ * Differs from [OverviewScreenSplit] (phone landscape) by a large [LargeClock] above the cards.
  */
 @Composable
 fun OverviewScreenTablet(
@@ -86,17 +79,9 @@ fun OverviewScreenTablet(
     overlaidBarsHeight: Dp = 0.dp,
     modifier: Modifier = Modifier
 ) {
-    val config = LocalConfig.current
     val bgInfoState by graphViewModel.bgInfoState.collectAsStateWithLifecycle()
-    val sensitivityUiState by chipsViewModel.sensitivityUiState.collectAsStateWithLifecycle()
-    val iobUiState by chipsViewModel.iobUiState.collectAsStateWithLifecycle()
-    val cobUiState by chipsViewModel.cobUiState.collectAsStateWithLifecycle()
-    val exerciseModeUiState by chipsViewModel.exerciseModeUiState.collectAsStateWithLifecycle()
-    // autoISF build: the basal card next to IOB and COB
-    val basalUiState by chipsViewModel.basalUiState.collectAsStateWithLifecycle()
-    val statusState by statusViewModel.uiState.collectAsStateWithLifecycle()
 
-    var statusExpanded by rememberSaveable { mutableStateOf(true) }
+    var statusExpanded by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -119,112 +104,65 @@ fun OverviewScreenTablet(
                 .fillMaxSize()
                 .padding(horizontal = AapsSpacing.small)
         ) {
-            // Left column — clock (top row), BG + chips row, status, NS card. Own scroll.
+            // autoISF build: the left column has the same cards as the portrait layout, the right one the graph card
+            // with the statistics of today
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
                     .verticalScroll(rememberScrollState())
-                    .padding(end = AapsSpacing.small),
-                verticalArrangement = Arrangement.spacedBy(AapsSpacing.small)
             ) {
-                Row(
+                // The large clock of a tablet on a desk. No BG age: the BG card under it shows it.
+                LargeClock(
+                    bgTimestamp = bgInfoState.bgInfo?.timestamp,
+                    showBgAge = false,
+                    maxFontSize = 73.sp,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = AapsSpacing.small),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        BgInfoSection(
-                            bgInfo = bgInfoState.bgInfo,
-                            timeAgoText = bgInfoState.timeAgoText,
-                            showTimeAgo = false
-                        )
-                    }
-
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(start = AapsSpacing.medium)
-                    ) {
-                        LargeClock(
-                            bgTimestamp = bgInfoState.bgInfo?.timestamp,
-                            maxFontSize = 73.sp,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        OverviewChipsColumn(
-                            runningMode = runningMode,
-                            runningModeText = runningModeText,
-                            runningModeRemaining = runningModeRemaining,
-                            runningModeProgress = runningModeProgress,
-                            runningModeSceneManaged = runningModeSceneManaged,
-                            smbEnabled = smbEnabled,
-                            profileName = profileName,
-                            isProfileModified = isProfileModified,
-                            profileProgress = profileProgress,
-                            profileSceneManaged = profileSceneManaged,
-                            tempTargetText = tempTargetText,
-                            tempTargetState = tempTargetState,
-                            tempTargetProgress = tempTargetProgress,
-                            tempTargetReason = tempTargetReason,
-                            tempTargetSceneManaged = tempTargetSceneManaged,
-                            basalUiState = basalUiState,
-                            iobUiState = iobUiState,
-                            cobUiState = cobUiState,
-                            sensitivityUiState = sensitivityUiState,
-                            onNavigate = onNavigate,
-                            onIobChipClick = onIobChipClick,
-                            commandsAllowed = commandsAllowed,
-                            exerciseModeUiState = exerciseModeUiState,
-                            onExerciseModeClick = chipsViewModel::toggleExerciseMode
-                        )
-                    }
-                }
-
-                OverviewStatusSection(
-                    sensorStatus = statusState.sensorStatus,
-                    insulinStatus = statusState.insulinStatus,
-                    cannulaStatus = statusState.cannulaStatus,
-                    batteryStatus = statusState.batteryStatus,
-                    showFill = statusState.showFill,
-                    showPumpBatteryChange = statusState.showPumpBatteryChange,
-                    commandsAllowed = commandsAllowed,
-                    onNavigate = onNavigate,
-                    statusLightsDef = statusLightsDef,
-                    expanded = statusExpanded,
-                    onExpandedChange = { statusExpanded = it }
+                        .padding(horizontal = AapsSpacing.large)
                 )
-
-                if (config.AAPSCLIENT) {
-                    val nsClientStatus by graphViewModel.nsClientStatusFlow.collectAsStateWithLifecycle()
-                    val flavorTint = when {
-                        config.AAPSCLIENT3 -> AapsTheme.generalColors.flavorClient3Tint
-                        config.AAPSCLIENT2 -> AapsTheme.generalColors.flavorClient2Tint
-                        else               -> AapsTheme.generalColors.flavorClient1Tint
-                    }
-                    AapsClientStatusCard(
-                        statusData = nsClientStatus,
-                        flavorTint = flavorTint
-                    )
-                }
+                OverviewMainCards(
+                    profileName = profileName,
+                    isProfileModified = isProfileModified,
+                    profileProgress = profileProgress,
+                    profileSceneManaged = profileSceneManaged,
+                    tempTargetText = tempTargetText,
+                    tempTargetState = tempTargetState,
+                    tempTargetProgress = tempTargetProgress,
+                    tempTargetReason = tempTargetReason,
+                    tempTargetSceneManaged = tempTargetSceneManaged,
+                    runningMode = runningMode,
+                    runningModeText = runningModeText,
+                    runningModeRemaining = runningModeRemaining,
+                    runningModeProgress = runningModeProgress,
+                    runningModeSceneManaged = runningModeSceneManaged,
+                    smbEnabled = smbEnabled,
+                    graphViewModel = graphViewModel,
+                    chipsViewModel = chipsViewModel,
+                    manageViewModel = manageViewModel,
+                    statusViewModel = statusViewModel,
+                    statusLightsDef = statusLightsDef,
+                    onNavigate = onNavigate,
+                    onIobChipClick = onIobChipClick,
+                    commandsAllowed = commandsAllowed,
+                    statusExpanded = statusExpanded,
+                    onStatusExpandedChange = { statusExpanded = it }
+                )
                 // The QuickLaunch toolbar is centred over both columns, so this one needs space at its end too,
                 // like the graphs column has
                 Spacer(Modifier.height(AapsSpacing.fabClearance + overlaidBarsHeight))
             }
 
-            // Right column — graphs, own scroll
-            Column(
+            OverviewGraphsColumn(
+                graphViewModel = graphViewModel,
+                chipsViewModel = chipsViewModel,
+                isSimpleMode = isSimpleMode,
+                onNavigate = onNavigate,
+                overlaidBarsHeight = overlaidBarsHeight,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .verticalScroll(rememberScrollState())
-                    .padding(start = AapsSpacing.small)
-            ) {
-                GraphsSection(
-                    graphViewModel = graphViewModel, isSimpleMode = isSimpleMode, iobText = iobUiState.text, cobText = cobUiState.text,
-                    overlaidBarsHeight = overlaidBarsHeight
-                )
-            }
+            )
         }
     }
 }

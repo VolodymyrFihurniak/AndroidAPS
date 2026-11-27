@@ -6,8 +6,11 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import app.aaps.core.data.model.RM
+import app.aaps.core.interfaces.navigation.ElementType
+import app.aaps.core.ui.compose.navigation.NavigationRequest
 import app.aaps.core.ui.compose.preference.PreferenceSubScreenDef
 import app.aaps.ui.compose.main.TempTargetChipState
 import app.aaps.ui.compose.testing.AapsScreenFixture
@@ -19,6 +22,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -42,13 +46,12 @@ private const val WIDE = "w1280dp-h800dp"
  * All three take the same view model set, so they are fed one [OverviewViewModelFixture] and exactly
  * the same data - which is what lets a difference these tests find be attributed to the layout
  * rather than to the fixture. What is pinned is what a user would notice if the three drifted apart:
- *  - the status card starts **collapsed** in the stacked (phone portrait) layout and **expanded** in
- *    the two wide ones. Collapsed shows an "expand" affordance and no heading; expanded shows the
- *    "Status" heading and a "collapse" affordance.
- *  - the two wide layouts carry a [LargeClock] and the stacked one does not.
- *  - the tablet layout hides the BG circle's "time ago" line, because its clock already carries one.
- *    The split layout does the opposite: the circle keeps it and the clock shows only the time.
- *  - with no BG reading, the BG circle shows the "---" placeholder rather than nothing.
+ *  - autoISF build: all three show the same cards (`OverviewMainCards`): the BG card with its "time ago"
+ *    line, and the status card that starts **collapsed**, with the Pump button that opens the pump
+ *    screen. Collapsed shows an "expand" affordance and no heading. Before, a turned phone showed the
+ *    old screen.
+ *  - only the tablet layout carries a [LargeClock], with the time only (the BG card has the age).
+ *  - with no BG reading, the BG card shows the "---" placeholder rather than nothing.
  *
  * Every label is read from the real resources, so a translation edit cannot make the test lie.
  */
@@ -68,6 +71,7 @@ class OverviewScreenVariantsTest {
     private lateinit var statusHeading: String
     private lateinit var expandLabel: String
     private lateinit var collapseLabel: String
+    private lateinit var pumpLabel: String
 
     private val clockText = OverviewViewModelFixture.CLOCK_TIME + OverviewViewModelFixture.CLOCK_AGO
 
@@ -80,6 +84,7 @@ class OverviewScreenVariantsTest {
         statusHeading = context.getString(app.aaps.core.ui.R.string.status)
         expandLabel = context.getString(app.aaps.core.ui.R.string.expand)
         collapseLabel = context.getString(app.aaps.core.ui.R.string.collapse)
+        pumpLabel = context.getString(app.aaps.core.ui.R.string.pump_management)
     }
 
     @After
@@ -89,6 +94,8 @@ class OverviewScreenVariantsTest {
         key = "statuslights",
         titleResId = app.aaps.core.ui.R.string.statuslights
     )
+
+    private val navigated = mutableListOf<NavigationRequest>()
 
     private enum class Variant { STACKED, SPLIT, TABLET }
 
@@ -108,7 +115,7 @@ class OverviewScreenVariantsTest {
                     smbEnabled = false, isSimpleMode = true,
                     graphViewModel = graph, chipsViewModel = chips, manageViewModel = manage,
                     statusViewModel = status, statusLightsDef = statusLightsDef,
-                    onNavigate = {}, onIobChipClick = {},
+                    onNavigate = { navigated += it }, onIobChipClick = {},
                     paddingValues = PaddingValues(0.dp)
                 )
 
@@ -121,7 +128,7 @@ class OverviewScreenVariantsTest {
                     smbEnabled = false, isSimpleMode = true,
                     graphViewModel = graph, chipsViewModel = chips, manageViewModel = manage,
                     statusViewModel = status, statusLightsDef = statusLightsDef,
-                    onNavigate = {}, onIobChipClick = {},
+                    onNavigate = { navigated += it }, onIobChipClick = {},
                     paddingValues = PaddingValues(0.dp)
                 )
 
@@ -134,7 +141,7 @@ class OverviewScreenVariantsTest {
                     smbEnabled = false, isSimpleMode = true,
                     graphViewModel = graph, chipsViewModel = chips, manageViewModel = manage,
                     statusViewModel = status, statusLightsDef = statusLightsDef,
-                    onNavigate = {}, onIobChipClick = {},
+                    onNavigate = { navigated += it }, onIobChipClick = {},
                     paddingValues = PaddingValues(0.dp)
                 )
             }
@@ -173,12 +180,12 @@ class OverviewScreenVariantsTest {
 
     @Test
     @Config(qualifiers = WIDE)
-    fun `tablet layout hides the BG time ago line`() {
+    fun `tablet layout keeps the BG time ago line`() {
         viewModels.withBg()
         setScreen(Variant.TABLET)
 
         compose.onNodeWithText(OverviewViewModelFixture.BG_TEXT).assertIsDisplayed()
-        compose.onNodeWithText(OverviewViewModelFixture.TIME_AGO).assertDoesNotExist()
+        compose.onNodeWithText(OverviewViewModelFixture.TIME_AGO).assertIsDisplayed()
     }
 
     // ---------------------------------------------------------------- clock
@@ -193,53 +200,64 @@ class OverviewScreenVariantsTest {
 
     @Test
     @Config(qualifiers = WIDE)
-    fun `split layout shows the clock without the age of the BG reading`() {
+    fun `split layout has no large clock`() {
         viewModels.withBg()
         setScreen(Variant.SPLIT)
 
-        // The BG circle beside it already shows the age, see `split layout keeps the BG time ago line`.
-        compose.onNodeWithText(OverviewViewModelFixture.CLOCK_TIME).assertIsDisplayed()
+        compose.onNodeWithText(OverviewViewModelFixture.CLOCK_TIME).assertDoesNotExist()
         compose.onNodeWithText(clockText).assertDoesNotExist()
     }
 
     @Test
     @Config(qualifiers = WIDE)
-    fun `tablet layout shows the clock with the age of the BG reading`() {
+    fun `tablet layout shows the clock without the age of the BG reading`() {
         viewModels.withBg()
         setScreen(Variant.TABLET)
 
-        compose.onNodeWithText(clockText).assertIsDisplayed()
+        // The BG card under it already shows the age, see `tablet layout keeps the BG time ago line`.
+        compose.onNodeWithText(OverviewViewModelFixture.CLOCK_TIME).assertIsDisplayed()
+        compose.onNodeWithText(clockText).assertDoesNotExist()
     }
 
     // ---------------------------------------------------------------- status card
 
     @Test
-    fun `stacked layout starts with the status card collapsed`() {
-        setScreen(Variant.STACKED)
+    fun `stacked layout starts with the status card collapsed`() = assertStatusCollapsed(Variant.STACKED)
+
+    @Test
+    @Config(qualifiers = WIDE)
+    fun `split layout starts with the status card collapsed`() = assertStatusCollapsed(Variant.SPLIT)
+
+    @Test
+    @Config(qualifiers = WIDE)
+    fun `tablet layout starts with the status card collapsed`() = assertStatusCollapsed(Variant.TABLET)
+
+    private fun assertStatusCollapsed(variant: Variant) {
+        setScreen(variant)
 
         compose.onNodeWithContentDescription(expandLabel).assertIsDisplayed()
         compose.onNodeWithText(statusHeading).assertDoesNotExist()
         compose.onNodeWithContentDescription(collapseLabel).assertDoesNotExist()
     }
 
-    @Test
-    @Config(qualifiers = WIDE)
-    fun `split layout starts with the status card expanded`() {
-        setScreen(Variant.SPLIT)
+    // ---------------------------------------------------------------- pump button
 
-        compose.onNodeWithText(statusHeading).assertIsDisplayed()
-        compose.onNodeWithContentDescription(collapseLabel).assertIsDisplayed()
-        compose.onNodeWithContentDescription(expandLabel).assertDoesNotExist()
-    }
+    @Test
+    fun `stacked layout pump button opens the pump screen`() = assertPumpButton(Variant.STACKED)
 
     @Test
     @Config(qualifiers = WIDE)
-    fun `tablet layout starts with the status card expanded`() {
-        setScreen(Variant.TABLET)
+    fun `split layout pump button opens the pump screen`() = assertPumpButton(Variant.SPLIT)
 
-        compose.onNodeWithText(statusHeading).assertIsDisplayed()
-        compose.onNodeWithContentDescription(collapseLabel).assertIsDisplayed()
-        compose.onNodeWithContentDescription(expandLabel).assertDoesNotExist()
+    @Test
+    @Config(qualifiers = WIDE)
+    fun `tablet layout pump button opens the pump screen`() = assertPumpButton(Variant.TABLET)
+
+    private fun assertPumpButton(variant: Variant) {
+        setScreen(variant)
+
+        compose.onNodeWithText(pumpLabel).assertIsDisplayed().performClick()
+        assertEquals(listOf<NavigationRequest>(NavigationRequest.Element(ElementType.PUMP)), navigated)
     }
 
     companion object {

@@ -436,7 +436,7 @@ fun MainScreen(
                             onManageClick = { manageSheetState.show() },
                             masterOrPairedClient = masterOrPairedClient,
                             treatmentsHistoryEnabled = uiState.isProfileLoaded,
-                            // autoISF build: only the tablet layout has no Bolus card that opens the treatments
+                            // autoISF build: only the tablet layout keeps a button for the treatments sheet
                             onTreatmentClick = if (isLandscape() && smallestScreenWidthDp() >= TABLET_MIN_SW_DP) ({
                                 treatmentViewModel.refreshState()
                                 showTreatmentSheet = true

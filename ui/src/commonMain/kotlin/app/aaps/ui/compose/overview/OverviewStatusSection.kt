@@ -5,6 +5,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
@@ -36,6 +38,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
@@ -46,9 +51,12 @@ import androidx.compose.ui.unit.dp
 import app.aaps.core.interfaces.navigation.ElementType
 import app.aaps.core.ui.CoreUiStrings
 import app.aaps.core.ui.compose.AapsCard
+import app.aaps.core.ui.compose.AapsSpacing
 import app.aaps.core.ui.compose.LocalClientRole
 import app.aaps.core.ui.compose.StatusLevel
 import app.aaps.core.ui.compose.navigation.NavigationRequest
+import app.aaps.core.ui.compose.navigation.color
+import app.aaps.core.ui.compose.navigation.icon
 import app.aaps.core.ui.compose.preference.PreferenceSheetContent
 import app.aaps.core.ui.compose.preference.PreferenceSubScreenDef
 import app.aaps.core.ui.compose.statusLevelToColor
@@ -78,6 +86,12 @@ fun OverviewStatusSection(
     statusLightsDef: PreferenceSubScreenDef,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
+    /**
+     * autoISF build: the button that opens the screen of the active pump, at the end of the title line. Null hides it
+     * (AAPSClient, or no pump screen). The icon is the one of the pump plugin.
+     */
+    onPumpClick: (() -> Unit)? = null,
+    pumpIcon: ImageVector? = null,
     modifier: Modifier = Modifier
 ) {
     val items = listOfNotNull(cannulaStatus, insulinStatus, sensorStatus, batteryStatus)
@@ -110,6 +124,7 @@ fun OverviewStatusSection(
                             .weight(1f)
                             .clickable { onExpandedChange(false) }
                     )
+                    if (onPumpClick != null) PumpButton(icon = pumpIcon, onClick = onPumpClick)
                     IconButton(
                         onClick = { showSettingsSheet = true },
                         modifier = Modifier.size(32.dp)
@@ -136,6 +151,7 @@ fun OverviewStatusSection(
                             .weight(1f)
                             .clickable { onExpandedChange(true) }
                     )
+                    if (onPumpClick != null) PumpButton(icon = pumpIcon, onClick = onPumpClick)
                     Icon(
                         imageVector = Icons.Filled.ExpandMore,
                         contentDescription = stringResource(CoreUiStrings.expand),
@@ -218,6 +234,35 @@ internal fun StatusLightsSettingsContent(settingsDef: PreferenceSubScreenDef) {
         // Multiple group subscreens → one expandable card each (collapsed by default), matching the
         // main Settings screen's look. Shared renderer; groups are the SSOT in BuiltInSearchables.
         PreferenceSheetContent(settingsDef = settingsDef)
+    }
+}
+
+/** autoISF build: a small button with the pump icon and "Pump", see [OverviewStatusSection]. */
+@Composable
+private fun PumpButton(icon: ImageVector?, onClick: () -> Unit) {
+    val color = ElementType.PUMP.color()
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .padding(horizontal = AapsSpacing.small)
+            .clip(RoundedCornerShape(AapsSpacing.chipCornerRadius))
+            .background(color.copy(alpha = 0.15f))
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = AapsSpacing.medium, vertical = AapsSpacing.small)
+    ) {
+        Icon(
+            imageVector = icon ?: ElementType.PUMP.icon(),
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(AapsSpacing.trendArrowSize)
+        )
+        Spacer(Modifier.width(AapsSpacing.small))
+        Text(
+            text = stringResource(CoreUiStrings.pump_management),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1
+        )
     }
 }
 
