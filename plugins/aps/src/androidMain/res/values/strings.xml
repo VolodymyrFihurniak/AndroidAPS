@@ -8,7 +8,7 @@
     <string name="learned_prediction">Personal prediction</string>
     <string name="learned_prediction_description">Experimental. Learns from your history and predicts BG for the next 2 hours. Does not change insulin delivery.</string>
     <string name="learned_window_days">Days of history to learn from</string>
-    <string name="learned_state_no_model">No model yet. It learns when there is enough history (about 2 weeks or more).</string>
+    <string name="learned_state_no_model">No model yet. It learns when there is enough history (about 4 weeks or more).</string>
     <string name="learned_state_training">Learning…</string>
     <string name="learned_state_ready" comment="Linear is the name of the model that gives the dose">Linear model: better than AutoISF in the live check</string>
     <string name="learned_state_not_ready" comment="Linear is the name of the model that gives the dose">Linear model: not better than AutoISF in the live check, so it gives no dose</string>
@@ -28,6 +28,9 @@
     <string name="learned_row_expected" comment="Row of a table: the error of the GRU model. GRU is a name, do not translate">GRU</string>
     <string name="learned_row_no_insulin" comment="Row of a table: the error of the linear model">Linear</string>
     <string name="learned_all_moments" comment="%1$d=percent. Example: All moments of the test days. AutoISF only on its 3 % of them, too few to compare.">All moments of the test days. AutoISF only on its %1$d %% of them, too few to compare.</string>
+    <string name="learned_row_cgm_only" comment="Row of a table: the error of a simple yardstick that reads only BG, no insulin and no carbs">BG only</string>
+    <string name="learned_versus_autoisf" comment="%1$s=list of curves, each with its 60-minute error minus that of AutoISF and the 95 % range over the test days. Example: 60 min error minus AutoISF, 95 % range over the days: GRU -6 mg/dl (-9 mg/dl … -3 mg/dl), Linear +2 mg/dl (-1 mg/dl … +5 mg/dl). A range that holds 0 is not sure.">60 min error minus AutoISF, 95 %% range over the days: %1$s. A range that holds 0 is not sure.</string>
+    <string name="learned_lows_seen" comment="%1$s=BG with units, %2$d=number of lows, %3$s=list of curves, each with the lows it saw coming and in brackets its false warnings. Example: Lows below 70 mg/dl at 30 or 60 min: 25. Seen coming (false warnings): GRU 18 (4), Linear 15 (6), AutoISF 14 (9)">Lows below %1$s at 30 or 60 min: %2$d. Seen coming (false warnings): %3$s</string>
     <string name="learned_row_naive" comment="Row of a table: the error of a guess that BG does not change">BG stays the same</string>
     <string name="learned_learned_title">What it learned</string>
     <string name="learned_part_night">At night (3:00)</string>

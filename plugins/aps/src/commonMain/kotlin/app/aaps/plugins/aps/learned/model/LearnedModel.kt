@@ -9,6 +9,32 @@ import kotlinx.serialization.json.Json
 data class Metrics(val mae30: Double, val mae60: Double, val mae120: Double)
 
 /**
+ * autoISF build, personal prediction: how a curve sees lows on the test days. A low is BG below
+ * [LOW_MGDL] at 30 or 60 minutes after a moment (the points AutoISF is kept at, so every curve is judged the same way).
+ * [lows]: moments followed by a low; [caught]: of those, the ones the curve also put below the mark; [warnings]:
+ * moments where the curve put BG below the mark; [falseWarnings]: of those, the ones without a low.
+ */
+@Serializable
+data class LowCheck(val lows: Int, val caught: Int, val warnings: Int, val falseWarnings: Int) {
+
+    /** The part of the lows the curve saw coming, null without lows */
+    val caughtShare: Double? get() = if (lows > 0) caught.toDouble() / lows else null
+
+    companion object {
+
+        const val LOW_MGDL = 70.0
+    }
+}
+
+/** autoISF build, personal prediction: a difference of errors, mg/dl, with its 95 % range over the test days */
+@Serializable
+data class Range(val mean: Double, val low: Double, val high: Double) {
+
+    /** True when the whole range is below 0: the curve is surely better than the other */
+    val surelyBelowZero: Boolean get() = high < 0.0
+}
+
+/**
  * autoISF build, personal prediction: everything a trained model needs to predict, and how good it was on the test
  * days. Saved as JSON in a preference.
  */
@@ -66,7 +92,19 @@ data class LearnedModel(
      * empty list for a group with too few test moments
      */
     val typicalErrorByChange: List<List<Double>> = emptyList(),
-    val expectedTypicalErrorByChange: List<List<Double>> = emptyList()
+    val expectedTypicalErrorByChange: List<List<Double>> = emptyList(),
+    /**
+     * v6: a yardstick that reads only BG (`CgmOnlyBaseline`), on all test moments and on the moments with a stored
+     * AutoISF run. Never drawn.
+     */
+    val cgmOnly: Metrics? = null,
+    val cgmOnlyOnAutoIsfMoments: Metrics? = null,
+    /** How each curve saw lows, on the moments with a stored AutoISF run; keys in [CURVES] */
+    val lowsOnAutoIsfMoments: Map<String, LowCheck> = emptyMap(),
+    /** How each curve saw lows on all test moments; keys in [CURVES] except AutoISF */
+    val lows: Map<String, LowCheck> = emptyMap(),
+    /** The 60-minute error of each curve minus that of AutoISF on the same moments, with its range by test days */
+    val versusAutoIsf60: Map<String, Range> = emptyMap()
 ) {
 
     fun toJson(): String = json.encodeToString(serializer(), this)
@@ -78,9 +116,19 @@ data class LearnedModel(
          * 3: the expected curve; a model of version 2 has none, so it is learned again.
          * 4: the GRU has one more input per step (a meal going on), so a model of version 3 does not fit.
          * 5: and two more (steps and heart rate).
+         * 6: the networks stop on validation days, not on the test days, and the GRU is measured without starting from
+         *    a model that saw the test days; the ready flags of version 5 could be too kind, so it is learned again.
          */
-        const val VERSION = 5
+        const val VERSION = 6
         const val OUTPUT_SCALE = 50f
+
+        /** The names of the curves in [lows], [lowsOnAutoIsfMoments] and [versusAutoIsf60] */
+        const val EXPECTED = "expected"
+        const val LINEAR = "linear"
+        const val CGM_ONLY = "cgm"
+        const val AUTOISF = "autoisf"
+        const val NAIVE = "naive"
+        val CURVES = listOf(EXPECTED, LINEAR, CGM_ONLY, AUTOISF, NAIVE)
 
         private val json = Json { ignoreUnknownKeys = true }
 

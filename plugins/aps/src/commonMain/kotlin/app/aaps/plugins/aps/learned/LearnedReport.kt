@@ -2,6 +2,7 @@ package app.aaps.plugins.aps.learned
 
 import app.aaps.core.interfaces.sync.SyncLogEntry
 import app.aaps.plugins.aps.learned.model.LearnedModel
+import app.aaps.plugins.aps.learned.model.LowCheck
 import app.aaps.plugins.aps.learned.model.Metrics
 import app.aaps.plugins.aps.learned.train.Trainer
 import kotlin.math.roundToInt
@@ -30,6 +31,13 @@ object LearnedReport {
                 "Test days with an AutoISF run (${(model.autoIsfCoverage * 100).roundToInt()} %): GRU ${metrics(model.expectedOnAutoIsfMoments)}, " +
                     "linear ${metrics(model.modelOnAutoIsfMoments)}, AutoISF ${metrics(model.autoIsf)}, BG stays ${metrics(model.naiveOnAutoIsfMoments)}"
             )
+            appendLine("BG only yardstick, 30/60/120 min: all moments ${metrics(model.cgmOnly)}, with an AutoISF run ${metrics(model.cgmOnlyOnAutoIsfMoments)}")
+            if (model.versusAutoIsf60.isNotEmpty()) appendLine(
+                "60 min error minus AutoISF, 95 % range by days: " +
+                    model.versusAutoIsf60.entries.joinToString(", ") { (curve, range) -> "$curve ${number(range.mean)} (${number(range.low)}..${number(range.high)})" }
+            )
+            appendLine("Lows below ${number(LowCheck.LOW_MGDL)} at 30/60 min, seen/false warnings, all moments: ${lows(model.lows)}")
+            appendLine("  with an AutoISF run: ${lows(model.lowsOnAutoIsfMoments)}")
         }
         if (live == null) appendLine("Live check: not made yet")
         else {
@@ -45,6 +53,9 @@ object LearnedReport {
         appendLine("Log:")
         for (entry in log.take(MAX_LOG_LINES)) appendLine("${time(entry.date)} ${entry.action}" + (entry.text?.let { ": $it" } ?: ""))
     }
+
+    private fun lows(lows: Map<String, LowCheck>): String =
+        if (lows.isEmpty()) "-" else "${lows.values.first().lows} lows; " + lows.entries.joinToString(", ") { (curve, check) -> "$curve ${check.caught}/${check.falseWarnings}" }
 
     private fun metrics(metrics: Metrics?): String =
         metrics?.let { "${number(it.mae30)}/${number(it.mae60)}/${number(it.mae120)}" } ?: "-"

@@ -43,6 +43,12 @@ object Samples {
     /** The last days of the window are kept back to measure the model */
     const val TEST_DAYS = 14
 
+    /**
+     * The days before the test days tell the networks when to stop learning. The test days only measure, so their
+     * error is not made smaller by choosing the epoch on them.
+     */
+    const val VALIDATION_DAYS = 7
+
     /** Fewer samples than this and there is no model */
     const val MIN_SAMPLES = 2000
 

@@ -50,6 +50,19 @@ class TrainerTest {
         assertEquals(ErrorBands.COUNT, model.typicalErrorByChange.size)
         assertEquals(24, model.typicalErrorByChange[ErrorBands.STEADY].size)
         assertTrue(lines.any { it.startsWith("Test days") }, lines.joinToString("\n"))
+        // The yardstick that reads only BG is measured, and a model that knows the insulin and carbs beats it
+        val cgm = assertNotNull(model.cgmOnly)
+        assertTrue(cgm.mae60 < model.naive.mae60, "BG only $cgm, naive ${model.naive}")
+        assertTrue(model.model.mae60 < cgm.mae60, "model ${model.model}, BG only $cgm")
+        assertNotNull(model.cgmOnlyOnAutoIsfMoments)
+        // Ranges by day for each curve against AutoISF, and the lows of every curve
+        assertEquals(setOf(LearnedModel.EXPECTED, LearnedModel.LINEAR, LearnedModel.CGM_ONLY), model.versusAutoIsf60.keys)
+        val range = model.versusAutoIsf60.getValue(LearnedModel.LINEAR)
+        assertTrue(range.low <= range.mean && range.mean <= range.high, "$range")
+        assertEquals(LearnedModel.CURVES.toSet(), model.lowsOnAutoIsfMoments.keys)
+        assertEquals(LearnedModel.CURVES.toSet() - LearnedModel.AUTOISF, model.lows.keys)
+        assertTrue(lines.any { "95 % range by days" in it }, lines.joinToString("\n"))
+        assertTrue(lines.any { "lows below" in it }, lines.joinToString("\n"))
     }
 
     @Test
@@ -146,6 +159,10 @@ class TrainerTest {
         lines.clear()
         assertNotNull(trainer.train(listOf(grid), now = history.end, windowDays = 40, autoIsfRuns = emptyList(), previous = first))
         assertTrue(lines.any { "starts from the last model" in it }, lines.joinToString("\n"))
+        // The last model saw today's test days, so the measured GRU does not start from it, only the final one does
+        assertTrue(lines.any { "measured from a new start" in it }, lines.joinToString("\n"))
+        assertTrue(lines.any { "final training starts from the last model" in it }, lines.joinToString("\n"))
+        assertFalse(lines.any { it == "Expected curve: starts from the last model" }, lines.joinToString("\n"))
         // A model of another size is not continued
         lines.clear()
         val other = Trainer(
@@ -154,6 +171,31 @@ class TrainerTest {
         )
         assertNotNull(other.train(listOf(grid), now = history.end, windowDays = 40, autoIsfRuns = emptyList(), previous = first))
         assertFalse(lines.any { "starts from the last model" in it }, lines.joinToString("\n"))
+    }
+
+    @Test
+    fun `the gru continues from a last model that did not see the validation and test days`() = runTest(timeout = 10.minutes) {
+        val history = SyntheticHistory.generate(days = 40)
+        val grid = HistoryGridBuilder.build(history.input, history.start, history.end, TimeZone.UTC)
+        val first = assertNotNull(trainer.train(grid, now = history.end, windowDays = 40, autoIsfRuns = emptyList()))
+        lines.clear()
+        val old = first.copy(trainedAt = history.end - (Samples.TEST_DAYS + Samples.VALIDATION_DAYS) * 86_400_000L)
+        assertNotNull(trainer.train(listOf(grid), now = history.end, windowDays = 40, autoIsfRuns = emptyList(), previous = old))
+        assertTrue(lines.any { it == "Expected curve: starts from the last model" }, lines.joinToString("\n"))
+        assertFalse(lines.any { "measured from a new start" in it }, lines.joinToString("\n"))
+    }
+
+    @Test
+    fun `learning, validation and test days are apart`() = runTest(timeout = 10.minutes) {
+        val history = SyntheticHistory.generate(days = 40)
+        val grid = HistoryGridBuilder.build(history.input, history.start, history.end, TimeZone.UTC)
+        assertNotNull(trainer.train(grid, now = history.end, windowDays = 40, autoIsfRuns = emptyList()))
+        val split = lines.singleOrNull { it.startsWith("Split:") }
+        assertNotNull(split, lines.joinToString("\n"))
+        // 2 hours at both edges: 24 steps before the validation days and 24 before the test days
+        val edge = Regex("(\\d+) left out at the edges").find(split)?.groupValues?.get(1)?.toInt()
+        assertTrue(edge != null && edge in 1..48, split)
+        assertTrue(lines.any { it.startsWith("Network: best epoch") && "validation error" in it }, lines.joinToString("\n"))
     }
 
     @Test
@@ -207,9 +249,9 @@ class TrainerTest {
             model = Metrics(10.0, 20.0, 30.0), autoIsf = null, naive = Metrics(11.0, 22.0, 33.0), autoIsfCoverage = 0.0,
             typicalErrorMgdl = List(24) { 0.0 }, ready = false, clampHits = 0
         )
-        // 3 and 4: the GRU had fewer inputs per step
-        assertEquals(5, LearnedModel.VERSION)
-        for (old in 2..4) assertNull(LearnedModel.fromJson(model.toJson().replace("\"version\":5", "\"version\":$old")))
+        // 3 and 4: the GRU had fewer inputs per step; 5: measured on the days it stopped on
+        assertEquals(6, LearnedModel.VERSION)
+        for (old in 2..5) assertNull(LearnedModel.fromJson(model.toJson().replace("\"version\":6", "\"version\":$old")))
     }
 
     /** A clock on which everything takes 10 minutes */

@@ -8,7 +8,7 @@
     <string name="learned_prediction">Персональний прогноз</string>
     <string name="learned_prediction_description">Експериментально. Вчиться на вашій історії й прогнозує глюкозу на 2 години вперед. Не змінює подачу інсуліну.</string>
     <string name="learned_window_days">Скільки днів історії брати для навчання</string>
-    <string name="learned_state_no_model">Моделі ще немає. Вона навчиться, коли буде достатньо історії (близько 2 тижнів або більше).</string>
+    <string name="learned_state_no_model">Моделі ще немає. Вона навчиться, коли буде достатньо історії (близько 4 тижнів або більше).</string>
     <string name="learned_state_training">Навчається…</string>
     <string name="learned_state_ready">Лінійна модель: краща за AutoISF у живій перевірці</string>
     <string name="learned_state_not_ready">Лінійна модель: не краща за AutoISF у живій перевірці, тому дозу не радить</string>
@@ -28,6 +28,9 @@
     <string name="learned_row_expected">GRU</string>
     <string name="learned_row_no_insulin">Лінійна</string>
     <string name="learned_all_moments">Усі моменти тестових днів. AutoISF лише на своїх %1$d %%, цього замало для порівняння.</string>
+    <string name="learned_row_cgm_only">Лише глюкоза</string>
+    <string name="learned_versus_autoisf">Похибка на 60 хв мінус AutoISF, 95 %% діапазон по днях: %1$s. Діапазон, що містить 0, не є певним.</string>
+    <string name="learned_lows_seen">Гіпо нижче %1$s на 30 або 60 хв: %2$d. Передбачено (хибні тривоги): %3$s</string>
     <string name="learned_row_naive">Глюкоза не зміниться</string>
     <string name="learned_learned_title">Що модель вивчила</string>
     <string name="learned_part_night">Вночі (3:00)</string>
