@@ -458,4 +458,38 @@
     <string name="MaintenanceCleanupDays_title">Days to keep at database cleanup</string>
     <string name="MaintenanceCleanupDays_summary">With a 1 minute CGM (Libre) a shorter time, like 15 days, makes the app faster.\nAAPS default: 93 days</string>
 
+    <!-- autoISF build: keto protection, B30, auto CR (from iAPS) -->
+    <string name="pref_title_keto_protect">Keto protection</string>
+    <string name="pref_summary_keto_protect">When the loop asks for a zero temp, give a small safety basal instead. A zero temp for many hours can lead to ketoacidosis. Not when BG is below the target.</string>
+    <string name="pref_title_keto_protect_variable">Only with negative IOB</string>
+    <string name="pref_summary_keto_protect_variable">Give the safety basal only when IOB is below minus one hour of basal. Off: always instead of a zero temp.</string>
+    <string name="pref_title_keto_protect_percent">Safety basal in % of profile basal</string>
+    <string name="pref_title_keto_protect_absolute">Safety basal as fixed rate</string>
+    <string name="pref_summary_keto_protect_absolute">0 = use the percent. Above 0 this rate is used (at most 2 U/h).</string>
+    <string name="pref_title_b30">B30 (basal boost after a meal bolus)</string>
+    <string name="pref_summary_b30">After a manual bolus with a low temp target, run a higher temp basal for some minutes. B30 never gives less than the loop wants and does not run when the loop holds back insulin.</string>
+    <string name="pref_title_b30_min_bolus">B30: smallest bolus that starts it</string>
+    <string name="pref_title_b30_target_level">B30: temp target must be below</string>
+    <string name="pref_title_b30_upper_limit">B30: no SMB while BG is below</string>
+    <string name="pref_title_b30_upper_delta">B30: no SMB while delta (mg/dL) is not above</string>
+    <string name="pref_title_b30_factor">B30: basal factor</string>
+    <string name="pref_title_b30_duration">B30: duration</string>
+    <string name="pref_title_auto_cr">Auto CR</string>
+    <string name="pref_summary_auto_cr">Change the carb ratio of the loop by the same factor as AutoISF changes the ISF. The bolus wizard keeps the profile CR.</string>
+    <string name="pref_title_fpu_enabled">Fat and protein as extended carbs</string>
+    <string name="pref_summary_fpu_enabled">In the carbs dialog, fat and protein of a meal are added as extended carbs later (Warsaw method).</string>
+    <string name="pref_title_fpu_factor">Fat and protein factor</string>
+    <string name="pref_summary_fpu_factor">1 FPU = 100 kcal from fat and protein = 10 g carbs × this factor. 0.5 is a careful start.</string>
+    <string name="pref_title_fpu_delay">Start extended carbs after</string>
+    <string name="pref_title_fpu_time_cap">Longest time for extended carbs (h)</string>
+    <string name="pref_summary_fpu_time_cap">The extended carbs are spread over 3 to this many hours, more FPU take longer.</string>
+    <string name="pref_title_food_ai_provider">Carbs from a meal photo</string>
+    <string name="pref_summary_food_ai_provider">The photo is sent to this AI service with your own API key. The answer is only a guess: always check it.</string>
+    <string name="food_ai_off">Off</string>
+    <string name="food_ai_openai">OpenAI</string>
+    <string name="food_ai_anthropic">Anthropic Claude</string>
+    <string name="food_ai_gemini">Google Gemini</string>
+    <string name="pref_title_food_ai_api_key">API key for the photo service</string>
+    <string name="pref_title_food_ai_model">Model name</string>
+    <string name="pref_summary_food_ai_model">Empty = the default model of the service.</string>
 </resources>

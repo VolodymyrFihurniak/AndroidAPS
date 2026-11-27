@@ -359,6 +359,48 @@ enum class IntKey(
         unitType = UnitType.PERCENT,
         sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
     ),
+    // autoISF build: keto protection and B30 (see AutoIsfExtras)
+    ApsAutoIsfKetoProtectPercent(
+        key = "keto_protect_basal_percent",
+        defaultValue = 20,
+        min = 5,
+        max = 50,
+        title = KeysStrings.pref_title_keto_protect_percent,
+        defaultedBySM = true,
+        unitType = UnitType.PERCENT,
+        sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
+    ),
+    ApsAutoIsfB30Duration(
+        key = "b30_duration",
+        defaultValue = 30,
+        min = 10,
+        max = 60,
+        title = KeysStrings.pref_title_b30_duration,
+        defaultedBySM = true,
+        unitType = UnitType.MIN,
+        sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
+    ),
+    // autoISF build: fat and protein as extended carbs (see FatProteinUnits)
+    FoodFpuDelay(
+        key = "fpu_delay",
+        defaultValue = 60,
+        min = 0,
+        max = 180,
+        title = KeysStrings.pref_title_fpu_delay,
+        unitType = UnitType.MIN,
+        dependency = BooleanKey.FoodFpuEnabled,
+        sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
+    ),
+    FoodFpuTimeCap(
+        key = "fpu_time_cap",
+        defaultValue = 8,
+        min = 5,
+        max = 12,
+        title = KeysStrings.pref_title_fpu_time_cap,
+        summary = KeysStrings.pref_summary_fpu_time_cap,
+        dependency = BooleanKey.FoodFpuEnabled,
+        sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
+    ),
     ApsDynIsfAdjustmentFactor(
         key = "DynISFAdjust",
         defaultValue = 100,

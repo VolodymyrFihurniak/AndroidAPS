@@ -380,6 +380,10 @@ class SceneListViewModel(
                 is SceneAction.CarePortalEvent -> {
                     hasCarePortal = true
                 }
+
+                is SceneAction.LoopSettings    -> {
+                    summaries.add(rh.gs(CoreUiStrings.scene_revert_loop_settings))
+                }
             }
         }
 

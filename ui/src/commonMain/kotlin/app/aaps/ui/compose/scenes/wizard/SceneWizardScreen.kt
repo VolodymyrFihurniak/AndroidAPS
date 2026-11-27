@@ -113,6 +113,13 @@ fun SceneWizardScreen(
                         onBack = onBack, onNext = onNext
                     )
 
+                    SceneWizardViewModel.STEP_LOOP_SETTINGS -> LoopSettingsStep(
+                        state = state, onToggle = viewModel::setLoopSettingsEnabled,
+                        onUpdate = viewModel::updateLoopSettingsAction,
+                        isMmol = viewModel.isMmol,
+                        onBack = onBack, onNext = onNext
+                    )
+
                     SceneWizardViewModel.STEP_DURATION -> DurationStep(
                         state = state, onSetDuration = viewModel::setDuration,
                         onBack = onBack, onNext = onNext

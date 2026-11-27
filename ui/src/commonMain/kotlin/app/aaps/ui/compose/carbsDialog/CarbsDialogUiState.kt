@@ -2,6 +2,9 @@ package app.aaps.ui.compose.carbsDialog
 
 import androidx.compose.runtime.Immutable
 import app.aaps.core.data.model.GlucoseUnit
+import app.aaps.core.objects.food.FatProteinUnits
+import app.aaps.core.objects.food.Nutrients
+import app.aaps.ui.food.MealPart
 
 @Immutable
 data class CarbsDialogUiState(
@@ -40,8 +43,23 @@ data class CarbsDialogUiState(
     val activityTtTarget: Double = 0.0,
     val activityTtDuration: Int = 0,
     val maxCarbsDurationHours: Long = 10,
-    val simpleMode: Boolean = true
+    val simpleMode: Boolean = true,
+
+    // autoISF build: meal calculator. When the meal has parts, the carbs follow their sum.
+    val mealParts: List<MealPart> = emptyList(),
+    /** Fat and protein in grams, from the parts or typed. Only used when [fpuEnabled]. */
+    val fatGrams: Double = 0.0,
+    val proteinGrams: Double = 0.0,
+    val fpuEnabled: Boolean = false,
+    /** Fat and protein as extended carbs, null when there are none */
+    val fpu: FatProteinUnits.Result? = null,
+    /** A meal photo can be sent to an AI service (it is set up with a key) */
+    val photoAvailable: Boolean = false,
+    val photoBusy: Boolean = false
 )
+
+val CarbsDialogUiState.mealTotal: Nutrients
+    get() = mealParts.fold(Nutrients.ZERO) { sum, part -> sum + part.nutrients }
 
 val CarbsDialogUiState.eventTimeChanged: Boolean
     get() = eventTime != eventTimeOriginal

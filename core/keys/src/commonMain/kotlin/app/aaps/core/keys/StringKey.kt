@@ -217,6 +217,22 @@ enum class StringKey(
         summary = KeysStrings.ns_wifi_ssids_summary,
         dependency = BooleanKey.NsClientUseWifi
     ),
+    // autoISF build: carbs from a meal photo. The key stays on this phone (no sync).
+    FoodAiProvider(
+        key = "food_ai_provider",
+        defaultValue = "off",
+        title = KeysStrings.pref_title_food_ai_provider,
+        summary = KeysStrings.pref_summary_food_ai_provider,
+        preferenceType = PreferenceType.LIST,
+        entriesRefs = mapOf(
+            "off" to KeysStrings.food_ai_off,
+            "openai" to KeysStrings.food_ai_openai,
+            "anthropic" to KeysStrings.food_ai_anthropic,
+            "gemini" to KeysStrings.food_ai_gemini
+        )
+    ),
+    FoodAiApiKey(key = "food_ai_api_key", defaultValue = "", title = KeysStrings.pref_title_food_ai_api_key, isPassword = true),
+    FoodAiModel(key = "food_ai_model", defaultValue = "", title = KeysStrings.pref_title_food_ai_model, summary = KeysStrings.pref_summary_food_ai_model),
     NsClientAccessToken(
         key = "nsclient_token",
         defaultValue = "",

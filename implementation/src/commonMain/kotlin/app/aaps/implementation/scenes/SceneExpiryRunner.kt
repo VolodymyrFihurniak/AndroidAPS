@@ -1,10 +1,13 @@
 package app.aaps.implementation.scenes
 
+import app.aaps.core.data.model.SceneAction
 import app.aaps.core.data.model.SceneEndAction
 import app.aaps.core.interfaces.InterfacesStrings
 import app.aaps.core.interfaces.aps.Loop
 import app.aaps.core.interfaces.configuration.Config
 import app.aaps.core.interfaces.configuration.awaitInitialized
+import app.aaps.core.interfaces.db.PersistenceLayer
+import app.aaps.core.interfaces.iob.GlucoseStatusProvider
 import app.aaps.core.interfaces.logging.AAPSLogger
 import app.aaps.core.interfaces.logging.LTag
 import app.aaps.core.interfaces.notifications.NotificationId
@@ -49,7 +52,9 @@ class SceneExpiryRunner(
     private val rh: TextResolver,
     private val notificationManager: NotificationManager,
     private val config: Config,
-    private val dateUtil: DateUtil
+    private val dateUtil: DateUtil,
+    private val persistenceLayer: PersistenceLayer,
+    private val glucoseStatusProvider: GlucoseStatusProvider
 ) : SceneExpiryCheck {
 
     private val mutex = Mutex()
@@ -66,7 +71,18 @@ class SceneExpiryRunner(
         if (!config.appInitialized) return
         mutex.withLock {
             val state = activeSceneManager.getActiveState() ?: return@withLock
-            if (state.durationMs <= 0 || activeSceneManager.isExpired()) return@withLock
+            if (activeSceneManager.isExpired()) return@withLock
+            // autoISF build: the loop settings of a scene can end it early, on carbs or on a BG limit
+            state.scene.actions.filterIsInstance<SceneAction.LoopSettings>().firstOrNull { it.hasEndCondition }?.let { settings ->
+                val bg = glucoseStatusProvider.glucoseStatusData?.glucose
+                val carbs = if (settings.endOnCarbs) persistenceLayer.getCarbsFromTime(state.activatedAt + 1, true).sumOf { it.amount } else 0.0
+                if (settings.shouldEnd(bg, carbs)) {
+                    aapsLogger.info(LTag.UI, "Scene '${state.scene.name}' ends early: BG $bg, carbs $carbs since start")
+                    end(state.scene.name)
+                    return@withLock
+                }
+            }
+            if (state.durationMs <= 0) return@withLock
             if (dateUtil.now() < state.activatedAt + state.durationMs) return@withLock
             aapsLogger.warn(LTag.UI, "Scene '${state.scene.name}' is past its end and its scheduled end has not run, ending it now")
             end(state.scene.name)

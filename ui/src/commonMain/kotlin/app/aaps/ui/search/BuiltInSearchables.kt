@@ -235,7 +235,15 @@ class BuiltInSearchables(
             IntKey.OverviewCarbsButtonIncrement1,
             IntKey.OverviewCarbsButtonIncrement2,
             IntKey.OverviewCarbsButtonIncrement3,
-            BooleanKey.OverviewUseBolusReminder
+            BooleanKey.OverviewUseBolusReminder,
+            // autoISF build: meal calculator settings
+            BooleanKey.FoodFpuEnabled,
+            DoubleKey.FoodFpuFactor,
+            IntKey.FoodFpuDelay,
+            IntKey.FoodFpuTimeCap,
+            StringKey.FoodAiProvider,
+            StringKey.FoodAiApiKey,
+            StringKey.FoodAiModel
         ),
         icon = IcCarbs
     )

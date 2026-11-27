@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
+import app.aaps.core.data.model.GlucoseUnit
 import app.aaps.core.data.model.RM
 import app.aaps.core.data.model.Scene
 import app.aaps.core.data.model.SceneAction
@@ -65,9 +66,12 @@ class SceneWizardViewModel(
         const val STEP_SMB = 4
         const val STEP_LOOP_MODE = 5
         const val STEP_CAREPORTAL = 6
-        const val STEP_DURATION = 7
-        const val STEP_CHAIN = 8
-        const val STEP_NAME_ICON = 9
+
+        // autoISF build: loop settings of the scene (like the overrides of iAPS)
+        const val STEP_LOOP_SETTINGS = 7
+        const val STEP_DURATION = 8
+        const val STEP_CHAIN = 9
+        const val STEP_NAME_ICON = 10
     }
 
     /** What the step dots show: [step] of [total], 0-based, counted from the first step that has dots. */
@@ -94,12 +98,14 @@ class SceneWizardViewModel(
         val smbEnabled: Boolean = false,
         val runningModeEnabled: Boolean = false,
         val carePortalEnabled: Boolean = false,
+        val loopSettingsEnabled: Boolean = false,
         // Action configs
         val profileAction: SceneAction.ProfileSwitch = SceneAction.ProfileSwitch(profileName = "", percentage = 100),
         val ttAction: SceneAction.TempTarget? = null,
         val smbAction: SceneAction.SmbToggle = SceneAction.SmbToggle(enabled = false),
         val runningModeAction: SceneAction.LoopModeChange = SceneAction.LoopModeChange(mode = RM.Mode.CLOSED_LOOP_LGS),
         val carePortalAction: SceneAction.CarePortalEvent = SceneAction.CarePortalEvent(type = TE.Type.EXERCISE),
+        val loopSettingsAction: SceneAction.LoopSettings = SceneAction.LoopSettings(),
         // Metadata
         val durationMinutes: Int = 60,
         val chainTargetId: String? = null,
@@ -126,6 +132,7 @@ class SceneWizardViewModel(
         val smbAction = scene.actions.filterIsInstance<SceneAction.SmbToggle>().firstOrNull()
         val loopModeAction = scene.actions.filterIsInstance<SceneAction.LoopModeChange>().firstOrNull()
         val carePortalAction = scene.actions.filterIsInstance<SceneAction.CarePortalEvent>().firstOrNull()
+        val loopSettingsAction = scene.actions.filterIsInstance<SceneAction.LoopSettings>().firstOrNull()
 
         _state.value = WizardState(
             currentStep = STEP_PROFILE,
@@ -134,11 +141,13 @@ class SceneWizardViewModel(
             smbEnabled = smbAction != null,
             runningModeEnabled = loopModeAction != null,
             carePortalEnabled = carePortalAction != null,
+            loopSettingsEnabled = loopSettingsAction != null,
             profileAction = profileAction ?: SceneAction.ProfileSwitch(profileName = "", percentage = 100),
             ttAction = ttAction,
             smbAction = smbAction ?: SceneAction.SmbToggle(enabled = false),
             runningModeAction = loopModeAction ?: SceneAction.LoopModeChange(mode = RM.Mode.CLOSED_LOOP_LGS),
             carePortalAction = carePortalAction ?: SceneAction.CarePortalEvent(type = TE.Type.EXERCISE),
+            loopSettingsAction = loopSettingsAction ?: SceneAction.LoopSettings(),
             durationMinutes = scene.defaultDurationMinutes,
             chainTargetId = (scene.endAction as? SceneEndAction.ChainScene)?.sceneId
                 ?.takeIf { id -> sceneRepository.getScene(id) != null },
@@ -161,6 +170,9 @@ class SceneWizardViewModel(
 
     val ttPresets: List<TTPreset>
         get() = preferences.get(StringNonKey.TempTargetPresets).toTTPresets()
+
+    val isMmol: Boolean
+        get() = profileUtil.units == GlucoseUnit.MMOL
 
     fun formatBgWithUnits(mgdl: Double): String =
         profileUtil.fromMgdlToStringWithUnits(mgdl)
@@ -262,6 +274,14 @@ class SceneWizardViewModel(
         if (action is SceneAction.LoopModeChange) _state.update { it.copy(runningModeAction = action) }
     }
 
+    fun setLoopSettingsEnabled(enabled: Boolean) {
+        _state.update { it.copy(loopSettingsEnabled = enabled) }
+    }
+
+    fun updateLoopSettingsAction(action: SceneAction) {
+        if (action is SceneAction.LoopSettings) _state.update { it.copy(loopSettingsAction = action) }
+    }
+
     fun updateCarePortalAction(action: SceneAction) {
         if (action is SceneAction.CarePortalEvent) _state.update { it.copy(carePortalAction = action) }
     }
@@ -299,6 +319,7 @@ class SceneWizardViewModel(
             if (s.smbEnabled) add(s.smbAction)
             if (s.runningModeEnabled) add(s.runningModeAction)
             if (s.carePortalEnabled) add(s.carePortalAction)
+            if (s.loopSettingsEnabled) add(s.loopSettingsAction)
         }
 
         val endAction = s.chainTargetId?.let { SceneEndAction.ChainScene(it) }

@@ -174,17 +174,17 @@ internal class SceneWizardViewModelTest {
     fun `a new scene from a template counts nine steps with the info step first`() {
         sut.selectTemplate(SceneTemplate.EXERCISE)
 
-        assertThat(sut.progressOn(SceneWizardViewModel.STEP_INFO)).isEqualTo(SceneWizardViewModel.Progress(step = 0, total = 9))
-        assertThat(sut.progressOn(SceneWizardViewModel.STEP_PROFILE)).isEqualTo(SceneWizardViewModel.Progress(step = 1, total = 9))
-        assertThat(sut.progressOn(SceneWizardViewModel.STEP_NAME_ICON)).isEqualTo(SceneWizardViewModel.Progress(step = 8, total = 9))
+        assertThat(sut.progressOn(SceneWizardViewModel.STEP_INFO)).isEqualTo(SceneWizardViewModel.Progress(step = 0, total = 10))
+        assertThat(sut.progressOn(SceneWizardViewModel.STEP_PROFILE)).isEqualTo(SceneWizardViewModel.Progress(step = 1, total = 10))
+        assertThat(sut.progressOn(SceneWizardViewModel.STEP_NAME_ICON)).isEqualTo(SceneWizardViewModel.Progress(step = 9, total = 10))
     }
 
     @Test
     fun `a blank scene has no info step and counts eight`() {
         sut.selectTemplate(SceneTemplate.BLANK)
 
-        assertThat(sut.progressOn(SceneWizardViewModel.STEP_PROFILE)).isEqualTo(SceneWizardViewModel.Progress(step = 0, total = 8))
-        assertThat(sut.progressOn(SceneWizardViewModel.STEP_NAME_ICON)).isEqualTo(SceneWizardViewModel.Progress(step = 7, total = 8))
+        assertThat(sut.progressOn(SceneWizardViewModel.STEP_PROFILE)).isEqualTo(SceneWizardViewModel.Progress(step = 0, total = 9))
+        assertThat(sut.progressOn(SceneWizardViewModel.STEP_NAME_ICON)).isEqualTo(SceneWizardViewModel.Progress(step = 8, total = 9))
     }
 
     @Test
@@ -195,7 +195,7 @@ internal class SceneWizardViewModelTest {
             preferences, translator, dateUtil, generatedTextResolver()
         )
 
-        assertThat(edit.progress(edit.state.value)).isEqualTo(SceneWizardViewModel.Progress(step = 0, total = 8))
-        assertThat(edit.progressOn(SceneWizardViewModel.STEP_NAME_ICON)).isEqualTo(SceneWizardViewModel.Progress(step = 7, total = 8))
+        assertThat(edit.progress(edit.state.value)).isEqualTo(SceneWizardViewModel.Progress(step = 0, total = 9))
+        assertThat(edit.progressOn(SceneWizardViewModel.STEP_NAME_ICON)).isEqualTo(SceneWizardViewModel.Progress(step = 8, total = 9))
     }
 }

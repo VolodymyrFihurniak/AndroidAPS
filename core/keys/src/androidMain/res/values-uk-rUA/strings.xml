@@ -406,4 +406,38 @@
     <string name="fsl_exp1_factor_summary">Експоненційне згладжування хвилинних значень Libre, коли xDrip+ їх не згладжує.\n0.1: сильне згладжування\n1.0: без згладжування</string>
     <string name="MaintenanceCleanupDays_title">Скільки днів зберігати під час очищення бази даних</string>
     <string name="MaintenanceCleanupDays_summary">З хвилинним CGM (Libre) коротший час, наприклад 15 днів, робить застосунок швидшим.\nТипово в AAPS: 93 дні</string>
+    <!-- autoISF build: keto protection, B30, auto CR (from iAPS) -->
+    <string name="pref_title_keto_protect">Кето-захист</string>
+    <string name="pref_summary_keto_protect">Коли цикл просить нульовий базал, давати малий захисний базал. Нульовий базал багато годин може призвести до кетоацидозу. Не діє, коли BG нижче цілі.</string>
+    <string name="pref_title_keto_protect_variable">Лише при від\'ємному IOB</string>
+    <string name="pref_summary_keto_protect_variable">Давати захисний базал лише коли IOB нижче за мінус годину базалу. Вимкнено: завжди замість нульового базалу.</string>
+    <string name="pref_title_keto_protect_percent">Захисний базал у % від базалу профілю</string>
+    <string name="pref_title_keto_protect_absolute">Захисний базал фіксованою швидкістю</string>
+    <string name="pref_summary_keto_protect_absolute">0 = брати відсоток. Більше 0: ця швидкість (не більше 2 Од/год).</string>
+    <string name="pref_title_b30">B30 (підсилення базалу після болюсу на їжу)</string>
+    <string name="pref_summary_b30">Після ручного болюсу з низькою тимчасовою ціллю кілька хвилин давати вищий базал. B30 ніколи не дає менше, ніж хоче цикл, і не діє, коли цикл стримує інсулін.</string>
+    <string name="pref_title_b30_min_bolus">B30: найменший болюс, що його запускає</string>
+    <string name="pref_title_b30_target_level">B30: тимчасова ціль має бути нижче</string>
+    <string name="pref_title_b30_upper_limit">B30: без SMB, поки BG нижче</string>
+    <string name="pref_title_b30_upper_delta">B30: без SMB, поки дельта (mg/dL) не більша</string>
+    <string name="pref_title_b30_factor">B30: множник базалу</string>
+    <string name="pref_title_b30_duration">B30: тривалість</string>
+    <string name="pref_title_auto_cr">Auto CR</string>
+    <string name="pref_summary_auto_cr">Змінювати вуглеводний коефіцієнт циклу на той самий множник, що й AutoISF змінює ISF. Болюсний калькулятор лишає CR профілю.</string>
+    <string name="pref_title_fpu_enabled">Жири й білки як розтягнуті вуглеводи</string>
+    <string name="pref_summary_fpu_enabled">У діалозі вуглеводів жири й білки страви додаються пізніше як розтягнуті вуглеводи (варшавський метод).</string>
+    <string name="pref_title_fpu_factor">Коефіцієнт жирів і білків</string>
+    <string name="pref_summary_fpu_factor">1 FPU = 100 ккал з жирів і білків = 10 г вуглеводів × цей коефіцієнт. 0,5 — обережний початок.</string>
+    <string name="pref_title_fpu_delay">Почати розтягнуті вуглеводи через</string>
+    <string name="pref_title_fpu_time_cap">Найдовший час розтягнутих вуглеводів (год)</string>
+    <string name="pref_summary_fpu_time_cap">Розтягнуті вуглеводи розподіляються на 3 і до стількох годин, більше FPU — довше.</string>
+    <string name="pref_title_food_ai_provider">Вуглеводи з фото страви</string>
+    <string name="pref_summary_food_ai_provider">Фото надсилається цьому AI-сервісу з вашим власним API-ключем. Відповідь — лише оцінка: завжди перевіряйте її.</string>
+    <string name="food_ai_off">Вимкнено</string>
+    <string name="food_ai_openai">OpenAI</string>
+    <string name="food_ai_anthropic">Anthropic Claude</string>
+    <string name="food_ai_gemini">Google Gemini</string>
+    <string name="pref_title_food_ai_api_key">API-ключ сервісу фото</string>
+    <string name="pref_title_food_ai_model">Назва моделі</string>
+    <string name="pref_summary_food_ai_model">Порожньо = стандартна модель сервісу.</string>
 </resources>

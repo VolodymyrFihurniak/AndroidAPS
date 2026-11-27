@@ -43,7 +43,10 @@ enum class UnitDoubleKey(
         summary = KeysStrings.half_basal_exercise_target_summary,
         defaultedBySM = true,
         sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
-    )
+    ),
+    // autoISF build: B30 (see AutoIsfExtras)
+    ApsAutoIsfB30TargetLevel(key = "b30_target_level", defaultValue = 100.0, minMgdl = 80, maxMgdl = 120, title = KeysStrings.pref_title_b30_target_level, defaultedBySM = true, sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)),
+    ApsAutoIsfB30UpperLimit(key = "b30_upper_limit", defaultValue = 130.0, minMgdl = 100, maxMgdl = 200, title = KeysStrings.pref_title_b30_upper_limit, defaultedBySM = true, sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional))
     ;
 
 }

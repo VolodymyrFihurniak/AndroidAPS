@@ -93,6 +93,7 @@ aps_incarnation_no|DiaconnIntNonKey|true
 aps_link_to_docs|ApsIntentKey|false
 autoISF_max|DoubleKey|true
 autoISF_min|DoubleKey|true
+autoisf_auto_cr|BooleanKey|true
 automation_state_service|AutomationStateStringKey|true
 automation_state_values|AutomationStateStringKey|true
 autosens_adjust_targets|BooleanKey|true
@@ -103,6 +104,12 @@ autotune_auto|BooleanKey|true
 autotune_circadian_ic_isf|BooleanKey|true
 autotune_default_tune_days|IntKey|true
 autotune_tune_insulin_curve|BooleanKey|true
+b30_duration|IntKey|true
+b30_factor|DoubleKey|true
+b30_min_bolus|DoubleKey|true
+b30_target_level|UnitDoubleKey|true
+b30_upper_delta|DoubleKey|true
+b30_upper_limit|UnitDoubleKey|true
 bgAccel_ISF_weight|DoubleKey|true
 bgBrake_ISF_weight|DoubleKey|true
 bolus_amount_to_be_delivered|MedtrumDoubleNonKey|true
@@ -208,6 +215,13 @@ export_settings_local_enabled|BooleanNonKey|true
 fill_button1|DoubleKey|true
 fill_button2|DoubleKey|true
 fill_button3|DoubleKey|true
+food_ai_api_key|StringKey|true
+food_ai_model|StringKey|true
+food_ai_provider|StringKey|true
+fpu_delay|IntKey|true
+fpu_enabled|BooleanKey|true
+fpu_factor|DoubleKey|true
+fpu_time_cap|IntKey|true
 fslCal_Offset|DoubleKey|true
 fslCal_Slope|DoubleKey|true
 fsl_cal_start_time|LongNonKey|false
@@ -254,6 +268,10 @@ insulin_concentration_enabled|BooleanKey|true
 insulin_configuration|StringNonKey|true
 iob_threshold_percent|IntKey|true
 keep_screen_on|BooleanKey|true
+keto_protect_basal_absolute|DoubleKey|true
+keto_protect_basal_percent|IntKey|true
+keto_protect_variable|BooleanKey|true
+keto_protect|BooleanKey|true
 key_autotune_last_run|AutotuneStringKey|true
 key_bolus_storage|StringNonKey|false
 key_equil_alarm_battery_10|EquilBooleanKey|true
@@ -525,6 +543,7 @@ ukf_learned_r|UkfDoubleNonKey|true
 ukf_sensor_change_timestamp|UkfLongNonKey|true
 ukf_session_id|UkfIntNonKey|true
 units|StringKey|true
+use_b30|BooleanKey|true
 use_bolus_advisor|BooleanKey|true
 use_bolus_reminder|BooleanKey|true
 use_dark_mode|StringKey|true

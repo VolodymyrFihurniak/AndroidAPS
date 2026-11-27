@@ -3,8 +3,11 @@ package app.aaps.plugins.aps.openAPSAutoISF
 import app.aaps.core.data.aps.SMBDefaults
 import app.aaps.core.data.configuration.Constants
 import app.aaps.core.data.model.AIV
+import app.aaps.core.data.model.BS
 import app.aaps.core.data.model.GlucoseUnit
 import app.aaps.core.data.model.SC
+import app.aaps.core.data.model.SceneAction
+import app.aaps.core.data.model.SceneLifecycle
 import app.aaps.core.data.model.getPassedDurationToTimeInMinutes
 import app.aaps.core.data.plugin.PluginType
 import app.aaps.core.interfaces.InterfacesStrings
@@ -15,6 +18,8 @@ import app.aaps.core.interfaces.aps.CurrentTemp
 import app.aaps.core.interfaces.aps.GlucoseStatus
 import app.aaps.core.interfaces.aps.OapsProfileAutoIsf
 import app.aaps.core.interfaces.aps.PhoneActivitySensor
+import app.aaps.core.interfaces.aps.RT
+import app.aaps.core.interfaces.scenes.ActiveSceneSync
 import app.aaps.core.interfaces.automation.AutomationStateInterface
 import app.aaps.core.interfaces.bgQualityCheck.BgQualityCheck
 import app.aaps.core.interfaces.configuration.Config
@@ -48,6 +53,7 @@ import app.aaps.core.keys.BooleanNonKey
 import app.aaps.core.keys.DoubleKey
 import app.aaps.core.keys.DoubleNonKey
 import app.aaps.core.keys.IntKey
+import app.aaps.core.keys.KeysStrings
 import app.aaps.core.keys.LongNonKey
 import app.aaps.core.keys.UnitDoubleKey
 import app.aaps.core.keys.interfaces.Preferences
@@ -104,7 +110,8 @@ open class OpenAPSAutoISFPlugin(
     private val apsResultProvider: () -> APSResult,
     private val ch: ConcentrationHelper,
     private val phoneActivitySensor: PhoneActivitySensor,
-    private val automationStateService: AutomationStateInterface
+    private val automationStateService: AutomationStateInterface,
+    private val activeSceneSync: ActiveSceneSync
 ) : PluginBaseWithPreferences(
     PluginDescription()
         .mainType(PluginType.APS)
@@ -138,7 +145,7 @@ open class OpenAPSAutoISFPlugin(
     private var consoleError = mutableListOf<String>()
     private var consoleLog = mutableListOf<String>()
     val autoIsfVersion = "3.2.1"
-    val autoIsfWeights; get() = preferences.get(BooleanKey.ApsUseAutoIsfWeights)
+    val autoIsfWeights; get() = preferences.get(BooleanKey.ApsUseAutoIsfWeights) && sceneLoopSettings()?.autoIsfWeightsOff != true
     private val autoISF_max; get() = preferences.get(DoubleKey.ApsAutoIsfMax)
     private val autoISF_min; get() = preferences.get(DoubleKey.ApsAutoIsfMin)
     private val bgAccel_ISF_weight; get() = preferences.get(DoubleKey.ApsAutoIsfBgAccelWeight)
@@ -154,7 +161,20 @@ open class OpenAPSAutoISFPlugin(
         get() = if (preferences.get(DoubleKey.ApsAutoIsfSmbDeliveryRatioBgRange) < 10.0) preferences.get(DoubleKey.ApsAutoIsfSmbDeliveryRatioBgRange) * Constants.MMOLL_TO_MGDL else preferences.get(DoubleKey.ApsAutoIsfSmbDeliveryRatioBgRange)
     val smbMaxRangeExtension; get() = preferences.get(DoubleKey.ApsAutoIsfSmbMaxRangeExtension)
     private val enableSMB_EvenOn_OddOff_always; get() = preferences.get(BooleanKey.ApsAutoIsfSmbOnEvenTarget) // for profile target
-    val iobThresholdPercent; get() = preferences.get(IntKey.ApsAutoIsfIobThPercent)
+    val iobThresholdPercent; get() = sceneLoopSettings()?.iobThPercent?.coerceIn(10, 100) ?: preferences.get(IntKey.ApsAutoIsfIobThPercent)
+
+    /**
+     * autoISF build: the loop settings of the running scene (like the overrides of iAPS), or null.
+     * Read on every use, so they end the moment the scene ends.
+     */
+    internal fun sceneLoopSettings(): SceneAction.LoopSettings? =
+        activeSceneSync.getActiveState()
+            ?.takeIf { it.lifecycle == SceneLifecycle.ACTIVE && !it.isExpired(dateUtil.now()) }
+            ?.scene?.actions?.filterIsInstance<SceneAction.LoopSettings>()?.firstOrNull()
+
+    private fun percentOf(value: Double, percent: Int?): Double =
+        if (percent == null || percent == 100) value
+        else value * percent.coerceIn(SceneAction.LoopSettings.MIN_PERCENT, SceneAction.LoopSettings.MAX_PERCENT) / 100.0
     private val exerciseMode; get() = SMBDefaults.exercise_mode
     private val highTemptargetRaisesSensitivity; get() = preferences.get(BooleanKey.ApsAutoIsfHighTtRaisesSens)
     private val mgdlHalfBasalExerciseTarget: Double
@@ -303,17 +323,31 @@ open class OpenAPSAutoISFPlugin(
         if (autoIsfMode) {
             variableSensitivity = autoISF(profile)
         }
+        // autoISF build: loop settings of the running scene
+        val sceneSettings = sceneLoopSettings()
+        if (sceneSettings != null) {
+            variableSensitivity = percentOf(variableSensitivity, sceneSettings.isfPercent)
+            consoleError.add("Scene loop settings: $sceneSettings")
+        }
+        // autoISF build: auto CR from iAPS, the carb ratio of the loop follows the AutoISF factor (see AutoIsfExtras)
+        val carbRatio =
+            if (autoIsfMode && preferences.get(BooleanKey.ApsAutoIsfAutoCr))
+                AutoIsfExtras.autoCr(profile.getIc(), profile.getProfileIsfMgdl(), variableSensitivity)
+                    .also { if (it != profile.getIc()) consoleError.add("Auto CR: ${profile.getIc()} -> $it") }
+            else profile.getIc()
+        val carbRatioScene = percentOf(carbRatio, sceneSettings?.crPercent)
         val oapsProfile = OapsProfileAutoIsf(
             dia = 0.0, // not used
             min_5m_carbimpact = 0.0, // not used
-            max_iob = constraintsChecker.getMaxIOBAllowed().also { inputConstraints.copyReasons(it) }.value(),
+            max_iob = constraintsChecker.getMaxIOBAllowed().also { inputConstraints.copyReasons(it) }.value()
+                .let { allowed -> sceneSettings?.maxIob?.let { min(it, hardLimits.maxIobSMB()) } ?: allowed },
             max_daily_basal = profile.getMaxDailyBasal(),
             max_basal = constraintsChecker.getMaxBasalAllowed(profile).also { inputConstraints.copyReasons(it) }.value(),
             min_bg = minBg,
             max_bg = maxBg,
             target_bg = targetBg,
-            carb_ratio = profile.getIc(),
-            sens = sens,
+            carb_ratio = carbRatioScene,
+            sens = percentOf(sens, sceneSettings?.isfPercent),
             autosens_adjust_targets = false, // not used
             max_daily_safety_multiplier = preferences.get(DoubleKey.ApsMaxDailyMultiplier),
             current_basal_safety_multiplier = preferences.get(DoubleKey.ApsMaxCurrentBasalMultiplier),
@@ -346,11 +380,11 @@ open class OpenAPSAutoISFPlugin(
             allowSMB_with_high_temptarget = smbEnabled && preferences.get(BooleanKey.ApsUseSmbWithHighTt),
             enableSMB_always = smbEnabled && preferences.get(BooleanKey.ApsUseSmbAlways) && advancedFiltering,
             enableSMB_after_carbs = smbEnabled && preferences.get(BooleanKey.ApsUseSmbAfterCarbs) && advancedFiltering,
-            maxSMBBasalMinutes = preferences.get(IntKey.ApsMaxMinutesOfBasalToLimitSmb),
-            maxUAMSMBBasalMinutes = preferences.get(IntKey.ApsUamMaxMinutesOfBasalToLimitSmb),
+            maxSMBBasalMinutes = sceneSettings?.smbMinutes?.coerceIn(15, 120) ?: preferences.get(IntKey.ApsMaxMinutesOfBasalToLimitSmb),
+            maxUAMSMBBasalMinutes = sceneSettings?.uamMinutes?.coerceIn(15, 120) ?: preferences.get(IntKey.ApsUamMaxMinutesOfBasalToLimitSmb),
             bolus_increment = pump.pumpDescription.bolusStep,
             carbsReqThreshold = preferences.get(IntKey.ApsCarbsRequestThreshold),
-            current_basal = ch.fromPump(activePlugin.activePump.baseBasalRate),
+            current_basal = percentOf(ch.fromPump(activePlugin.activePump.baseBasalRate), sceneSettings?.basalPercent),
             temptargetSet = isTempTarget,
             autosens_max = preferences.get(DoubleKey.AutosensMax),
             out_units = if (profileFunction.getUnits() == GlucoseUnit.MMOL) "mmol/L" else "mg/dl",
@@ -457,6 +491,8 @@ open class OpenAPSAutoISFPlugin(
             auto_isf_consoleError = consoleError,
             auto_isf_consoleLog = consoleLog
         ).also {
+            // autoISF build: B30 and keto protection from iAPS change the result last (see AutoIsfExtras)
+            applyB30AndKetoProtect(it, oapsProfile, currentTemp, iobData.iob, glucoseStatus.glucose, glucoseStatus.delta, if (isTempTarget) targetBg else null, now)
             val determineBasalResult = apsResultProvider().with(it)
             // Preserve input data
             determineBasalResult.inputConstraints = inputConstraints
@@ -963,6 +999,72 @@ open class OpenAPSAutoISFPlugin(
         return finalISF
     }
 
+    /**
+     * autoISF build: B30 and keto protection, ported from iAPS. Both only change [rT] when their settings are on.
+     * B30 goes first: when it runs, the loop gives insulin, so keto protection has nothing to do.
+     */
+    internal suspend fun applyB30AndKetoProtect(
+        rT: RT, profile: OapsProfileAutoIsf, currentTemp: CurrentTemp, iob: Double, bg: Double, delta: Double, tempTargetMgdl: Double?, now: Long
+    ) {
+        val basal = profile.current_basal
+        fun wantedRate(): Double = rT.rate ?: if (currentTemp.duration > 0) currentTemp.rate else basal
+        if (preferences.get(BooleanKey.ApsAutoIsfB30)) {
+            val settings = AutoIsfExtras.B30Settings(
+                enabled = true,
+                minBolus = preferences.get(DoubleKey.ApsAutoIsfB30MinBolus),
+                targetBelowMgdl = profileUtil.convertToMgdlDetect(preferences.get(UnitDoubleKey.ApsAutoIsfB30TargetLevel)),
+                upperBgMgdl = profileUtil.convertToMgdlDetect(preferences.get(UnitDoubleKey.ApsAutoIsfB30UpperLimit)),
+                upperDeltaMgdl = preferences.get(DoubleKey.ApsAutoIsfB30UpperDelta),
+                factor = preferences.get(DoubleKey.ApsAutoIsfB30Factor),
+                durationMinutes = preferences.get(IntKey.ApsAutoIsfB30Duration)
+            )
+            val lastBolus = persistenceLayer.getBolusesFromTime(now - settings.durationMinutes * 60_000L, false)
+                .firstOrNull { it.type == BS.Type.NORMAL && it.isValid }
+            AutoIsfExtras.b30(
+                settings = settings,
+                tempTargetMgdl = tempTargetMgdl,
+                lastBolusUnits = lastBolus?.amount ?: 0.0,
+                minutesSinceBolus = lastBolus?.let { (now - it.timestamp) / 60_000.0 },
+                profileBasal = basal,
+                wantedRate = wantedRate(),
+                bgMgdl = bg,
+                deltaMgdl = delta,
+                maxBasal = profile.max_basal
+            )?.let { b30 ->
+                rT.rate = b30.rate
+                rT.duration = AutoIsfExtras.TEMP_MINUTES
+                if (b30.stopSmb && (rT.units ?: 0.0) > 0.0) {
+                    rT.units = 0.0
+                    rT.reason.append("; SMB off (B30)")
+                }
+                rT.reason.append("; B30 active, ${b30.minutesLeft} min left: ${b30.rate} U/h")
+                consoleError.add("B30: ${b30.rate} U/h, ${b30.minutesLeft} min left")
+            }
+        }
+        if (preferences.get(BooleanKey.ApsAutoIsfKetoProtect)) {
+            AutoIsfExtras.ketoRate(
+                settings = AutoIsfExtras.KetoSettings(
+                    enabled = true,
+                    onlyWithNegativeIob = preferences.get(BooleanKey.ApsAutoIsfKetoProtectVariable),
+                    percent = preferences.get(IntKey.ApsAutoIsfKetoProtectPercent),
+                    absoluteRate = preferences.get(DoubleKey.ApsAutoIsfKetoProtectAbsolute)
+                ),
+                iob = iob,
+                profileBasal = basal,
+                wantedRate = wantedRate(),
+                smbUnits = rT.units ?: 0.0,
+                bgMgdl = bg,
+                minBgMgdl = profile.min_bg,
+                maxBasal = profile.max_basal
+            )?.let { rate ->
+                rT.rate = rate
+                rT.duration = AutoIsfExtras.TEMP_MINUTES
+                rT.reason.append("; Keto protection: $rate U/h")
+                consoleError.add("Keto protection: $rate U/h instead of a zero temp")
+            }
+        }
+    }
+
     fun loop_smb(microBolusAllowed: Boolean, profile: OapsProfileAutoIsf, iob_data_iob: Double, useIobTh: Boolean, iobThEffective: Double): String {
         val iobThUser = preferences.get(IntKey.ApsAutoIsfIobThPercent)
         if (useIobTh) {
@@ -1146,7 +1248,31 @@ open class OpenAPSAutoISFPlugin(
                     DoubleKey.ApsAutoIsfHighBgWeight,
                     DoubleKey.ApsAutoIsfPpWeight,
                     DoubleKey.ApsAutoIsfDuraWeight,
-                    IntKey.ApsAutoIsfIobThPercent
+                    IntKey.ApsAutoIsfIobThPercent,
+                    BooleanKey.ApsAutoIsfAutoCr
+                )
+            ),
+            PreferenceSubScreenDef(
+                key = "keto_protect_settings",
+                title = KeysStrings.pref_title_keto_protect,
+                items = listOf(
+                    BooleanKey.ApsAutoIsfKetoProtect,
+                    BooleanKey.ApsAutoIsfKetoProtectVariable,
+                    IntKey.ApsAutoIsfKetoProtectPercent,
+                    DoubleKey.ApsAutoIsfKetoProtectAbsolute
+                )
+            ),
+            PreferenceSubScreenDef(
+                key = "b30_settings",
+                title = KeysStrings.pref_title_b30,
+                items = listOf(
+                    BooleanKey.ApsAutoIsfB30,
+                    DoubleKey.ApsAutoIsfB30MinBolus,
+                    UnitDoubleKey.ApsAutoIsfB30TargetLevel,
+                    UnitDoubleKey.ApsAutoIsfB30UpperLimit,
+                    DoubleKey.ApsAutoIsfB30UpperDelta,
+                    DoubleKey.ApsAutoIsfB30Factor,
+                    IntKey.ApsAutoIsfB30Duration
                 )
             ),
             PreferenceSubScreenDef(

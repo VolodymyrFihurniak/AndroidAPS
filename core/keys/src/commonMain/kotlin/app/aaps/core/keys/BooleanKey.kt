@@ -203,6 +203,13 @@ enum class BooleanKey(
         defaultedBySM = true,
         sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
     ),
+    // autoISF build: keto protection, B30 and auto CR, ported from iAPS (see AutoIsfExtras)
+    ApsAutoIsfKetoProtect("keto_protect", false, KeysStrings.pref_title_keto_protect, KeysStrings.pref_summary_keto_protect, defaultedBySM = true, sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)),
+    ApsAutoIsfKetoProtectVariable("keto_protect_variable", true, KeysStrings.pref_title_keto_protect_variable, KeysStrings.pref_summary_keto_protect_variable, defaultedBySM = true, sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)),
+    ApsAutoIsfB30("use_b30", false, KeysStrings.pref_title_b30, KeysStrings.pref_summary_b30, defaultedBySM = true, sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)),
+    ApsAutoIsfAutoCr("autoisf_auto_cr", false, KeysStrings.pref_title_auto_cr, KeysStrings.pref_summary_auto_cr, defaultedBySM = true, sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)),
+    // autoISF build: fat and protein as extended carbs (Warsaw method), ported from iAPS
+    FoodFpuEnabled("fpu_enabled", false, KeysStrings.pref_title_fpu_enabled, KeysStrings.pref_summary_fpu_enabled, sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)),
 
     MaintenanceEnableFabric("enable_fabric2", true, KeysStrings.pref_title_maintenance_enable_fabric, defaultedBySM = true, hideParentScreenIfHidden = true),
 

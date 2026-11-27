@@ -188,7 +188,24 @@ class SceneExecutor(
         is SceneAction.SmbToggle       -> if (action.enabled) rh.gs(CoreUiStrings.scene_action_smb_on) else rh.gs(CoreUiStrings.scene_action_smb_off)
         is SceneAction.LoopModeChange  -> rh.gs(CoreUiStrings.scene_action_running_mode, translator.translate(action.mode))
         is SceneAction.CarePortalEvent -> rh.gs(CoreUiStrings.scene_action_careportal, translator.translate(action.type))
+        is SceneAction.LoopSettings    -> loopSettingsLines(action)
     }
+
+    /** autoISF build: one line per value that the loop settings change, so each line can be translated */
+    private fun loopSettingsLines(action: SceneAction.LoopSettings): String = buildList {
+        add(rh.gs(CoreUiStrings.scene_loop_settings))
+        if (action.isfPercent != 100) add(rh.gs(CoreUiStrings.scene_action_loop_isf, action.isfPercent))
+        if (action.crPercent != 100) add(rh.gs(CoreUiStrings.scene_action_loop_cr, action.crPercent))
+        if (action.basalPercent != 100) add(rh.gs(CoreUiStrings.scene_action_loop_basal, action.basalPercent))
+        action.maxIob?.let { add(rh.gs(CoreUiStrings.scene_action_loop_max_iob, it)) }
+        action.smbMinutes?.let { add(rh.gs(CoreUiStrings.scene_action_loop_smb_minutes, it)) }
+        action.uamMinutes?.let { add(rh.gs(CoreUiStrings.scene_action_loop_uam_minutes, it)) }
+        action.iobThPercent?.let { add(rh.gs(CoreUiStrings.scene_action_loop_iob_th, it)) }
+        if (action.autoIsfWeightsOff) add(rh.gs(CoreUiStrings.scene_loop_autoisf_weights_off))
+        if (action.endOnCarbs) add(rh.gs(CoreUiStrings.scene_loop_end_on_carbs))
+        action.endAboveMgdl?.let { add(rh.gs(CoreUiStrings.scene_action_loop_end_above, profileUtil.fromMgdlToStringWithUnits(it))) }
+        action.endBelowMgdl?.let { add(rh.gs(CoreUiStrings.scene_action_loop_end_below, profileUtil.fromMgdlToStringWithUnits(it))) }
+    }.joinToString("\n")
 
     /**
      * Activate a scene: capture prior state, execute all actions, persist active state.
@@ -497,6 +514,9 @@ class SceneExecutor(
                     SceneExecutionResult.ActionResult(action, success = true, recordId = result.inserted.firstOrNull()?.id)
                 }
 
+                // autoISF build: the loop reads these from the active scene, nothing to write
+                is SceneAction.LoopSettings    -> SceneExecutionResult.ActionResult(action, success = true)
+
                 is SceneAction.CarePortalEvent -> {
                     val teDuration = if (sceneDurationMinutes > 0) T.mins(sceneDurationMinutes.toLong()).msecs() else Long.MAX_VALUE
                     val te = TE(
@@ -640,6 +660,9 @@ class SceneExecutor(
                     }
                     SceneExecutionResult.ActionResult(action, success = true)
                 }
+
+                // autoISF build: ends with the scene, nothing to undo
+                is SceneAction.LoopSettings    -> SceneExecutionResult.ActionResult(action, success = true)
             }
         } catch (e: Exception) {
             aapsLogger.error(LTag.UI, "Failed to revert scene action: $action", e)

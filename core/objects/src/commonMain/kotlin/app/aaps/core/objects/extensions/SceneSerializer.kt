@@ -10,6 +10,7 @@ import app.aaps.core.utils.lenientBoolean
 import app.aaps.core.utils.lenientBooleanOrNull
 import app.aaps.core.utils.lenientDoubleOrNull
 import app.aaps.core.utils.lenientInt
+import app.aaps.core.utils.lenientIntOrNull
 import app.aaps.core.utils.lenientString
 import app.aaps.core.utils.lenientStringOrNull
 import kotlinx.serialization.json.Json
@@ -129,6 +130,22 @@ private fun List<SceneAction>.toJsonArray(): JsonArray =
                             put("teType", action.type.text)
                             put("note", action.note)
                         }
+
+                        // autoISF build: loop settings of a scene (see SceneAction.LoopSettings)
+                        is SceneAction.LoopSettings    -> {
+                            put("type", "loop_settings")
+                            put("isfPercent", action.isfPercent)
+                            put("crPercent", action.crPercent)
+                            put("basalPercent", action.basalPercent)
+                            action.maxIob?.let { put("maxIob", it) }
+                            action.smbMinutes?.let { put("smbMinutes", it) }
+                            action.uamMinutes?.let { put("uamMinutes", it) }
+                            put("autoIsfWeightsOff", action.autoIsfWeightsOff)
+                            action.iobThPercent?.let { put("iobThPercent", it) }
+                            put("endOnCarbs", action.endOnCarbs)
+                            action.endAboveMgdl?.let { put("endAboveMgdl", it) }
+                            action.endBelowMgdl?.let { put("endBelowMgdl", it) }
+                        }
                     }
                 }
             )
@@ -170,6 +187,20 @@ private fun JsonArray.toSceneActions(): List<SceneAction> {
             "careportal"     -> SceneAction.CarePortalEvent(
                 type = TE.Type.entries.firstOrNull { it.text == obj.lenientString("teType") } ?: TE.Type.NOTE,
                 note = obj.lenientString("note", "")
+            )
+
+            "loop_settings"  -> SceneAction.LoopSettings(
+                isfPercent = obj.lenientInt("isfPercent", 100),
+                crPercent = obj.lenientInt("crPercent", 100),
+                basalPercent = obj.lenientInt("basalPercent", 100),
+                maxIob = obj.lenientDoubleOrNull("maxIob"),
+                smbMinutes = obj.lenientIntOrNull("smbMinutes"),
+                uamMinutes = obj.lenientIntOrNull("uamMinutes"),
+                autoIsfWeightsOff = obj.lenientBooleanOrNull("autoIsfWeightsOff") ?: false,
+                iobThPercent = obj.lenientIntOrNull("iobThPercent"),
+                endOnCarbs = obj.lenientBooleanOrNull("endOnCarbs") ?: false,
+                endAboveMgdl = obj.lenientDoubleOrNull("endAboveMgdl"),
+                endBelowMgdl = obj.lenientDoubleOrNull("endBelowMgdl")
             )
 
             else             -> null

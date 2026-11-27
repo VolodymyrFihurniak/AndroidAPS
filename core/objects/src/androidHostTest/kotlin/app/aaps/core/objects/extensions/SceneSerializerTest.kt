@@ -208,4 +208,28 @@ class SceneSerializerTest : TestBase() {
             assertThat(lm.mode).isEqualTo(mode)
         }
     }
+
+    // autoISF build: loop settings of a scene
+    @Test
+    fun roundTrip_loopSettings() {
+        val full = SceneAction.LoopSettings(
+            isfPercent = 120, crPercent = 90, basalPercent = 80, maxIob = 2.5, smbMinutes = 45, uamMinutes = 30,
+            autoIsfWeightsOff = true, iobThPercent = 70, endOnCarbs = true, endAboveMgdl = 180.0, endBelowMgdl = 80.0
+        )
+        val empty = SceneAction.LoopSettings()
+        val scene = Scene(id = "l", name = "Loop", actions = listOf(full, empty))
+        val restored = listOf(scene).toJson().toScenes()[0]
+        assertThat(restored.actions).containsExactly(full, empty).inOrder()
+    }
+
+    @Test
+    fun loopSettings_endConditions() {
+        val s = SceneAction.LoopSettings(endOnCarbs = true, endAboveMgdl = 180.0, endBelowMgdl = 80.0)
+        assertThat(s.shouldEnd(bgMgdl = 120.0, carbsSinceStart = 0.0)).isFalse()
+        assertThat(s.shouldEnd(bgMgdl = 120.0, carbsSinceStart = 10.0)).isTrue()
+        assertThat(s.shouldEnd(bgMgdl = 181.0, carbsSinceStart = 0.0)).isTrue()
+        assertThat(s.shouldEnd(bgMgdl = 79.0, carbsSinceStart = 0.0)).isTrue()
+        assertThat(s.shouldEnd(bgMgdl = null, carbsSinceStart = 0.0)).isFalse()
+        assertThat(SceneAction.LoopSettings().hasEndCondition).isFalse()
+    }
 }

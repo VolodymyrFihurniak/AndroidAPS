@@ -33,6 +33,7 @@ import app.aaps.plugins.aps.learned.grid.STEP_MS
 import app.aaps.plugins.aps.learned.keys.LearnedBooleanKey
 import app.aaps.plugins.aps.learned.keys.LearnedIntKey
 import app.aaps.plugins.aps.learned.keys.LearnedStringKey
+import app.aaps.plugins.aps.learned.model.Effects
 import app.aaps.plugins.aps.learned.model.LearnedModel
 import app.aaps.plugins.aps.learned.train.Samples
 import app.aaps.plugins.aps.learned.train.Trainer
@@ -123,6 +124,11 @@ class LearnedPredictionPlugin(
     private var lastScore = 0L
     private var lastLowAlert = 0L
     private var lastHighAlert = 0L
+
+    // autoISF build: the low warning waits for a confirmation (see LowConfirmation, from JugglucoNG)
+    private val lowConfirmation = LowConfirmation()
+    private var liveIob: Double? = null
+    private var liveInsulinNext30: Double? = null
 
     /** Days of AutoISF predictions the plugin keeps itself, for its screen */
     private val _autoIsfCopyDays = MutableStateFlow(0)
@@ -233,6 +239,10 @@ class LearnedPredictionPlugin(
             val index = Forecaster.liveIndex(grid, newest, now) ?: return null
             // A curve may give a dose only once the live check found it better than AutoISF
             val live = _liveScore.value
+            Effects(grid).atLive(index).let { effects ->
+                liveIob = effects.iob(index)
+                liveInsulinNext30 = effects.insulinActing(index, 6)
+            }
             Forecaster.forecast(current, grid, index)
                 ?.let { it.copy(ready = live?.linearReady == true, expectedReady = it.expectedPoints.isNotEmpty() && live?.gruReady == true) }
                 ?.also { logPrediction(it) }
@@ -359,8 +369,12 @@ class LearnedPredictionPlugin(
     /** A warning when the forecast sees a low or a high coming and the user switched that warning on */
     private fun warn(forecast: LearnedForecast, now: Long) {
         fun mark(key: UnitDoubleKey) = profileUtil.convertToMgdl(preferences.get(key), profileUtil.units)
-        if (preferences.get(LearnedBooleanKey.LowAlert) && now - lastLowAlert >= ForecastAlerts.REPEAT_MS) {
-            ForecastAlerts.low(forecast, mark(UnitDoubleKey.OverviewLowMark))?.let { alert ->
+        val lowMgdl = mark(UnitDoubleKey.OverviewLowMark)
+        val low = ForecastAlerts.low(forecast, lowMgdl)
+        // called on every run, so it sees every reading
+        val lowConfirmed = lowConfirmation.confirm(low, forecast.timestamp, forecast.bgMgdl, lowMgdl, liveIob, liveInsulinNext30, forecast.isfMgdl)
+        if (preferences.get(LearnedBooleanKey.LowAlert) && now - lastLowAlert >= ForecastAlerts.REPEAT_MS && lowConfirmed) {
+            low?.let { alert ->
                 lastLowAlert = now
                 notificationManager.post(
                     NotificationId.LEARNED_LOW_PREDICTED,

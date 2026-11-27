@@ -74,6 +74,7 @@ import app.aaps.ui.compose.components.DialogStatusBar
 import app.aaps.ui.compose.overview.chips.CobUiState
 import app.aaps.ui.compose.overview.chips.IobUiState
 import app.aaps.ui.compose.overview.graphs.BgInfoUiState
+import app.aaps.ui.food.rememberMealPhotoCapture
 import kotlinx.coroutines.flow.StateFlow
 
 @Composable
@@ -98,6 +99,10 @@ fun CarbsDialogScreen(
     var showButtonSettings by rememberSaveable { mutableStateOf(false) }
     // The master's prepared confirmation (bolusId + its merged lines), set via the ShowConfirmation side effect.
     var confirmation by remember { mutableStateOf<Pair<Long, List<ConfirmationLine>>?>(null) }
+    // autoISF build: meal calculator
+    var showFoodPicker by rememberSaveable { mutableStateOf(false) }
+    var photoFailure by remember { mutableStateOf<CarbsDialogViewModel.SideEffect.PhotoFailed?>(null) }
+    val photoCapture = rememberMealPhotoCapture { viewModel.analysePhoto(it) }
 
     // Observe side effects
     LaunchedEffect(Unit) {
@@ -113,6 +118,10 @@ fun CarbsDialogScreen(
 
                 is CarbsDialogViewModel.SideEffect.ShowConfirmation -> {
                     confirmation = effect.bolusId to effect.lines
+                }
+
+                is CarbsDialogViewModel.SideEffect.PhotoFailed -> {
+                    photoFailure = effect
                 }
             }
         }
@@ -160,6 +169,30 @@ fun CarbsDialogScreen(
         )
     }
 
+    photoFailure?.let { failure ->
+        ElementConfirmationDialog(
+            elementType = ElementType.CARBS,
+            message = when {
+                failure.offline          -> stringResource(UiStrings.meal_photo_offline)
+                failure.detail.isBlank() -> stringResource(UiStrings.meal_photo_failed)
+                else                     -> stringResource(UiStrings.meal_photo_error, failure.detail)
+            },
+            onConfirm = { photoFailure = null },
+            onDismiss = { photoFailure = null }
+        )
+    }
+
+    if (showFoodPicker) {
+        FoodPickerSheet(
+            repository = viewModel.mealRepository,
+            onPick = { food, grams ->
+                viewModel.addMealPart(food, grams)
+                showFoodPicker = false
+            },
+            onDismiss = { showFoodPicker = false }
+        )
+    }
+
     // Carbs button settings bottom sheet
     if (showButtonSettings) {
         CarbsButtonSettingsSheet(
@@ -194,7 +227,18 @@ fun CarbsDialogScreen(
             { showButtonSettings = true }
         },
         onNavigateBack = onNavigateBack,
-        onConfirmClick = { viewModel.prepareAndConfirm() }
+        onConfirmClick = { viewModel.prepareAndConfirm() },
+        mealContent = { modifier ->
+            MealCard(
+                uiState = uiState,
+                onAddFood = { showFoodPicker = true },
+                onPhoto = if (uiState.photoAvailable) photoCapture else null,
+                onRemovePart = viewModel::removeMealPart,
+                onFatChange = viewModel::updateFat,
+                onProteinChange = viewModel::updateProtein,
+                modifier = modifier
+            )
+        }
     )
 }
 
@@ -223,7 +267,9 @@ internal fun CarbsDialogContent(
     onTimeClick: () -> Unit,
     onSettingsClick: (() -> Unit)?,
     onNavigateBack: () -> Unit,
-    onConfirmClick: () -> Unit
+    onConfirmClick: () -> Unit,
+    /** autoISF build: the meal calculator, above the carbs */
+    mealContent: @Composable (Modifier) -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
 
@@ -253,7 +299,7 @@ internal fun CarbsDialogContent(
             )
         },
         bottomBar = {
-            val hasAction = uiState.carbs != 0 || uiState.hypoTtChecked || uiState.eatingSoonTtChecked || uiState.activityTtChecked
+            val hasAction = uiState.carbs != 0 || uiState.fpu != null || uiState.hypoTtChecked || uiState.eatingSoonTtChecked || uiState.activityTtChecked
             // The button shows only a value, so a screen reader would say just "20 g" and never what
             // pressing it does. Name it, but with the verb ONLY - a contentDescription on a merging
             // node is added beside the children rather than replacing them, so repeating the amount
@@ -317,6 +363,14 @@ internal fun CarbsDialogContent(
                     onActivityChange = onActivityChange,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
+            }
+
+            // --- autoISF build: meal calculator ---
+            if (uiState.carbs >= 0) Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                mealContent(itemModifier)
             }
 
             // --- Card 2: Carbs + Duration + Bolus Reminder + Carb Time ---

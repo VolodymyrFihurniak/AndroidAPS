@@ -10,6 +10,7 @@ import app.aaps.core.interfaces.constraints.ConstraintsChecker
 import app.aaps.core.interfaces.db.PersistenceLayer
 import app.aaps.core.interfaces.iob.GlucoseStatusProvider
 import app.aaps.core.interfaces.plugin.EnforcedState
+import app.aaps.core.interfaces.scenes.ActiveSceneSync
 import app.aaps.core.keys.BooleanKey
 import app.aaps.core.keys.DoubleKey
 import app.aaps.core.keys.DoubleNonKey
@@ -33,6 +34,7 @@ class OpenAPSAutoISFPluginTest : TestBaseWithProfile() {
     @Mock lateinit var determineBasalSMB: DetermineBasalAutoISF
     @Mock lateinit var bgQualityCheck: BgQualityCheck
     @Mock lateinit var phoneActivitySensor: PhoneActivitySensor
+    @Mock lateinit var activeSceneSync: ActiveSceneSync
     @Mock lateinit var automationStateService: AutomationStateInterface
     private lateinit var openAPSAutoISFPlugin: OpenAPSAutoISFPlugin
 
@@ -42,7 +44,7 @@ class OpenAPSAutoISFPluginTest : TestBaseWithProfile() {
             iobCobCalculator, hardLimits, preferences, dateUtil, processedTbrEbData, persistenceLayer, glucoseStatusProvider,
             bgQualityCheck, notificationManager, determineBasalSMB,
             GlucoseStatusCalculatorAutoIsf(aapsLogger, iobCobCalculator, dateUtil, decimalFormatter, deltaCalculator, preferences), { apsResultProvider() }, ch,
-            phoneActivitySensor, automationStateService
+            phoneActivitySensor, automationStateService, activeSceneSync
         )
     }
 

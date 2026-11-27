@@ -1232,4 +1232,28 @@
     <string name="graph_series_learned_expected">Персональний прогноз: модель GRU (експериментально)</string>
     <string name="learned_expected_shortname">Модель: GRU</string>
     <string name="learned_no_insulin_shortname">Модель: лінійна</string>
+    <!-- autoISF build: loop settings of a scene (like the overrides of iAPS) -->
+    <string name="scene_loop_settings">Налаштування циклу</string>
+    <string name="scene_wizard_loop_settings_info">Змінити, як цикл AutoISF дозує, поки сцена діє. Вони закінчуються разом зі сценою. Сцена може також закінчитися раніше: при вуглеводах або при межі BG.</string>
+    <string name="scene_loop_isf_percent">ISF</string>
+    <string name="scene_loop_cr_percent">Вуглеводний коефіцієнт</string>
+    <string name="scene_loop_basal_percent">Базал для циклу</string>
+    <string name="scene_loop_max_iob">Свій max IOB</string>
+    <string name="scene_loop_smb_minutes">Свої max хвилини SMB</string>
+    <string name="scene_loop_uam_minutes">Свої max хвилини UAM SMB</string>
+    <string name="scene_loop_iob_th">Свій iobTH</string>
+    <string name="scene_loop_autoisf_weights_off">Ваги AutoISF вимкнені</string>
+    <string name="scene_loop_end_on_carbs">Закінчити, коли введено вуглеводи</string>
+    <string name="scene_loop_end_above">Закінчити, коли BG вище</string>
+    <string name="scene_loop_end_below">Закінчити, коли BG нижче</string>
+    <string name="scene_revert_loop_settings">Налаштування циклу знову звичайні</string>
+    <string name="scene_action_loop_isf">ISF %1$d%%</string>
+    <string name="scene_action_loop_cr">Вуглеводний коефіцієнт %1$d%%</string>
+    <string name="scene_action_loop_basal">Базал %1$d%%</string>
+    <string name="scene_action_loop_max_iob">Max IOB %1$.1f Од</string>
+    <string name="scene_action_loop_smb_minutes">Max SMB %1$d хв</string>
+    <string name="scene_action_loop_uam_minutes">Max UAM SMB %1$d хв</string>
+    <string name="scene_action_loop_iob_th">iobTH %1$d%%</string>
+    <string name="scene_action_loop_end_above">Закінчити вище %1$s</string>
+    <string name="scene_action_loop_end_below">Закінчити нижче %1$s</string>
 </resources>

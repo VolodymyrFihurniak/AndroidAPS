@@ -4,6 +4,8 @@ import app.aaps.core.data.model.ActiveSceneState
 import app.aaps.core.data.model.Scene
 import app.aaps.core.data.model.SceneEndAction
 import app.aaps.core.interfaces.aps.Loop
+import app.aaps.core.interfaces.db.PersistenceLayer
+import app.aaps.core.interfaces.iob.GlucoseStatusProvider
 import app.aaps.core.interfaces.configuration.InitProgress
 import app.aaps.core.objects.workflow.WorkOutcome
 import app.aaps.core.ui.CoreUiStrings
@@ -34,11 +36,14 @@ class SceneExpiryRunnerTest : TestBaseWithProfile() {
     @Mock lateinit var sceneExecutor: SceneExecutor
     @Mock lateinit var sceneRepository: SceneRepository
     @Mock lateinit var loop: Loop
+    @Mock lateinit var persistenceLayer: PersistenceLayer
+    @Mock lateinit var glucoseStatusProvider: GlucoseStatusProvider
 
     private fun runner() =
         SceneExpiryRunner(
             aapsLogger, activeSceneManager, sceneExecutor, sceneRepository,
-            loop, activePlugin, profileFunction, baseText, notificationManager, config, dateUtil
+            loop, activePlugin, profileFunction, baseText, notificationManager, config, dateUtil,
+            persistenceLayer, glucoseStatusProvider
         )
 
     /** A real timed state, for the overdue check, which reads the times. */

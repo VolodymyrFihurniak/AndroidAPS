@@ -30,9 +30,16 @@ import app.aaps.core.interfaces.tempTargets.ttTargetMgdl
 import app.aaps.core.interfaces.utils.DateUtil
 import app.aaps.core.interfaces.utils.HardLimits
 import app.aaps.core.keys.BooleanKey
+import app.aaps.core.keys.DoubleKey
 import app.aaps.core.keys.IntKey
 import app.aaps.core.keys.interfaces.Preferences
+import app.aaps.core.objects.food.FatProteinUnits
+import app.aaps.core.objects.food.Nutrients
 import app.aaps.core.ui.clientcontrol.failText
+import app.aaps.ui.food.AiFoodClient
+import app.aaps.ui.food.FoodItem
+import app.aaps.ui.food.MealPart
+import app.aaps.ui.food.MealRepository
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
@@ -50,6 +57,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.concurrent.Volatile
 import kotlin.math.max
+import kotlin.math.roundToInt
 
 // Registers itself: @ViewModelKey infers the key from the class. No graph entry, and deliberately
 // unscoped so each screen gets its own.
@@ -73,7 +81,8 @@ class CarbsDialogViewModel(
     // Unqualified: @ApplicationScope is a javax qualifier and cannot appear in commonMain. The graph
     // binds the same instance under both, so this is the same application scope.
     private val appScope: CoroutineScope,
-    private val nsClient: NsClient
+    private val nsClient: NsClient,
+    val mealRepository: MealRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CarbsDialogUiState())
@@ -85,6 +94,9 @@ class CarbsDialogViewModel(
 
         /** The MASTER prepared the batch and returned its merged confirmation [lines]; show them, then [commit] [bolusId]. */
         data class ShowConfirmation(val bolusId: Long, val lines: List<ConfirmationLine>) : SideEffect()
+
+        /** autoISF build: the meal photo gave no foods. [offline] when there is no network. */
+        data class PhotoFailed(val offline: Boolean, val detail: String) : SideEffect()
     }
 
     private val _sideEffect = MutableSharedFlow<SideEffect>(
@@ -140,7 +152,9 @@ class CarbsDialogViewModel(
                 activityTtTarget = profileUtil.fromMgdlToUnits(preferences.ttTargetMgdl(TT.Reason.ACTIVITY), units),
                 activityTtDuration = preferences.ttDurationMinutes(TT.Reason.ACTIVITY),
                 maxCarbsDurationHours = HardLimits.MAX_CARBS_DURATION_HOURS,
-                simpleMode = preferences.get(BooleanKey.GeneralSimpleMode)
+                simpleMode = preferences.get(BooleanKey.GeneralSimpleMode),
+                fpuEnabled = preferences.get(BooleanKey.FoodFpuEnabled),
+                photoAvailable = mealRepository.aiProvider != null
             )
         }
     }
@@ -193,13 +207,78 @@ class CarbsDialogViewModel(
                 carbsButtonIncrement3 = preferences.get(IntKey.OverviewCarbsButtonIncrement3),
                 showBolusReminder = showBolusReminder,
                 // Never leave the tick set on a row that is no longer shown.
-                bolusReminderChecked = it.bolusReminderChecked && showBolusReminder
-            )
+                bolusReminderChecked = it.bolusReminderChecked && showBolusReminder,
+                fpuEnabled = preferences.get(BooleanKey.FoodFpuEnabled),
+                photoAvailable = mealRepository.aiProvider != null
+            ).withFpu()
+        }
+    }
+
+    // autoISF build: meal calculator ------------------------------------------------------------------------------
+
+    /** Add [grams] of [food] to the meal. The carbs, fat and protein then follow the sum of the meal. */
+    fun addMealPart(food: FoodItem, grams: Double) {
+        if (grams <= 0.0) return
+        setMealParts(uiState.value.mealParts + MealPart(food, grams))
+    }
+
+    fun removeMealPart(index: Int) {
+        setMealParts(uiState.value.mealParts.filterIndexed { i, _ -> i != index })
+    }
+
+    private fun setMealParts(parts: List<MealPart>) {
+        _uiState.update { state ->
+            val total = parts.fold(Nutrients.ZERO) { sum, part -> sum + part.nutrients }
+            state.copy(
+                mealParts = parts,
+                carbs = if (parts.isEmpty()) state.carbs else total.carbs.roundToInt().coerceIn(0, state.maxCarbs),
+                fatGrams = if (parts.isEmpty()) state.fatGrams else total.fat,
+                proteinGrams = if (parts.isEmpty()) state.proteinGrams else total.protein
+            ).withFpu()
+        }
+    }
+
+    fun updateFat(grams: Double) {
+        _uiState.update { it.copy(fatGrams = grams.coerceIn(0.0, MAX_FAT_PROTEIN)).withFpu() }
+    }
+
+    fun updateProtein(grams: Double) {
+        _uiState.update { it.copy(proteinGrams = grams.coerceIn(0.0, MAX_FAT_PROTEIN)).withFpu() }
+    }
+
+    private fun CarbsDialogUiState.withFpu(): CarbsDialogUiState {
+        val result = if (!fpuEnabled) null
+        else FatProteinUnits.compute(
+            fatGrams = fatGrams,
+            proteinGrams = proteinGrams,
+            factor = preferences.get(DoubleKey.FoodFpuFactor),
+            delayMinutes = preferences.get(IntKey.FoodFpuDelay),
+            timeCapHours = preferences.get(IntKey.FoodFpuTimeCap)
+        )?.let { it.copy(carbs = it.carbs.coerceAtMost(maxCarbs)) }
+        return copy(fpu = result)
+    }
+
+    /** Send a meal photo to the AI service and add the foods it sees */
+    fun analysePhoto(jpeg: ByteArray?) {
+        if (jpeg == null) return
+        _uiState.update { it.copy(photoBusy = true) }
+        viewModelScope.launch {
+            val result = mealRepository.analysePhoto(jpeg)
+            _uiState.update { it.copy(photoBusy = false) }
+            when (result) {
+                is AiFoodClient.Result.Foods  ->
+                    if (result.items.isEmpty()) _sideEffect.tryEmit(SideEffect.PhotoFailed(offline = false, detail = ""))
+                    else setMealParts(uiState.value.mealParts + result.items.map { MealPart(it, it.defaultGrams) })
+
+                is AiFoodClient.Result.Failed -> _sideEffect.tryEmit(SideEffect.PhotoFailed(offline = result.message == "offline", detail = result.message))
+            }
         }
     }
 
     fun updateCarbs(value: Int) {
         val state = uiState.value
+        // Typed carbs win over the meal sum: the meal parts are dropped, so they never disagree.
+        if (state.mealParts.isNotEmpty() && value != state.carbs) _uiState.update { it.copy(mealParts = emptyList()) }
         // Lower bound = -COB (can't remove more than is on board); upper bound = max carbs.
         val clamped = value.coerceIn(-state.cobLimit, state.maxCarbs)
         // A negative entry (COB removal) can't be future-dated — pin the time back to "now" if it was in the future.
@@ -299,6 +378,11 @@ class CarbsDialogViewModel(
         }
     }
 
+    companion object {
+
+        private const val MAX_FAT_PROTEIN = 300.0
+    }
+
     @Volatile private var confirmedState: CarbsDialogUiState? = null
 
     /**
@@ -384,13 +468,27 @@ class CarbsDialogViewModel(
                 val mgdl = profileUtil.convertToMgdl(ttTarget, state.units)
                 add(BatchAction.TempTarget(reason = reason.text, lowMgdl = mgdl, highMgdl = mgdl, durationMinutes = ttDuration, startOffsetMinutes = 0))
             }
+            // autoISF build: fat and protein travel as the extended carbs of the same entry, after the delay. Only with
+            // positive carbs: a COB removal never carries them.
+            val fpu = state.fpu?.takeIf { state.fpuEnabled && state.carbs >= 0 }
             if (state.carbs != 0)
                 add(
                     BatchAction.Bolus(
                         insulin = 0.0, carbs = state.carbs, carbsTimeOffsetMinutes = state.timeOffsetMinutes,
                         carbsDurationHours = state.durationHours, recordOnly = false, notes = state.notes, timestamp = state.eventTime, iCfg = null,
                         // The master starts the "time to eat" timer: it is the phone near the person who eats.
-                        alarm = state.alarmChecked && state.carbs > 0 && state.timeOffsetMinutes > 0
+                        alarm = state.alarmChecked && state.carbs > 0 && state.timeOffsetMinutes > 0,
+                        eCarbsGrams = fpu?.carbs ?: 0,
+                        eCarbsDelayMinutes = fpu?.let { max(0, state.timeOffsetMinutes) + it.delayMinutes } ?: 0,
+                        eCarbsDurationHours = fpu?.durationHours ?: 0
+                    )
+                )
+            else if (fpu != null)
+                // Only fat and protein (for example a steak): the extended carbs are the whole entry.
+                add(
+                    BatchAction.Bolus(
+                        insulin = 0.0, carbs = fpu.carbs, carbsTimeOffsetMinutes = max(0, state.timeOffsetMinutes) + fpu.delayMinutes,
+                        carbsDurationHours = fpu.durationHours, recordOnly = false, notes = state.notes, timestamp = state.eventTime, iCfg = null
                     )
                 )
         }

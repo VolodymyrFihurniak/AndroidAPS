@@ -351,6 +351,60 @@ enum class DoubleKey(
         unitType = UnitType.DOUBLE,
         sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
     ),
+    // autoISF build: keto protection and B30 (see AutoIsfExtras)
+    ApsAutoIsfKetoProtectAbsolute(
+        key = "keto_protect_basal_absolute",
+        defaultValue = 0.0,
+        min = 0.0,
+        max = 2.0,
+        title = KeysStrings.pref_title_keto_protect_absolute,
+        summary = KeysStrings.pref_summary_keto_protect_absolute,
+        defaultedBySM = true,
+        unitType = UnitType.INSULIN_RATE,
+        sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
+    ),
+    ApsAutoIsfB30MinBolus(
+        key = "b30_min_bolus",
+        defaultValue = 1.5,
+        min = 0.1,
+        max = 10.0,
+        title = KeysStrings.pref_title_b30_min_bolus,
+        defaultedBySM = true,
+        unitType = UnitType.INSULIN,
+        sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
+    ),
+    ApsAutoIsfB30Factor(
+        key = "b30_factor",
+        defaultValue = 5.0,
+        min = 1.0,
+        max = 10.0,
+        title = KeysStrings.pref_title_b30_factor,
+        defaultedBySM = true,
+        unitType = UnitType.DOUBLE,
+        sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
+    ),
+    // autoISF build: fat and protein as extended carbs (see FatProteinUnits)
+    FoodFpuFactor(
+        key = "fpu_factor",
+        defaultValue = 0.5,
+        min = 0.1,
+        max = 1.0,
+        title = KeysStrings.pref_title_fpu_factor,
+        summary = KeysStrings.pref_summary_fpu_factor,
+        unitType = UnitType.DOUBLE,
+        dependency = BooleanKey.FoodFpuEnabled,
+        sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
+    ),
+    ApsAutoIsfB30UpperDelta(
+        key = "b30_upper_delta",
+        defaultValue = 8.0,
+        min = 0.0,
+        max = 20.0,
+        title = KeysStrings.pref_title_b30_upper_delta,
+        defaultedBySM = true,
+        unitType = UnitType.DOUBLE,
+        sync = SyncSpec(SyncChannel.Cold, SyncDirection.Bidirectional)
+    ),
 
 
     // autoISF: Libre calibration and smoothing of the raw values from xDrip+ / Juggluco

@@ -27,6 +27,15 @@ the repo on 2026-11-27, because the notes of the earlier session were never comm
 
 ## Open work
 
+- **Port from iAPS and JugglucoNG** (2026-11-27, branch `claude/project-thread-4heq8j`): keto
+  protection, B30, auto CR (`AutoIsfExtras`, called from `OpenAPSAutoISFPlugin.applyB30AndKetoProtect`),
+  loop settings in scenes (`SceneAction.LoopSettings`, read live by the AutoISF plugin, end
+  conditions in `SceneExpiryRunner`), `LowConfirmation` in the prediction plugin, the meal
+  calculator (`ui/food/`, `core/objects/food/`, `MealCard` in the carbs dialog), FPU as eCarbs of
+  the same batch entry, AI meal photo. Unit tests only, not tested on a phone. Not done yet: speech
+  of BG, a floating BG window and Health Connect export (proposed to the owner as a next step).
+  Barcode is typed, there is no camera scanner yet.
+
 - **Overview in landscape and on a tablet** (2026-11-27): the same cards as in portrait
   (`OverviewMainCards`) and a Pump button in the status card. Merged without a local build (no
   Android SDK in that cloud chat); the owner builds it with AAPS CI. Not tested on a phone.

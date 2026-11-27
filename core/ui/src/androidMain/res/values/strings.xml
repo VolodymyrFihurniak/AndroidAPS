@@ -1297,4 +1297,28 @@
     <string name="units_years">y</string>
     <string name="prefs_range_title">Range for visualization</string>
     <string name="secrets_not_protected">No system key store was found on this computer. The keys that protect your settings and the pairing with the master are kept in files next to the data, so anyone who gets a copy of your files gets them too. On Linux, install and start a keyring (for example GNOME Keyring or KWallet), then start AAPS again.</string>
+    <!-- autoISF build: loop settings of a scene (like the overrides of iAPS) -->
+    <string name="scene_loop_settings">Loop settings</string>
+    <string name="scene_wizard_loop_settings_info">Change how the AutoISF loop doses while the scene runs. They end with the scene. The scene can also end early on carbs or on a BG limit.</string>
+    <string name="scene_loop_isf_percent">ISF</string>
+    <string name="scene_loop_cr_percent">Carb ratio</string>
+    <string name="scene_loop_basal_percent">Basal for the loop</string>
+    <string name="scene_loop_max_iob">Own max IOB</string>
+    <string name="scene_loop_smb_minutes">Own max SMB minutes</string>
+    <string name="scene_loop_uam_minutes">Own max UAM SMB minutes</string>
+    <string name="scene_loop_iob_th">Own iobTH</string>
+    <string name="scene_loop_autoisf_weights_off">AutoISF weights off</string>
+    <string name="scene_loop_end_on_carbs">End when carbs are entered</string>
+    <string name="scene_loop_end_above">End when BG goes above</string>
+    <string name="scene_loop_end_below">End when BG goes below</string>
+    <string name="scene_revert_loop_settings">Loop settings back to normal</string>
+    <string name="scene_action_loop_isf" comment="%1$d=percent. Example: ISF 120%">ISF %1$d%%</string>
+    <string name="scene_action_loop_cr" comment="%1$d=percent. Example: Carb ratio 90%">Carb ratio %1$d%%</string>
+    <string name="scene_action_loop_basal" comment="%1$d=percent. Example: Basal 80%">Basal %1$d%%</string>
+    <string name="scene_action_loop_max_iob" comment="%1$.1f=insulin units. Example: Max IOB 3.0 U">Max IOB %1$.1f U</string>
+    <string name="scene_action_loop_smb_minutes" comment="%1$d=minutes. Example: Max SMB 30 min">Max SMB %1$d min</string>
+    <string name="scene_action_loop_uam_minutes" comment="%1$d=minutes. Example: Max UAM SMB 30 min">Max UAM SMB %1$d min</string>
+    <string name="scene_action_loop_iob_th" comment="%1$d=percent. Example: iobTH 80%">iobTH %1$d%%</string>
+    <string name="scene_action_loop_end_above" comment="%1$s=BG with unit. Example: End above 10.0 mmol/L">End above %1$s</string>
+    <string name="scene_action_loop_end_below" comment="%1$s=BG with unit. Example: End below 4.5 mmol/L">End below %1$s</string>
 </resources>

@@ -26,9 +26,13 @@ import app.aaps.core.interfaces.rx.events.EventShowDialog
 import app.aaps.core.interfaces.sync.NsClient
 import app.aaps.core.interfaces.utils.DateUtil
 import app.aaps.core.keys.BooleanKey
+import app.aaps.core.keys.DoubleKey
+import app.aaps.core.keys.IntKey
 import app.aaps.core.keys.StringNonKey
 import app.aaps.core.keys.interfaces.ClientRole
 import app.aaps.core.keys.interfaces.Preferences
+import app.aaps.ui.food.FoodItem
+import app.aaps.ui.food.MealRepository
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -69,6 +73,7 @@ internal class CarbsDialogViewModelTest {
     @Mock private lateinit var dateUtil: DateUtil
     @Mock private lateinit var rxBus: RxBus
     @Mock private lateinit var nsClient: NsClient
+    @Mock private lateinit var mealRepository: MealRepository
 
     private val main = StandardTestDispatcher()
     private val role = MutableStateFlow(ClientRole.Admin)
@@ -87,7 +92,7 @@ internal class CarbsDialogViewModelTest {
     private fun create() = CarbsDialogViewModel(
         constraintChecker, profileUtil, iobCobCalculator, glucoseStatusProvider, automation,
         batchExecutor, persistenceLayer, preferences, config, rh, dateUtil, rxBus,
-        CoroutineScope(UnconfinedTestDispatcher()), nsClient
+        CoroutineScope(UnconfinedTestDispatcher()), nsClient, mealRepository
     )
 
     /**
@@ -255,6 +260,90 @@ internal class CarbsDialogViewModelTest {
         val bolus = actions.firstValue.filterIsInstance<BatchAction.Bolus>().single()
         assertThat(bolus.alarm).isTrue()
         assertThat(bolus.carbsTimeOffsetMinutes).isEqualTo(30)
+    }
+
+    // autoISF build: meal calculator ---------------------------------------------------------------------------
+
+    private val bread = FoodItem("Bread", carbsPer100 = 50.0, proteinPer100 = 8.0, fatPer100 = 4.0, defaultGrams = 30.0, source = FoodItem.Source.COMMON)
+
+    private fun fpuOn() {
+        whenever(preferences.get(BooleanKey.FoodFpuEnabled)).thenReturn(true)
+        whenever(preferences.get(DoubleKey.FoodFpuFactor)).thenReturn(0.5)
+        whenever(preferences.get(IntKey.FoodFpuDelay)).thenReturn(60)
+        whenever(preferences.get(IntKey.FoodFpuTimeCap)).thenReturn(8)
+    }
+
+    private fun preparedBolus(dialog: CarbsDialogViewModel): BatchAction.Bolus {
+        whenever(config.AAPSCLIENT).thenReturn(false)
+        whenever(rh.gs(InterfacesStrings.carbs)).thenReturn("Carbs")
+        runBlocking { whenever(batchExecutor.prepare(any(), any(), anyOrNull())).thenReturn(ActionProgress.Rejected(FailureReason.ExecutionFailed, REFUSAL)) }
+        dialog.prepareAndConfirm()
+        val actions = argumentCaptor<List<BatchAction>>()
+        runBlocking { verify(batchExecutor).prepare(actions.capture(), any(), anyOrNull()) }
+        return actions.firstValue.filterIsInstance<BatchAction.Bolus>().single()
+    }
+
+    @Test
+    fun `meal parts set the carbs`() {
+        val dialog = openWhileLow(ClientRole.MealAssistant)
+        dialog.addMealPart(bread, 60.0)
+        dialog.addMealPart(bread, 30.0)
+
+        assertThat(dialog.uiState.value.carbs).isEqualTo(45)
+        dialog.removeMealPart(0)
+        assertThat(dialog.uiState.value.carbs).isEqualTo(15)
+    }
+
+    @Test
+    fun `typed carbs drop the meal parts`() {
+        val dialog = openWhileLow(ClientRole.MealAssistant)
+        dialog.addMealPart(bread, 60.0)
+
+        dialog.updateCarbs(20)
+
+        assertThat(dialog.uiState.value.mealParts).isEmpty()
+        assertThat(dialog.uiState.value.carbs).isEqualTo(20)
+    }
+
+    @Test
+    fun `fat and protein travel as extended carbs of the same entry`() {
+        fpuOn()
+        val dialog = openWhileLow(ClientRole.MealAssistant)
+        dialog.updateCarbs(30)
+        // 20 g fat + 25 g protein = 280 kcal = 14 g carb equivalents at factor 0.5, 1.4 FPU = 3 h
+        dialog.updateFat(20.0)
+        dialog.updateProtein(25.0)
+
+        val bolus = preparedBolus(dialog)
+
+        assertThat(bolus.carbs).isEqualTo(30)
+        assertThat(bolus.eCarbsGrams).isEqualTo(14)
+        assertThat(bolus.eCarbsDelayMinutes).isEqualTo(60)
+        assertThat(bolus.eCarbsDurationHours).isEqualTo(3)
+    }
+
+    @Test
+    fun `only fat and protein give one delayed entry`() {
+        fpuOn()
+        val dialog = openWhileLow(ClientRole.MealAssistant)
+        dialog.updateFat(20.0)
+        dialog.updateProtein(25.0)
+
+        val bolus = preparedBolus(dialog)
+
+        assertThat(bolus.carbs).isEqualTo(14)
+        assertThat(bolus.carbsTimeOffsetMinutes).isEqualTo(60)
+        assertThat(bolus.carbsDurationHours).isEqualTo(3)
+        assertThat(bolus.eCarbsGrams).isEqualTo(0)
+    }
+
+    @Test
+    fun `fat and protein are ignored when the setting is off`() {
+        val dialog = openWhileLow(ClientRole.MealAssistant)
+        dialog.updateCarbs(30)
+        dialog.updateFat(20.0)
+
+        assertThat(preparedBolus(dialog).eCarbsGrams).isEqualTo(0)
     }
 
     /** `glucose + 3 * delta < 70` is the "heading low" test the reminder row is gated on. */

@@ -253,6 +253,40 @@ delivery**: the loop, SMB, temp basals and all limits work as before, and the lo
   by an older build moves to its file on the first start.
 * It works on AAPSClient too, from the client's own database.
 
+### Ported from iAPS and JugglucoNG (not tested on a phone)
+Ideas and code from [iAPS](https://github.com/Artificial-Pancreas/iAPS) (MIT) and
+[JugglucoNG](https://github.com/ctqvva/JugglucoNG) (GPL-3.0). Everything is **off by default**.
+* **Keto protection** (OpenAPS AutoISF > Keto protection). When the loop asks for a zero temp, a
+  small safety basal (5-50 % of the profile basal, or a fixed rate up to 2 U/h) runs instead, so
+  there is never many hours without insulin. Only when BG is at or above the target, never with an
+  SMB in the same run. "Only with negative IOB" (on by default) waits until IOB is below minus one
+  hour of basal.
+* **B30** (OpenAPS AutoISF > B30). After a meal bolus of at least *minimum bolus* with a low temp
+  target, the loop runs a higher temp basal (basal × factor, at most max basal) for 30 min. It never
+  lowers what the loop wants and never runs when the loop holds back insulin. While BG is still low
+  and flat it also stops SMBs.
+* **Auto CR** (OpenAPS AutoISF settings). The loop changes the carb ratio by the same factor as
+  AutoISF changes the ISF. The bolus wizard keeps the profile CR.
+* **Loop settings in a scene** (new wizard step "Loop settings"). A scene can change ISF, CR and
+  basal (50-200 %), max IOB, the SMB and UAM minutes, iobTH and the AutoISF weights, like an iAPS
+  override. It can also end on its own: when carbs are entered, or when BG goes above or below a
+  limit. Only the AutoISF loop reads these settings.
+* **Low warning needs a confirmation** (personal prediction). A low forecast far away must be seen
+  in two readings, and a fall back to the level before a short rise without insulin is not a low.
+  A low soon or strong insulin still warns at once. From JugglucoNG.
+* **Meal calculator in the carbs dialog.** "Add food" searches My foods and 232 common foods
+  (USDA values, names in English, Ukrainian and Russian) on the phone, and on request
+  [Open Food Facts](https://world.openfoodfacts.org) by name or by a typed barcode. Each food with
+  its weight adds carbs, fat and protein. Typing carbs by hand clears the list.
+* **Fat and protein as extended carbs** (carbs dialog settings). With the setting on, the fat and
+  protein of the meal become extended carbs of the same entry, after a delay (Warsaw method, factor
+  0.5 by default). From iAPS.
+* **Carbs from a meal photo** (carbs dialog settings). With your own API key for OpenAI, Anthropic
+  Claude or Google Gemini, the Photo button sends a photo of the plate (made smaller, 1024 px) and
+  adds the foods it sees. It is only a guess: check every amount. Only on Android.
+* **Insulin curves from the studies:** [docs/insulin-curve-evidence.md](docs/insulin-curve-evidence.md),
+  a short reading aid from JugglucoNG.
+
 ### Fixes compared to AAPS 4.0
 * **Bolus PIN works on its own, as in AAPS 3.4.** AAPS 4.0 ignored every protection while no master
   password was set, and the bolus protection while the settings had none, without telling. Now each
