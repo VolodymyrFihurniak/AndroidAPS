@@ -81,11 +81,9 @@ data class IobSheetState(
     val bolusIobText: String = "",
     val basalIobText: String = "",
     val activityText: String = "",
-    /** IOB now and every 5 minutes of the next hours, U */
-    val curve: List<Double> = emptyList(),
-    /** IOB in 2 hours, U */
-    val inTwoHoursText: String = "",
-    /** The last doses, newest first: "SMB 0.3 U" to "12 min ago" */
+    /** IOB from the last bolus or SMB until it is gone, U */
+    val timeline: SheetTimeline = SheetTimeline(),
+    /** The doses that still act, newest first: "SMB 0.3 U" to "12 min ago · 0.27 U left" */
     val lastDoses: List<Pair<String, String>> = emptyList(),
     /** When the IOB is gone: "23:40 · 3 h 10 min left", or empty when there is none */
     val actsUntilText: String = ""
@@ -94,16 +92,53 @@ data class IobSheetState(
 @Immutable
 data class BasalSheetState(
     val profileBasalText: String = "",
-    /** The running temp basal, e.g. "0.94 U/h · 110 %"; empty when none runs */
-    val runningText: String = "",
-    /** "from the loop · 22 min left of 30" */
-    val runningDetail: String = "",
-    /** Share of the running temp basal that is done, 0..1 */
-    val runningProgress: Float = 0f,
+    /** The basal rate now as a number, e.g. "0.94"; the unit stands beside it */
+    val rateText: String = "",
+    /** Share of the profile while a temp basal runs, e.g. "110 %"; empty when none runs */
+    val percentText: String = "",
+    /** "Temp basal · 22 of 30 min left", or "Profile · no temp basal" */
+    val detailText: String = "",
+    /** Share of the running temp basal that is done, 0..1, or null when none runs */
+    val runningProgress: Float? = null,
+    /** When no temp basal runs: the next change of the profile, e.g. "at 22:00 → 0.90 U/h" */
+    val nextChangeText: String = "",
+    /** The profile basal now, U/h, to show what a percentage gives */
+    val profileRate: Double = 0.0,
+    /** Given basal (past and the running temp basal) and the profile, U/h, every 5 minutes */
+    val chart: BasalChart = BasalChart(),
+    val todayGivenText: String = "",
+    val todayProfileText: String = "",
+    val todayDifferenceText: String = "",
+    /** The last temp basals, newest first: "18:42 · TBR 110 %" to "30 min" */
+    val changes: List<Pair<String, String>> = emptyList(),
     /** True in closed loop: the loop may change a temp basal of the user */
     val loopMayChange: Boolean = false,
     /** Whether the pump takes temp basals at all */
     val canSetTempBasal: Boolean = true
+)
+
+/** A clock time on a time axis: the point index and the label, e.g. 21:00. */
+@Immutable
+data class SheetTimeTick(val index: Int, val label: String)
+
+/** Values every 5 minutes with the point of now and the full hours. */
+@Immutable
+data class SheetTimeline(
+    val values: List<Double> = emptyList(),
+    val nowIndex: Int = 0,
+    val ticks: List<SheetTimeTick> = emptyList(),
+    /** The clock time of the first and the last point */
+    val startText: String = "",
+    val endText: String = ""
+)
+
+@Immutable
+data class BasalChart(
+    /** Given rate, null where it is not known yet (the future after the running temp basal) */
+    val given: List<Double?> = emptyList(),
+    val profile: List<Double> = emptyList(),
+    val nowIndex: Int = 0,
+    val ticks: List<SheetTimeTick> = emptyList()
 )
 
 @Immutable

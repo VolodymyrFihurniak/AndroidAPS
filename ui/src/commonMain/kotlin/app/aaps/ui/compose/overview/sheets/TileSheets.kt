@@ -1,8 +1,11 @@
 package app.aaps.ui.compose.overview.sheets
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -13,6 +16,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -52,10 +56,10 @@ import app.aaps.ui.compose.overview.chips.BolusRecommendation
 import app.aaps.ui.compose.overview.chips.BolusRecommendationKind
 import app.aaps.ui.compose.overview.chips.isWarning
 import app.aaps.ui.compose.overview.chips.toColor
-import app.aaps.ui.compose.overview.toColor
 import app.aaps.ui.compose.overview.chips.toIcon
 import app.aaps.ui.compose.overview.statusLights.StatusItem
 import app.aaps.ui.compose.overview.statusLights.StatusUiState
+import app.aaps.ui.compose.overview.toColor
 import kotlin.math.roundToInt
 
 /*
@@ -78,7 +82,8 @@ internal fun <T> LoadingSheet(load: suspend () -> T, onDismiss: () -> Unit, body
     }
 }
 
-private val PERCENT_CHOICES = listOf(50, 80, 120, 150)
+private val PERCENT_CHOICES = listOf(0, 50, 80, 120, 150)
+private const val PERCENT_DEFAULT = 2
 private val TBR_MINUTES = listOf(30, 60, 120, 240)
 private val PAUSE_MINUTES = listOf(60, 120, 180)
 private val DISCONNECT_MINUTES = listOf(15, 30, 60)
@@ -344,17 +349,10 @@ internal fun IobSheetBody(state: IobSheetState, onDetails: () -> Unit) {
             SheetValue(stringResource(UiStrings.sheet_iob_activity_now), state.activityText)
             if (state.actsUntilText.isNotEmpty()) SheetValue(stringResource(UiStrings.sheet_iob_until), state.actsUntilText)
         }
-        if (state.curve.size > 1)
+        if (state.timeline.values.size > 1)
             SheetCard {
-                SheetCaption(stringResource(UiStrings.sheet_iob_curve))
-                SheetSparkline(state.curve, insulinColor)
-                Row {
-                    SheetCaption(stringResource(UiStrings.sheet_now))
-                    Row(Modifier.weight(1f), horizontalArrangement = Arrangement.Center) {
-                        if (state.inTwoHoursText.isNotEmpty()) SheetCaption(stringResource(UiStrings.sheet_iob_in_2h, state.inTwoHoursText))
-                    }
-                    SheetCaption(stringResource(UiStrings.sheet_hours, 4))
-                }
+                SheetCaption(stringResource(UiStrings.sheet_iob_timeline))
+                SheetTimelineChart(state.timeline, insulinColor)
             }
         if (state.lastDoses.isNotEmpty())
             SheetCard {
@@ -369,23 +367,56 @@ internal fun IobSheetBody(state: IobSheetState, onDetails: () -> Unit) {
 
 @Composable
 internal fun BasalSheetBody(icon: ImageVector, state: BasalSheetState, commandsAllowed: Boolean, onStart: (Int, Int) -> Unit, onCancel: () -> Unit, onDay: () -> Unit) {
-    var percent by remember { mutableIntStateOf(1) }
+    var percent by remember { mutableIntStateOf(PERCENT_DEFAULT) }
     var minutes by remember { mutableIntStateOf(1) }
     val basalColor = AapsTheme.elementColors.tempBasal
+    val running = state.runningProgress != null
     TileSheetBody(
         icon = icon,
         iconColor = basalColor,
         title = stringResource(CoreUiStrings.basal),
         status = if (state.profileBasalText.isNotEmpty()) stringResource(UiStrings.sheet_basal_profile, state.profileBasalText) else ""
     ) {
+        // Now: the rate large, the share of the profile, the time left and cancel
         SheetCard {
-            if (state.runningText.isNotEmpty()) {
-                SheetTitleRow(state.runningText, state.runningDetail, titleColor = basalColor) {
-                    OutlinedButton(onClick = onCancel, enabled = commandsAllowed) { Text(stringResource(CoreUiStrings.cancel)) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(AapsSpacing.small)) {
+                        Text(state.rateText, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold, color = if (running) basalColor else MaterialTheme.colorScheme.onSurface)
+                        Text(stringResource(CoreUiStrings.units_insulin_rate), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (state.percentText.isNotEmpty())
+                            Surface(color = basalColor.copy(alpha = BADGE_ALPHA), shape = MaterialTheme.shapes.small) {
+                                Text(state.percentText, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = basalColor, modifier = Modifier.padding(horizontal = AapsSpacing.small))
+                            }
+                    }
+                    SheetCaption(state.detailText)
                 }
-                SheetBar(state.runningProgress, basalColor)
-            } else SheetTitle(stringResource(UiStrings.sheet_basal_none), state.profileBasalText)
+                if (running) OutlinedButton(onClick = onCancel, enabled = commandsAllowed) { Text(stringResource(CoreUiStrings.cancel)) }
+                else SheetCaption(state.nextChangeText)
+            }
+            state.runningProgress?.let { SheetBar(it, basalColor) }
         }
+        // The last hours: given against the profile, and the sums of today
+        if (state.chart.profile.size > 1)
+            SheetCard {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(AapsSpacing.medium)) {
+                    SheetCaption(stringResource(UiStrings.sheet_basal_chart))
+                    Spacer(Modifier.weight(1f))
+                    SheetCaption(stringResource(UiStrings.sheet_basal_given), basalColor)
+                    SheetCaption(stringResource(UiStrings.sheet_basal_profile_line))
+                }
+                SheetBasalChart(state.chart, basalColor)
+                Row(horizontalArrangement = Arrangement.spacedBy(AapsSpacing.medium)) {
+                    BasalSum(stringResource(UiStrings.sheet_basal_today), state.todayGivenText, basalColor, Modifier.weight(1f))
+                    BasalSum(stringResource(UiStrings.sheet_basal_today_profile), state.todayProfileText, null, Modifier.weight(1f))
+                    BasalSum(stringResource(UiStrings.sheet_basal_difference), state.todayDifferenceText, null, Modifier.weight(1f))
+                }
+            }
+        if (state.changes.isNotEmpty())
+            SheetCard {
+                SheetCaption(stringResource(UiStrings.sheet_basal_changes))
+                state.changes.forEach { (change, duration) -> SheetValue(change, duration) }
+            }
         if (state.canSetTempBasal)
             SheetCard {
                 SheetTitle(stringResource(UiStrings.sheet_basal_own), if (state.loopMayChange) stringResource(UiStrings.sheet_basal_own_sub) else "")
@@ -393,12 +424,28 @@ internal fun BasalSheetBody(icon: ImageVector, state: BasalSheetState, commandsA
                 SheetCaption(stringResource(UiStrings.sheet_for))
                 SheetChips(TBR_MINUTES.map { durationText(it) }, minutes, commandsAllowed) { minutes = it }
                 Button(onClick = { onStart(PERCENT_CHOICES[percent], TBR_MINUTES[minutes]) }, enabled = commandsAllowed, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(UiStrings.sheet_basal_start, PERCENT_CHOICES[percent], durationText(TBR_MINUTES[minutes])))
+                    Text(
+                        stringResource(
+                            UiStrings.sheet_basal_start_rate, PERCENT_CHOICES[percent], durationText(TBR_MINUTES[minutes]),
+                            stringResource(CoreUiStrings.pump_base_basal_rate, state.profileRate * PERCENT_CHOICES[percent] / 100.0)
+                        )
+                    )
                 }
             }
         SheetLink(stringResource(UiStrings.sheet_basal_day), onDay)
     }
 }
+
+@Composable
+private fun BasalSum(label: String, value: String, color: Color?, modifier: Modifier) {
+    Column(modifier = modifier) {
+        SheetCaption(label)
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = color ?: MaterialTheme.colorScheme.onSurface)
+    }
+}
+
+/** The fill behind the share of the profile. */
+private const val BADGE_ALPHA = 0.16f
 
 // ----- Loop
 

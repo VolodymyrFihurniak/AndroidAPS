@@ -145,11 +145,15 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
   - *Carbs*: COB with a bar, the last meal, an entry with +/−, the time (now or ± minutes), the
     *Hypo* target switch, the calculator.
   - *IOB*: bolus and basal IOB, the activity now, until what time the insulin acts (when the IOB
-    curve of the algorithm stays under 0.05 U), the IOB curve for the next 4 hours, the last 5 doses
-    of the last 6 hours, newest first (boluses, SMBs and the temp basals of the loop), a link to the
-    IOB details.
-  - *Basal*: the profile rate and the running temp basal with a bar and *Cancel*, an own temp basal
-    (percent and time), a link to the basal of the day.
+    curve of the algorithm stays under 0.05 U), a chart of the IOB from the last bolus or SMB until
+    it is gone, with the clock time of the dose, the full hours, now and the end, and the doses that
+    still act (within the DIA), newest first: boluses and SMBs of the user and the loop with the
+    insulin left of each, temp basals and extended boluses. A link to the IOB details.
+  - *Basal*: the rate now in large type with the share of the profile, the time left of a temp
+    basal with *Cancel* (or, without one, when the profile rate changes next), a chart of the last
+    6 hours and the next 3 (given basal filled, profile dashed, a line for now), the basal given
+    today against the profile and the difference, the last temp basals, an own temp basal (0 to
+    150 %, 30 min to 4 h; the button says the rate it gives), a link to the basal of the day.
   - *Loop*: the running mode as segmented buttons, *Pause* and *Pump off* with a time, the last run,
     its decision and autosens, *Run now*, a link to the algorithm.
   - *Sensor*: sensor, insulin, cannula and battery with their age and a *Change* button where it

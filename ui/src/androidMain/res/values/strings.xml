@@ -576,10 +576,21 @@
     <string name="sheet_iob_basal">Basal (difference to profile)</string>
     <string name="sheet_iob_activity_now">Activity now</string>
     <string name="sheet_iob_activity" comment="%1$s=insulin activity. Example: 0.021 U/min">%1$s U/min</string>
-    <string name="sheet_iob_curve">How IOB goes down</string>
-    <string name="sheet_iob_in_2h" comment="%1$s=insulin with unit. Example: in 2 h ≈ 0.4 U">in 2 h ≈ %1$s</string>
     <string name="sheet_iob_until">Insulin acts until</string>
-    <string name="sheet_iob_last">Last doses</string>
+    <string name="sheet_iob_timeline">IOB from the last dose until it is gone</string>
+    <string name="sheet_extended" comment="%1$s=insulin with unit. Example: Extended 1.00 U">Extended %1$s</string>
+    <string name="sheet_basal_temp">Temp basal</string>
+    <string name="sheet_basal_profile_only">By profile · no temp basal</string>
+    <string name="sheet_basal_next" comment="%1$s=clock time, %2$s=basal rate with unit. Example: at 22:00 → 0.90 U/h">at %1$s → %2$s</string>
+    <string name="sheet_basal_chart">Last 6 h and next</string>
+    <string name="sheet_basal_given" comment="Legend of the basal chart: the basal the pump gave">given</string>
+    <string name="sheet_basal_profile_line" comment="Legend of the basal chart: the basal of the profile">profile</string>
+    <string name="sheet_basal_today">Given today</string>
+    <string name="sheet_basal_today_profile" comment="Basal of the profile for today until now">By profile</string>
+    <string name="sheet_basal_difference">Difference</string>
+    <string name="sheet_basal_changes" comment="Title of the list of the last temp basals">Last changes</string>
+    <string name="sheet_basal_start_rate" comment="%1$d=percent, %2$s=duration, %3$s=basal rate with unit. Example: Start 80 % for 1 h · 0.68 U/h">Start %1$d %% for %2$s · %3$s</string>
+    <string name="sheet_iob_last">Still acting</string>
     <string name="sheet_iob_details">IOB details</string>
     <string name="sheet_smb" comment="%1$s=insulin with unit. Example: SMB 0.3 U">SMB %1$s</string>
     <string name="sheet_bolus" comment="%1$s=insulin with unit. Example: Bolus 3.0 U">Bolus %1$s</string>
@@ -589,11 +600,9 @@
     <string name="sheet_left" comment="%1$s=time. Example: 1 h 20 min left">%1$s left</string>
     <string name="sheet_minutes_left_of" comment="%1$d=minutes left, %2$d=all minutes. Example: 22 of 30 min left">%1$d of %2$d min left</string>
     <string name="sheet_basal_profile" comment="%1$s=basal rate with unit. Example: profile 0.85 U/h">profile %1$s</string>
-    <string name="sheet_basal_none">No temp basal</string>
     <string name="sheet_basal_own">Own temp basal</string>
     <string name="sheet_basal_own_sub">In closed loop the loop may change it</string>
     <string name="sheet_for" comment="Before a choice of durations">For</string>
-    <string name="sheet_basal_start" comment="%1$d=percent, %2$s=duration. Example: Start 80 % for 1 h">Start %1$d %% for %2$s</string>
     <string name="sheet_basal_day">Basal of the day</string>
     <string name="sheet_basal_tbr" comment="%1$s=basal rate with unit. Example: 0.94 U/h (temp basal)">%1$s (temp basal)</string>
     <string name="sheet_tbr_percent" comment="%1$d=percent. Example: TBR 110 %">TBR %1$d %%</string>

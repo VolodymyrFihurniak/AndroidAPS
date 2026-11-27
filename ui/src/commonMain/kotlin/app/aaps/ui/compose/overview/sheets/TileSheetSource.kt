@@ -4,11 +4,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import app.aaps.core.data.model.BS
 import app.aaps.core.data.model.GlucoseUnit
 import app.aaps.core.data.model.RM
+import app.aaps.core.data.model.TB
 import app.aaps.core.data.model.TE
 import app.aaps.core.data.model.TT
+import app.aaps.core.data.model.iobCalc
+import app.aaps.core.data.pump.defs.PumpDescription
 import app.aaps.core.data.time.T
 import app.aaps.core.data.ue.Sources
-import app.aaps.core.data.pump.defs.PumpDescription
 import app.aaps.core.interfaces.InterfacesStrings
 import app.aaps.core.interfaces.aps.Loop
 import app.aaps.core.interfaces.automation.Automation
@@ -230,55 +232,148 @@ class TileSheetSource(
 
     override suspend fun iobSheet(): IobSheetState {
         val now = dateUtil.now()
+        val profile = profileFunction.getProfile()
         val bolusIob = iobCobCalculator.calculateIobFromBolus().round()
         val basalIob = iobCobCalculator.calculateIobFromTempBasalsIncludingConvertedExtended().round()
         val total = bolusIob.iob + basalIob.basaliob
-        // IOB of the next hours, every 5 minutes: the array the algorithm uses, from now on
-        val curve = profileFunction.getProfile()?.let { profile -> iobCobCalculator.calculateIobArrayInDia(profile).map { it.iob } }.orEmpty()
-        // The DAO gives the boluses by id, so sort them here. The temp basals are the other half of what the algorithm gives.
-        val from = now - T.hours(LAST_DOSES_HOURS).msecs()
-        val boluses = persistenceLayer.getBolusesFromTime(from, false).map { bolus ->
+        val step = T.mins(STEP_MINUTES).msecs()
+        val from = now - (profile?.let { T.mins((it.iCfg.dia * 60).toLong()).msecs() } ?: T.hours(DEFAULT_DIA_HOURS).msecs())
+        // Every dose that may still act: boluses and SMBs of the user and the loop, temp basals, extended boluses
+        val boluses = persistenceLayer.getBolusesFromTime(from, true).filter { it.type != BS.Type.PRIMING && it.amount > 0 }
+        val rows = mutableListOf<Triple<Long, String, String>>()
+        boluses.forEach { bolus ->
             val name = if (bolus.type == BS.Type.SMB) rh.gs(UiStrings.sheet_smb, insulin(bolus.amount)) else rh.gs(UiStrings.sheet_bolus, insulin(bolus.amount))
-            bolus.timestamp to name
+            rows += Triple(bolus.timestamp, name, twoParts(dateUtil.minAgo(rh, bolus.timestamp), rh.gs(UiStrings.sheet_left, insulin(bolus.iobCalc(now).iobContrib))))
         }
-        val tempBasals = persistenceLayer.getTemporaryBasalsStartingFromTime(from, false).map { tb ->
-            val name = if (tb.isAbsolute) rh.gs(UiStrings.sheet_tbr_rate, rh.gs(CoreUiStrings.pump_base_basal_rate, tb.rate)) else rh.gs(UiStrings.sheet_tbr_percent, tb.rate.roundToInt())
-            tb.timestamp to name
+        persistenceLayer.getTemporaryBasalsStartingFromTime(from, true).forEach { tb ->
+            rows += Triple(tb.timestamp, tbrName(tb), twoParts(dateUtil.minAgo(rh, tb.timestamp), minutes((tb.duration / 60_000L).toInt())))
         }
-        val doses = (boluses + tempBasals).sortedByDescending { it.first }.take(LAST_DOSES).map { (time, name) -> name to dateUtil.minAgo(rh, time) }
-        // The insulin acts until the IOB of the curve stays near zero (the curve runs DIA + 30 min, a point every 5 minutes)
-        val lastActive = curve.indexOfLast { abs(it) >= IOB_ZERO }
-        val actsUntilText = if (lastActive < 0 || lastActive == curve.lastIndex) ""
-        else (now + T.mins(((lastActive + 1) * CURVE_STEP_MINUTES).toLong()).msecs()).let { end ->
-            twoParts(dateUtil.timeString(end), rh.gs(UiStrings.sheet_left, dateUtil.untilString(end, rh, withParentheses = false)))
+        persistenceLayer.getExtendedBolusesStartingFromTime(from, true).forEach { eb ->
+            rows += Triple(eb.timestamp, rh.gs(UiStrings.sheet_extended, insulin(eb.amount)), twoParts(dateUtil.minAgo(rh, eb.timestamp), minutes((eb.duration / 60_000L).toInt())))
         }
+        val doses = rows.sortedByDescending { it.first }.take(LAST_DOSES).map { it.second to it.third }
+        // IOB from the last bolus or SMB until now, and the array of the algorithm from now on (DIA + 30 min)
+        val lastDose = boluses.maxOfOrNull { it.timestamp }
+        val past = mutableListOf<Double>()
+        if (profile != null && lastDose != null) {
+            var t = lastDose
+            while (t < now) {
+                past += iobCobCalculator.calculateFromTreatmentsAndTemps(t, profile).iob
+                t += step
+            }
+        }
+        val future = profile?.let { iobCobCalculator.calculateIobArrayInDia(it).map { iob -> iob.iob } }.orEmpty()
+        // The insulin acts until the IOB stays under IOB_ZERO
+        val lastActive = future.indexOfLast { abs(it) >= IOB_ZERO }
+        val end = if (lastActive in 0 until future.lastIndex) now + (lastActive + 1) * step else null
+        val shown = future.take(if (lastActive >= 0) (lastActive + 2).coerceAtMost(future.size) else 1)
+        val start = lastDose?.takeIf { past.isNotEmpty() } ?: now
+        val last = now + (shown.size - 1).coerceAtLeast(0) * step
+        val nowIndex = past.size
+        val timeline = SheetTimeline(
+            values = past + shown,
+            nowIndex = nowIndex,
+            ticks = hourTicks(start, last, if (last - start > T.hours(6).msecs()) 2 else 1) { t -> if (t <= now) ((t - start) / step).toInt() else nowIndex + ((t - now) / step).toInt() },
+            startText = dateUtil.timeString(start),
+            endText = dateUtil.timeString(end ?: last)
+        )
         return IobSheetState(
             totalText = insulin(total),
             bolusIobText = insulin(bolusIob.iob),
             basalIobText = insulin(basalIob.basaliob),
             activityText = rh.gs(UiStrings.sheet_iob_activity, decimalFormatter.to3Decimal(bolusIob.activity + basalIob.activity)),
-            curve = curve.take(CURVE_POINTS),
-            inTwoHoursText = curve.getOrNull(TWO_HOURS_POINT)?.let { insulin(it) }.orEmpty(),
+            timeline = timeline,
             lastDoses = doses,
-            actsUntilText = actsUntilText
+            actsUntilText = end?.let { twoParts(dateUtil.timeString(it), rh.gs(UiStrings.sheet_left, dateUtil.untilString(it, rh, withParentheses = false))) }.orEmpty()
         )
+    }
+
+    private fun tbrName(tb: TB): String =
+        if (tb.isAbsolute) rh.gs(UiStrings.sheet_tbr_rate, rh.gs(CoreUiStrings.pump_base_basal_rate, tb.rate)) else rh.gs(UiStrings.sheet_tbr_percent, tb.rate.roundToInt())
+
+    /** The full hours (local time) from [from] to [to], every [everyHours]; [index] gives the point of a time. */
+    private fun hourTicks(from: Long, to: Long, everyHours: Int, index: (Long) -> Int): List<SheetTimeTick> {
+        val hour = T.hours(1).msecs()
+        val midnight = dateUtil.beginOfDay(from)
+        var t = midnight
+        while (t <= from) t += hour
+        val ticks = mutableListOf<SheetTimeTick>()
+        while (t < to) {
+            if (((t - midnight) / hour) % everyHours == 0L) ticks += SheetTimeTick(index(t), dateUtil.timeString(t))
+            t += hour
+        }
+        return ticks
     }
 
     override suspend fun basalSheet(): BasalSheetState {
         val now = dateUtil.now()
         val profile = profileFunction.getProfile()
-        val tbr = processedTbrEbData.getTempBasalIncludingConvertedExtended(now)
         val pump = activePlugin.activePump
-        val runningText = if (tbr != null && profile != null)
-            twoParts(rh.gs(CoreUiStrings.pump_base_basal_rate, tbr.convertedToAbsolute(now, profile)), rh.gs(UiStrings.sheet_percent, tbr.convertedToPercent(now, profile)))
-        else ""
+        val tbr = processedTbrEbData.getTempBasalIncludingConvertedExtended(now)
+        val step = T.mins(STEP_MINUTES).msecs()
+        val midnight = dateUtil.beginOfDay(now)
+        val chartStart = now - T.hours(CHART_PAST_HOURS).msecs()
+        val chartEnd = now + T.hours(CHART_FUTURE_HOURS).msecs()
+        // A temp basal can start up to its duration before the time asked; 12 hours covers every pump
+        val tbrs = persistenceLayer.getTemporaryBasalsStartingFromTime(minOf(chartStart, midnight) - T.hours(12).msecs(), true)
+        fun tbAt(t: Long): TB? = tbrs.lastOrNull { it.timestamp <= t && t < it.end }
+        fun givenAt(t: Long, p: Double): Double = tbAt(t)?.let { if (it.isAbsolute) it.rate else p * it.rate / 100.0 } ?: p
+
+        if (profile == null)
+            return BasalSheetState(canSetTempBasal = pump.pumpDescription.isTempBasalCapable, loopMayChange = loop.runningMode() == RM.Mode.CLOSED_LOOP)
+
+        // The chart: 5 minute points on a grid that holds now
+        val given = mutableListOf<Double?>()
+        val profileRates = mutableListOf<Double>()
+        var t = now - ((now - chartStart) / step) * step
+        val first = t
+        while (t <= chartEnd) {
+            val p = profile.getBasal(t)
+            profileRates += p
+            given += if (t <= now) givenAt(t, p) else tbAt(t)?.takeIf { tbr != null }?.let { givenAt(t, p) }
+            t += step
+        }
+        val nowIndex = ((now - first) / step).toInt()
+        // Today: the given basal against the profile, in 5 minute steps
+        var givenToday = 0.0
+        var profileToday = 0.0
+        t = midnight
+        while (t < now) {
+            val p = profile.getBasal(t)
+            givenToday += givenAt(t, p) * STEP_MINUTES / 60.0
+            profileToday += p * STEP_MINUTES / 60.0
+            t += step
+        }
+        // The next change of the profile basal, on the 5 minute grid of the clock
+        val rateNow = profile.getBasal(now)
+        var next: Long? = null
+        t = (now / step + 1) * step
+        while (t <= now + T.hours(24).msecs() && next == null) {
+            if (abs(profile.getBasal(t) - rateNow) > 0.001) next = t
+            t += step
+        }
         val leftMin = tbr?.let { ((it.timestamp + it.duration - now) / 60_000L).toInt().coerceAtLeast(0) } ?: 0
         val totalMin = tbr?.let { (it.duration / 60_000L).toInt() } ?: 0
+        val changes = tbrs.filter { it.timestamp >= chartStart }.sortedByDescending { it.timestamp }.take(LAST_CHANGES).map { tb ->
+            twoParts(dateUtil.timeString(tb.timestamp), tbrName(tb)) to minutes((tb.duration / 60_000L).toInt())
+        }
         return BasalSheetState(
-            profileBasalText = profile?.let { rh.gs(CoreUiStrings.pump_base_basal_rate, it.getBasal(now)) }.orEmpty(),
-            runningText = runningText,
-            runningDetail = if (tbr != null) rh.gs(UiStrings.sheet_minutes_left_of, leftMin, totalMin) else "",
-            runningProgress = if (totalMin > 0) 1f - leftMin.toFloat() / totalMin else 0f,
+            profileBasalText = rh.gs(CoreUiStrings.pump_base_basal_rate, rateNow),
+            rateText = decimalFormatter.to2Decimal(tbr?.convertedToAbsolute(now, profile) ?: rateNow),
+            percentText = tbr?.let { rh.gs(UiStrings.sheet_percent, it.convertedToPercent(now, profile)) }.orEmpty(),
+            detailText = if (tbr != null) twoParts(rh.gs(UiStrings.sheet_basal_temp), rh.gs(UiStrings.sheet_minutes_left_of, leftMin, totalMin))
+            else rh.gs(UiStrings.sheet_basal_profile_only),
+            runningProgress = if (tbr != null && totalMin > 0) 1f - leftMin.toFloat() / totalMin else null,
+            nextChangeText = if (tbr == null) next?.let { rh.gs(UiStrings.sheet_basal_next, dateUtil.timeString(it), rh.gs(CoreUiStrings.pump_base_basal_rate, profile.getBasal(it))) }.orEmpty() else "",
+            profileRate = rateNow,
+            chart = BasalChart(
+                given = given, profile = profileRates, nowIndex = nowIndex,
+                ticks = hourTicks(first, chartEnd, CHART_TICK_HOURS) { time -> ((time - first) / step).toInt() }
+            ),
+            todayGivenText = insulin(givenToday),
+            todayProfileText = insulin(profileToday),
+            todayDifferenceText = insulin(givenToday - profileToday),
+            changes = changes,
             loopMayChange = loop.runningMode() == RM.Mode.CLOSED_LOOP,
             canSetTempBasal = pump.pumpDescription.isTempBasalCapable
         )
@@ -492,15 +587,19 @@ class TileSheetSource(
 
     private companion object {
 
-        const val LAST_DOSES = 5
-        const val LAST_DOSES_HOURS = 6L
+        const val LAST_DOSES = 8
+        const val LAST_CHANGES = 4
+        const val DEFAULT_DIA_HOURS = 5L
 
         /** IOB below this counts as gone, U */
         const val IOB_ZERO = 0.05
-        const val CURVE_STEP_MINUTES = 5
 
-        /** 4 hours of the IOB curve, a point every 5 minutes */
-        const val CURVE_POINTS = 49
-        const val TWO_HOURS_POINT = 24
+        /** The points of the charts, minutes apart */
+        const val STEP_MINUTES = 5L
+
+        /** The basal chart: hours before and after now, and a label every 3 hours */
+        const val CHART_PAST_HOURS = 6L
+        const val CHART_FUTURE_HOURS = 3L
+        const val CHART_TICK_HOURS = 3
     }
 }

@@ -32,6 +32,7 @@ import app.aaps.ui.compose.overview.statusLights.StatusUiState
 import app.aaps.ui.compose.testing.AapsScreenFixture
 import app.aaps.ui.compose.testing.setAapsContent
 import java.io.File
+import kotlin.math.exp
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Before
 import org.junit.Rule
@@ -129,8 +130,13 @@ class TileSheetsScreenshotTest {
         IobSheetBody(
             IobSheetState(
                 "1.20 U", "1.45 U", "-0.25 U", "0.021 U/min",
-                (0..48).map { 1.2 * kotlin.math.exp(-it / 20.0) }, "0.36 U",
-                listOf("SMB 0.30 U" to "12 min ago", "TBR 110 %" to "12 min ago", "SMB 0.20 U" to "27 min ago", "TBR 0 %" to "52 min ago", "Bolus 3.00 U" to "2 h ago"),
+                SheetTimeline(
+                    values = (0..24).map { 0.3 + 3.0 * exp(-it / 30.0) * (1 - exp(-it / 4.0)) } + (1..38).map { 1.2 * exp(-it / 12.0) },
+                    nowIndex = 25,
+                    ticks = listOf(SheetTimeTick(4, "19:00"), SheetTimeTick(16, "20:00"), SheetTimeTick(28, "21:00"), SheetTimeTick(40, "22:00"), SheetTimeTick(52, "23:00")),
+                    startText = "18:42", endText = "23:40"
+                ),
+                listOf("SMB 0.30 U" to "12 min ago · 0.27 U left", "TBR 110 %" to "12 min ago · 30 min", "SMB 0.20 U" to "27 min ago · 0.16 U left", "TBR 0 %" to "52 min ago · 30 min", "Bolus 3.00 U" to "2 h ago · 0.98 U left"),
                 "23:40 · 3 h 10 min left"
             ),
             {}
@@ -138,7 +144,35 @@ class TileSheetsScreenshotTest {
     }
 
     private fun basal(dark: Boolean) = shot("06_basal", dark) {
-        BasalSheetBody(IcTbrHigh, BasalSheetState("0.85 U/h", "0.94 U/h · 110 %", "22 of 30 min left", 0.27f, true, true), true, { _, _ -> }, {}, {})
+        BasalSheetBody(IcTbrHigh, basalState(true), true, { _, _ -> }, {}, {})
+    }
+
+    private fun basalNone(dark: Boolean) = shot("06b_basal_none", dark) {
+        BasalSheetBody(IcTbrHigh, basalState(false), true, { _, _ -> }, {}, {})
+    }
+
+    private fun basalState(running: Boolean): BasalSheetState {
+        // 6 h before now and 3 h after, every 5 minutes
+        val profile = (0..108).map { if (it < 48) 0.8 else if (it < 96) 0.85 else 0.9 }
+        val given = (0..108).map { i ->
+            when {
+                i > 72 + (if (running) 4 else 0) -> null
+                i in 18..23                      -> 0.0
+                i in 36..41                      -> 1.2
+                running && i in 54..59           -> 0.0
+                running && i >= 66               -> 0.94
+                else                             -> profile[i]
+            }
+        }
+        return BasalSheetState(
+            profileBasalText = "0.85 U/h", rateText = if (running) "0.94" else "0.85", percentText = if (running) "110 %" else "",
+            detailText = if (running) "Temp basal · 22 of 30 min left" else "By profile · no temp basal",
+            runningProgress = if (running) 0.27f else null, nextChangeText = if (running) "" else "at 22:00 → 0.90 U/h", profileRate = 0.85,
+            chart = BasalChart(given, profile, 72, listOf(SheetTimeTick(4, "15:00"), SheetTimeTick(40, "18:00"), SheetTimeTick(76, "21:00"))),
+            todayGivenText = "9.40 U", todayProfileText = "10.10 U", todayDifferenceText = "-0.70 U",
+            changes = listOf("18:42 · TBR 110 %" to "30 min", "18:12 · TBR 0 %" to "30 min", "16:30 · TBR 140 %" to "30 min"),
+            loopMayChange = true, canSetTempBasal = true
+        )
     }
 
     private fun loop(dark: Boolean) = shot("07_loop", dark) {
@@ -175,6 +209,8 @@ class TileSheetsScreenshotTest {
     @Test @Config(qualifiers = "w393dp-h700dp-port-xxhdpi") fun iobLight() = iob(false)
     @Test @Config(qualifiers = "w393dp-h700dp-port-night-xxhdpi") fun basalDark() = basal(true)
     @Test @Config(qualifiers = "w393dp-h700dp-port-xxhdpi") fun basalLight() = basal(false)
+    @Test @Config(qualifiers = "w393dp-h700dp-port-night-xxhdpi") fun basalNoneDark() = basalNone(true)
+    @Test @Config(qualifiers = "w393dp-h700dp-port-xxhdpi") fun basalNoneLight() = basalNone(false)
     @Test @Config(qualifiers = "w393dp-h700dp-port-night-xxhdpi") fun loopDark() = loop(true)
     @Test @Config(qualifiers = "w393dp-h700dp-port-xxhdpi") fun loopLight() = loop(false)
     @Test @Config(qualifiers = "w393dp-h700dp-port-night-xxhdpi") fun suppliesDark() = supplies(true)
