@@ -15,13 +15,12 @@ import app.aaps.core.interfaces.utils.DecimalFormatter
 import app.aaps.core.interfaces.widget.WidgetUpdater
 import app.aaps.core.keys.BooleanKey
 import app.aaps.core.keys.interfaces.Preferences
+import app.aaps.ui.compose.overview.sheets.TileSheetSource
 import com.google.common.truth.Truth.assertThat
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
@@ -61,7 +60,7 @@ internal class ChipsViewModelTest {
         whenever(cache.iobGraphFlow).thenReturn(MutableStateFlow(IobGraphData(emptyList(), emptyList())))
         whenever(cache.cobGraphFlow).thenReturn(MutableStateFlow(CobGraphData(emptyList(), emptyList())))
         whenever(cache.predictionsFlow).thenReturn(MutableStateFlow(emptyList()))
-        sut = ChipsViewModel(cache, iobCobCalculator, loop, config, persistenceLayer, sensitivityOverview, rh, decimalFormatter, rxBus, preferences, activePlugin, widgetUpdater, mock(), mock(), mock(), mock(), mock(), mock<BolusRecommendationSource> { onBlocking { current() } doReturn BolusRecommendation() }, mock(), CoroutineScope(UnconfinedTestDispatcher()))
+        sut = ChipsViewModel(cache, iobCobCalculator, loop, config, persistenceLayer, sensitivityOverview, rh, decimalFormatter, rxBus, preferences, activePlugin, widgetUpdater, mock(), mock(), mock(), mock(), mock(), mock<BolusRecommendationSource> { onBlocking { current() } doReturn BolusRecommendation() }, mock<TileSheetSource>())
     }
 
     @AfterEach

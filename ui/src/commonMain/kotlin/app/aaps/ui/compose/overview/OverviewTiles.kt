@@ -1,6 +1,7 @@
 package app.aaps.ui.compose.overview
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -40,9 +41,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
@@ -98,6 +101,9 @@ import app.aaps.ui.compose.overview.chips.toIcon
 import app.aaps.ui.compose.overview.chips.toTbrState
 import app.aaps.ui.compose.overview.chips.ttReasonIcon
 import app.aaps.ui.compose.overview.chips.ttReasonIconColor
+import app.aaps.ui.compose.overview.sheets.TileSheetActions
+import app.aaps.ui.compose.overview.sheets.TileSheetHost
+import app.aaps.ui.compose.overview.sheets.TileSheetKind
 import app.aaps.ui.compose.overview.statusLights.StatusItem
 import app.aaps.ui.compose.overview.statusLights.StatusUiState
 
@@ -142,6 +148,7 @@ fun OverviewTiles(
     onExerciseModeClick: () -> Unit,
     onStartActivity: () -> Unit,
     onCancelTempTarget: () -> Unit,
+    tileSheets: TileSheetActions,
     statusState: StatusUiState,
     pumpName: String,
     pumpIcon: ImageVector?,
@@ -155,7 +162,9 @@ fun OverviewTiles(
     val role = LocalClientRole.current
     fun allowed(element: ElementType) = commandsAllowed && role.allows(element.role)
     fun open(element: ElementType): (() -> Unit)? = if (allowed(element)) ({ onNavigate(NavigationRequest.Element(element)) }) else null
-    var showStatusSheet by rememberSaveable { mutableStateOf(false) }
+    // autoISF build: a tap opens the sheet of the tile, a long press the full screen as before
+    var sheet by remember { mutableStateOf<TileSheetKind?>(null) }
+    var showStatusLights by remember { mutableStateOf(false) }
     var showSensitivityDialog by remember { mutableStateOf(false) }
     var showBasalDetails by remember { mutableStateOf(false) }
     var showActivitySheet by rememberSaveable { mutableStateOf(false) }
@@ -163,23 +172,24 @@ fun OverviewTiles(
 
     Column(verticalArrangement = Arrangement.spacedBy(AapsSpacing.medium), modifier = modifier.fillMaxWidth()) {
         TileRow {
-            BgTile(bgInfo, timeAgoText, onClick = open(ElementType.BG_CHECK), modifier = Modifier.weight(2f))
+            BgTile(bgInfo, timeAgoText, onClick = { sheet = TileSheetKind.BG }, onLongClick = open(ElementType.BG_CHECK), modifier = Modifier.weight(2f))
             TargetTile(
                 text = tempTargetText,
                 state = tempTargetState,
                 progress = tempTargetProgress,
                 reason = tempTargetReason,
                 sceneManaged = tempTargetSceneManaged,
-                onClick = open(ElementType.TEMP_TARGET_MANAGEMENT),
+                onClick = { sheet = TileSheetKind.TARGET },
+                onLongClick = open(ElementType.TEMP_TARGET_MANAGEMENT),
                 modifier = Modifier.weight(1f)
             )
         }
         TileRow {
-            BolusTile(bolusRecommendation, onClick = open(ElementType.INSULIN), modifier = Modifier.weight(1f))
+            BolusTile(bolusRecommendation, onClick = { sheet = TileSheetKind.BOLUS }, onLongClick = open(ElementType.INSULIN), modifier = Modifier.weight(1f))
             Tile(
                 icon = ElementType.CARBS.icon(), iconColor = ElementType.CARBS.color(),
                 title = stringResource(InterfacesStrings.carbs),
-                onClick = open(ElementType.CARBS), modifier = Modifier.weight(1f)
+                onClick = { sheet = TileSheetKind.CARBS }, onLongClick = open(ElementType.CARBS), modifier = Modifier.weight(1f)
             ) {
                 TileValue(cobUiState.text.ifEmpty { stringResource(UiStrings.basal_unknown) })
                 TileLine(stringResource(CoreUiStrings.cob))
@@ -188,7 +198,7 @@ fun OverviewTiles(
                 // The insulin drop: the syringe is the Bolus tile
                 icon = IcSmb, iconColor = AapsTheme.generalColors.iobPrediction,
                 title = stringResource(CoreUiStrings.iob),
-                onClick = onIobClick, modifier = Modifier.weight(1f)
+                onClick = { sheet = TileSheetKind.IOB }, onLongClick = onIobClick, modifier = Modifier.weight(1f)
             ) {
                 TileValue(iobUiState.text.ifEmpty { stringResource(UiStrings.basal_unknown) })
             }
@@ -199,7 +209,7 @@ fun OverviewTiles(
                     icon = basalUiState.direction.toTbrState().toIcon(), iconColor = AapsTheme.elementColors.tempBasal,
                     // "Basal", not "Temp basal": the long title did not fit a third of a phone screen
                     title = stringResource(CoreUiStrings.basal),
-                    onClick = open(ElementType.TEMP_BASAL), modifier = Modifier.weight(1f)
+                    onClick = { sheet = TileSheetKind.BASAL }, onLongClick = open(ElementType.TEMP_BASAL), modifier = Modifier.weight(1f)
                 ) {
                     TileValue(basalUiState.rateText, AapsTheme.elementColors.tempBasal)
                     // The tile opens the temp basal; its second line opens the basal details, as the basal card did
@@ -213,7 +223,8 @@ fun OverviewTiles(
             Tile(
                 icon = runningMode?.toIcon() ?: IcQuestion, iconColor = runningMode?.toColor() ?: MaterialTheme.colorScheme.outline,
                 title = stringResource(CoreUiStrings.loop),
-                onClick = open(ElementType.RUNNING_MODE),
+                onClick = { sheet = TileSheetKind.LOOP },
+                onLongClick = open(ElementType.RUNNING_MODE),
                 sceneManaged = runningModeSceneManaged,
                 modifier = Modifier.weight(1f)
             ) {
@@ -229,7 +240,7 @@ fun OverviewTiles(
                     )
                 }
             }
-            SensorTile(statusState.sensorStatus, onClick = { showStatusSheet = true }, modifier = Modifier.weight(1f))
+            SensorTile(statusState.sensorStatus, onClick = { sheet = TileSheetKind.SUPPLIES }, modifier = Modifier.weight(1f))
         }
         TileRow {
             ProfileTile(
@@ -238,7 +249,8 @@ fun OverviewTiles(
                 progress = profileProgress,
                 sceneManaged = profileSceneManaged,
                 // Stays clickable on an unpaired client: profile management opens read-only there
-                onClick = { onNavigate(NavigationRequest.Element(ElementType.PROFILE_MANAGEMENT)) },
+                onClick = { sheet = TileSheetKind.PROFILE },
+                onLongClick = { onNavigate(NavigationRequest.Element(ElementType.PROFILE_MANAGEMENT)) },
                 modifier = Modifier.weight(1f)
             )
             PumpTile(
@@ -247,7 +259,8 @@ fun OverviewTiles(
                 insulin = statusState.insulinStatus,
                 cannula = statusState.cannulaStatus,
                 battery = statusState.batteryStatus,
-                onClick = if (showPump) ({ onNavigate(NavigationRequest.Element(ElementType.PUMP)) }) else ({ showStatusSheet = true }),
+                onClick = { sheet = TileSheetKind.PUMP },
+                onLongClick = if (showPump) ({ onNavigate(NavigationRequest.Element(ElementType.PUMP)) }) else null,
                 modifier = Modifier.weight(1f)
             )
             // The exercise mode as a tile of its own, only where the algorithm reads it (the master with AutoISF or SMB)
@@ -255,17 +268,26 @@ fun OverviewTiles(
         }
     }
 
-    if (showStatusSheet) {
-        StatusSheet(
-            statusState = statusState,
-            statusLightsDef = statusLightsDef,
-            commandsAllowed = commandsAllowed,
-            onNavigate = { showStatusSheet = false; onNavigate(it) },
-            onPumpClick = if (showPump) ({ showStatusSheet = false; onNavigate(NavigationRequest.Element(ElementType.PUMP)) }) else null,
-            pumpIcon = pumpIcon,
-            onDismiss = { showStatusSheet = false }
-        )
-    }
+    TileSheetHost(
+        kind = sheet,
+        tileSheets = tileSheets,
+        bgInfo = bgInfo,
+        timeAgoText = timeAgoText,
+        bolusRecommendation = bolusRecommendation,
+        basalIcon = basalUiState.direction.toTbrState().toIcon(),
+        sensitivityText = sensitivityUiState.asText,
+        statusState = statusState,
+        pumpName = pumpName,
+        pumpIcon = pumpIcon,
+        showPump = showPump,
+        commandsAllowed = { element -> allowed(element) },
+        onNavigate = onNavigate,
+        onIobDetails = onIobClick,
+        onBasalDay = { showBasalDetails = true },
+        onStatusLights = { showStatusLights = true },
+        onDismiss = { sheet = null }
+    )
+    if (showStatusLights) StatusLightsSheet(statusLightsDef, onDismiss = { showStatusLights = false })
     if (showActivitySheet && exerciseModeUiState.visible) {
         ActivitySheet(
             state = exerciseModeUiState,
@@ -317,6 +339,7 @@ private fun Tile(
     title: String,
     onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
     tint: Color? = null,
     sceneManaged: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
@@ -345,9 +368,7 @@ private fun Tile(
             content()
         }
     }
-    val cardModifier = modifier.fillMaxHeight()
-    if (onClick != null) ElevatedCard(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onClick() }, modifier = cardModifier, colors = colors, content = body)
-    else ElevatedCard(modifier = cardModifier, colors = colors, content = body)
+    ElevatedCard(modifier = modifier.fillMaxHeight().tileClicks(onClick, onLongClick, haptic), colors = colors, content = body)
 }
 
 @Composable
@@ -370,7 +391,7 @@ private fun TileLine(text: String, color: Color? = null, modifier: Modifier = Mo
  * the reading with the changes over 5, 15 and 40 minutes.
  */
 @Composable
-private fun BgTile(bgInfo: BgInfoData?, timeAgoText: String, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {
+private fun BgTile(bgInfo: BgInfoData?, timeAgoText: String, onClick: (() -> Unit)?, onLongClick: (() -> Unit)?, modifier: Modifier = Modifier) {
     val haptic = LocalHapticFeedback.current
     val color = bgInfo?.bgRange?.toColor() ?: MaterialTheme.colorScheme.outline
     val unknown = stringResource(UiStrings.basal_unknown)
@@ -438,9 +459,7 @@ private fun BgTile(bgInfo: BgInfoData?, timeAgoText: String, onClick: (() -> Uni
             if (onClick != null) Chevron(modifier = Modifier.align(Alignment.Top))
         }
     }
-    val cardModifier = modifier.fillMaxHeight()
-    if (onClick != null) ElevatedCard(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onClick() }, modifier = cardModifier, colors = colors, content = body)
-    else ElevatedCard(modifier = cardModifier, colors = colors, content = body)
+    ElevatedCard(modifier = modifier.fillMaxHeight().tileClicks(onClick, onLongClick, haptic), colors = colors, content = body)
 }
 
 @Composable
@@ -461,6 +480,7 @@ private fun TargetTile(
     reason: TT.Reason?,
     sceneManaged: Boolean,
     onClick: (() -> Unit)?,
+    onLongClick: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
     val stateColor = when (state) {
@@ -477,6 +497,7 @@ private fun TargetTile(
         iconColor = stateColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
         title = stringResource(UiStrings.target_tile),
         onClick = onClick,
+        onLongClick = onLongClick,
         tint = stateColor,
         sceneManaged = sceneManaged,
         modifier = modifier
@@ -488,7 +509,7 @@ private fun TargetTile(
 }
 
 @Composable
-private fun BolusTile(advice: BolusRecommendation, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {
+private fun BolusTile(advice: BolusRecommendation, onClick: (() -> Unit)?, onLongClick: (() -> Unit)?, modifier: Modifier = Modifier) {
     val (value, label) = when (advice.kind) {
         BolusRecommendationKind.SUGGEST       -> stringResource(InterfacesStrings.format_insulin_units, advice.dose) to stringResource(UiStrings.bolus_rec_card_suggest)
         BolusRecommendationKind.LOOP_GIVES    -> stringResource(InterfacesStrings.format_insulin_units, advice.insulinNeeded) to stringResource(UiStrings.bolus_rec_card_loop_gives)
@@ -501,7 +522,7 @@ private fun BolusTile(advice: BolusRecommendation, onClick: (() -> Unit)?, modif
     Tile(
         icon = ElementType.INSULIN.icon(), iconColor = ElementType.INSULIN.color(),
         title = stringResource(UiStrings.bolus_card),
-        onClick = onClick, modifier = modifier
+        onClick = onClick, onLongClick = onLongClick, modifier = modifier
     ) {
         TileValue(value)
         TileLine(label, if (advice.kind.isWarning()) AapsTheme.generalColors.statusWarning else null)
@@ -521,7 +542,7 @@ private fun SensorTile(sensor: StatusItem?, onClick: () -> Unit, modifier: Modif
 }
 
 @Composable
-private fun ProfileTile(name: String, isModified: Boolean, progress: Float, sceneManaged: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun ProfileTile(name: String, isModified: Boolean, progress: Float, sceneManaged: Boolean, onClick: () -> Unit, onLongClick: () -> Unit, modifier: Modifier = Modifier) {
     val noProfile = name.isEmpty()
     val stateColor = when {
         noProfile  -> MaterialTheme.colorScheme.error
@@ -537,6 +558,7 @@ private fun ProfileTile(name: String, isModified: Boolean, progress: Float, scen
         iconColor = stateColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
         title = stringResource(CoreUiStrings.profile),
         onClick = onClick,
+        onLongClick = onLongClick,
         tint = stateColor,
         sceneManaged = sceneManaged,
         modifier = modifier
@@ -557,12 +579,13 @@ private fun PumpTile(
     cannula: StatusItem?,
     battery: StatusItem?,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
     Tile(
         icon = icon ?: ElementType.PUMP.icon(), iconColor = ElementType.PUMP.color(),
         title = name.ifEmpty { stringResource(CoreUiStrings.pump) },
-        onClick = onClick, modifier = modifier
+        onClick = onClick, onLongClick = onLongClick, modifier = modifier
     ) {
         StatusLine(IcPumpCartridge, insulin?.level ?: stringResource(UiStrings.basal_unknown), insulin?.let { statusColor(it.levelStatus) }, big = true)
         Row(horizontalArrangement = Arrangement.spacedBy(AapsSpacing.medium)) {
@@ -767,36 +790,27 @@ private fun SheetBox(color: Color, content: @Composable ColumnScope.() -> Unit) 
 }
 
 /** The status sheet: what the status row showed when opened (sensor, insulin, cannula, battery, their buttons). */
+/** The settings of the status lights (when a supply is due), opened from the supplies sheet. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun StatusSheet(
-    statusState: StatusUiState,
-    statusLightsDef: PreferenceSubScreenDef,
-    commandsAllowed: Boolean,
-    onNavigate: (NavigationRequest) -> Unit,
-    onPumpClick: (() -> Unit)?,
-    pumpIcon: ImageVector?,
-    onDismiss: () -> Unit
-) {
+private fun StatusLightsSheet(statusLightsDef: PreferenceSubScreenDef, onDismiss: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        OverviewStatusSection(
-            sensorStatus = statusState.sensorStatus,
-            insulinStatus = statusState.insulinStatus,
-            cannulaStatus = statusState.cannulaStatus,
-            batteryStatus = statusState.batteryStatus,
-            showFill = statusState.showFill,
-            showPumpBatteryChange = statusState.showPumpBatteryChange,
-            commandsAllowed = commandsAllowed,
-            onNavigate = onNavigate,
-            statusLightsDef = statusLightsDef,
-            expanded = true,
-            onExpandedChange = { if (!it) onDismiss() },
-            onPumpClick = onPumpClick,
-            pumpIcon = pumpIcon,
-            modifier = Modifier.padding(horizontal = AapsSpacing.large, vertical = AapsSpacing.medium)
-        )
+        Column(modifier = Modifier.padding(horizontal = AapsSpacing.large, vertical = AapsSpacing.medium)) {
+            StatusLightsSettingsContent(statusLightsDef)
+        }
     }
 }
+
+/** A tap and a long press on a tile, with the click feel of the phone. */
+@Composable
+private fun Modifier.tileClicks(onClick: (() -> Unit)?, onLongClick: (() -> Unit)?, haptic: HapticFeedback): Modifier =
+    if (onClick == null && onLongClick == null) this
+    else this
+        .clip(CardDefaults.elevatedShape)
+        .combinedClickable(
+            onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onClick?.invoke() ?: onLongClick?.invoke() },
+            onLongClick = onLongClick?.let { { haptic.performHapticFeedback(HapticFeedbackType.LongPress); it() } }
+        )
 
 /** How strongly a state colours its tile. */
 private const val TILE_TINT_ALPHA = 0.18f

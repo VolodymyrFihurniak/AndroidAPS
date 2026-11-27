@@ -44,8 +44,8 @@ import app.aaps.core.keys.BooleanKey
 import app.aaps.core.keys.UnitDoubleKey
 import app.aaps.core.keys.interfaces.ClientRole
 import app.aaps.core.keys.interfaces.VisibilityContext
-import app.aaps.ui.R
 import app.aaps.shared.tests.generatedTextResolver
+import app.aaps.ui.R
 import app.aaps.ui.UiStrings
 import app.aaps.ui.UiStringsValues
 import app.aaps.ui.compose.manageSheet.FakePumpPlugin
@@ -54,6 +54,7 @@ import app.aaps.ui.compose.overview.chips.BolusRecommendation
 import app.aaps.ui.compose.overview.chips.BolusRecommendationSource
 import app.aaps.ui.compose.overview.chips.ChipsViewModel
 import app.aaps.ui.compose.overview.graphs.GraphViewModel
+import app.aaps.ui.compose.overview.sheets.TileSheetSource
 import app.aaps.ui.compose.overview.statusLights.StatusViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -209,7 +210,7 @@ internal class OverviewViewModelFixture(private val screen: AapsScreenFixture) {
 
     val chipsViewModel: ChipsViewModel by lazy {
         // The real English texts: the basal card resolves strings of this module, which the mocked rh does not know
-        ChipsViewModel(cache, iobCobCalculator, loop, screen.config, persistenceLayer, sensitivityOverview, generatedTextResolver(rh, "ui" to UiStringsValues::textOf), decimalFormatter, rxBus, screen.preferences, activePlugin, mock(), mock(), mock(), mock(), screen.dateUtil, screen.profileUtil, mock<BolusRecommendationSource> { onBlocking { current() } doReturn BolusRecommendation() }, mock(), CoroutineScope(UnconfinedTestDispatcher()))
+        ChipsViewModel(cache, iobCobCalculator, loop, screen.config, persistenceLayer, sensitivityOverview, generatedTextResolver(rh, "ui" to UiStringsValues::textOf), decimalFormatter, rxBus, screen.preferences, activePlugin, mock(), mock(), mock(), mock(), screen.dateUtil, screen.profileUtil, mock<BolusRecommendationSource> { onBlocking { current() } doReturn BolusRecommendation() }, mock<TileSheetSource>())
     }
 
     val statusViewModel: StatusViewModel by lazy {

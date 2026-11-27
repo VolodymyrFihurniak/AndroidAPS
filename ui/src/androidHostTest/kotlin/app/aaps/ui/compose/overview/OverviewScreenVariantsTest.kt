@@ -4,9 +4,10 @@ import android.content.Context
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
 import app.aaps.core.data.model.RM
 import app.aaps.core.interfaces.navigation.ElementType
@@ -67,9 +68,8 @@ class OverviewScreenVariantsTest {
     private lateinit var viewModels: OverviewViewModelFixture
     private lateinit var context: Context
 
-    private lateinit var statusHeading: String
+    private lateinit var suppliesHeading: String
     private lateinit var sensorLabel: String
-    private lateinit var collapseLabel: String
     private lateinit var pumpLabel: String
 
     private val clockText = OverviewViewModelFixture.CLOCK_TIME + OverviewViewModelFixture.CLOCK_AGO
@@ -80,9 +80,8 @@ class OverviewScreenVariantsTest {
         screen = AapsScreenFixture()
         viewModels = OverviewViewModelFixture(screen)
         context = RuntimeEnvironment.getApplication()
-        statusHeading = context.getString(app.aaps.core.ui.R.string.status)
+        suppliesHeading = context.getString(app.aaps.ui.R.string.sheet_supplies)
         sensorLabel = context.getString(app.aaps.core.ui.R.string.sensor_label)
-        collapseLabel = context.getString(app.aaps.core.ui.R.string.collapse)
         pumpLabel = context.getString(app.aaps.core.ui.R.string.pump_management)
     }
 
@@ -228,16 +227,15 @@ class OverviewScreenVariantsTest {
     @Config(qualifiers = WIDE)
     fun `tablet layout opens the status sheet from the sensor tile`() = assertStatusSheet(Variant.TABLET)
 
-    /** autoISF build: the status row is gone; its content (sensor change, fill, ...) is a sheet behind the sensor tile. */
+    /** autoISF build: the status row is gone; its content (sensor change, fill, ...) is the supplies sheet behind the sensor tile. */
     private fun assertStatusSheet(variant: Variant) {
         setScreen(variant)
-        compose.onNodeWithText(statusHeading).assertDoesNotExist()
+        compose.onNodeWithText(suppliesHeading).assertDoesNotExist()
 
         compose.onNodeWithText(sensorLabel).assertIsDisplayed().performClick()
         compose.waitForIdle()
 
-        compose.onNodeWithText(statusHeading).assertIsDisplayed()
-        compose.onNodeWithContentDescription(collapseLabel).assertIsDisplayed()
+        compose.onNodeWithText(suppliesHeading).assertIsDisplayed()
     }
 
     // ---------------------------------------------------------------- pump button
@@ -253,30 +251,31 @@ class OverviewScreenVariantsTest {
     @Config(qualifiers = WIDE)
     fun `tablet layout pump button opens the pump screen`() = assertPumpButton(Variant.TABLET)
 
+    /** autoISF build: a tap opens the pump sheet, a long press the pump screen. */
     private fun assertPumpButton(variant: Variant) {
         setScreen(variant)
 
-        compose.onNodeWithText(pumpLabel).assertIsDisplayed().performClick()
+        compose.onNodeWithText(pumpLabel).assertIsDisplayed().performTouchInput { longClick() }
         assertEquals(listOf<NavigationRequest>(NavigationRequest.Element(ElementType.PUMP)), navigated)
     }
 
     // ---------------------------------------------------------------- tiles
 
-    /** autoISF build: the quick access the user asked for: one tap from the bolus and the target tiles. */
+    /** autoISF build: a tap on a tile opens its sheet; a long press still opens the full screen. */
     @Test
-    fun `bolus tile opens the insulin dialog`() {
+    fun `bolus tile long press opens the insulin dialog`() {
         setScreen(Variant.STACKED)
 
-        compose.onNodeWithText(context.getString(app.aaps.ui.R.string.bolus_card)).performClick()
+        compose.onNodeWithText(context.getString(app.aaps.ui.R.string.bolus_card)).performTouchInput { longClick() }
         assertEquals(listOf<NavigationRequest>(NavigationRequest.Element(ElementType.INSULIN)), navigated)
     }
 
     @Test
-    fun `target tile shows the target and opens the temp targets`() {
+    fun `target tile shows the target and a long press opens the temp targets`() {
         setScreen(Variant.STACKED)
 
         compose.onNodeWithText(TT_TEXT).assertIsDisplayed()
-        compose.onNodeWithText(context.getString(app.aaps.ui.R.string.target_tile)).performClick()
+        compose.onNodeWithText(context.getString(app.aaps.ui.R.string.target_tile)).performTouchInput { longClick() }
         assertEquals(listOf<NavigationRequest>(NavigationRequest.Element(ElementType.TEMP_TARGET_MANAGEMENT)), navigated)
     }
 

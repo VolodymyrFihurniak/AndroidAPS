@@ -530,4 +530,102 @@
     <string name="activity_last_hour">Last hour</string>
     <string name="activity_steps" comment="%1$d=number of steps. Example: 1240 steps">%1$d steps</string>
     <string name="activity_heart_rate" comment="%1$d=mean heart rate. Example: 112 bpm">%1$d bpm</string>
+    <!-- autoISF build: the sheets of the overview tiles -->
+    <string name="sheet_two_parts" comment="Two parts of a line. %1$s and %2$s are values. Example: 3.0 U · 2 h ago">%1$s · %2$s</string>
+    <string name="sheet_separator" comment="Separator between two values on one line, with spaces">" · "</string>
+    <string name="sheet_bg_title">Glucose</string>
+    <string name="sheet_bg_last_hour" comment="%1$d=percent. Example: Last hour · 92 % in range">Last hour · %1$d %% in range</string>
+    <string name="sheet_bg_meter">Enter meter BG</string>
+    <string name="sheet_bg_meter_sub">To check the sensor or to calibrate</string>
+    <string name="sheet_save">Save</string>
+    <string name="sheet_bg_history">BG history</string>
+    <string name="sheet_target_now" comment="%1$s=target with unit. Example: now 100 mg/dL">now %1$s</string>
+    <string name="sheet_target_running">Running temp target</string>
+    <string name="sheet_target_temp">Temp target</string>
+    <string name="sheet_target_temp_sub">A tap starts it, after a confirmation</string>
+    <string name="sheet_target_custom">Custom…</string>
+    <string name="sheet_target_custom_sub">value and time</string>
+    <string name="sheet_target_profile_now">Profile target now</string>
+    <string name="sheet_target_from" comment="%1$s=clock time. Example: From 22:00">From %1$s</string>
+    <string name="sheet_target_all">All temp targets</string>
+    <string name="sheet_last" comment="%1$s=dose and time. Example: last 3.0 U · 2 h ago">last %1$s</string>
+    <string name="sheet_bolus_reason" comment="%1$s=BG with unit, %2$s=insulin with unit, %3$s=carbs with unit. Example: BG 132 mg/dL, IOB 1.20 U, COB 22 g">BG %1$s, IOB %2$s, COB %3$s</string>
+    <string name="sheet_advice" comment="%1$s=insulin with unit. Example: Loop advice: 0.8 U">Loop advice: %1$s</string>
+    <string name="sheet_advice_loop">The loop gives this itself with SMB. No manual bolus is needed.</string>
+    <string name="sheet_give" comment="%1$s=insulin with unit. Example: Give 0.8 U">Give %1$s</string>
+    <string name="sheet_record" comment="%1$s=insulin with unit. Example: Record 1.5 U">Record %1$s</string>
+    <string name="sheet_other_dose">Other dose</string>
+    <string name="sheet_units" comment="Unit of insulin, short">U</string>
+    <string name="sheet_grams" comment="Unit of carbs, short">g</string>
+    <string name="sheet_record_only">Record only</string>
+    <string name="sheet_calculator">Calculator</string>
+    <string name="sheet_cob" comment="%1$s=carbs with unit. Example: COB 22 g">COB %1$s</string>
+    <string name="sheet_carbs_absorbing">Still absorbing</string>
+    <string name="sheet_of" comment="%1$s=part, %2$s=whole. Example: 22 g of 45 g">%1$s of %2$s</string>
+    <string name="sheet_carbs_last_meal" comment="%1$s=carbs and time. Example: last meal 45 g · 1 h ago">last meal %1$s</string>
+    <string name="sheet_carbs_enter">Enter carbs</string>
+    <string name="sheet_when">When</string>
+    <string name="sheet_now">now</string>
+    <string name="sheet_later" comment="%1$d=minutes later. Example: +15 min">+%1$d min</string>
+    <string name="sheet_earlier" comment="%1$d=minutes earlier. Example: −15 min">−%1$d min</string>
+    <string name="sheet_carbs_hypo">Hypo target</string>
+    <string name="sheet_carbs_save" comment="%1$s=carbs with unit. Example: Enter 20 g">Enter %1$s</string>
+    <string name="sheet_iob_title">Insulin on board</string>
+    <string name="sheet_iob_status" comment="%1$s=insulin with unit. Example: IOB 1.20 U">IOB %1$s</string>
+    <string name="sheet_iob_bolus">Boluses and SMB</string>
+    <string name="sheet_iob_basal">Basal (difference to profile)</string>
+    <string name="sheet_iob_activity_now">Activity now</string>
+    <string name="sheet_iob_activity" comment="%1$s=insulin activity. Example: 0.021 U/min">%1$s U/min</string>
+    <string name="sheet_iob_curve">How IOB goes down</string>
+    <string name="sheet_iob_in_2h" comment="%1$s=insulin with unit. Example: in 2 h ≈ 0.4 U">in 2 h ≈ %1$s</string>
+    <string name="sheet_iob_last">Last doses</string>
+    <string name="sheet_iob_details">IOB details</string>
+    <string name="sheet_smb" comment="%1$s=insulin with unit. Example: SMB 0.3 U">SMB %1$s</string>
+    <string name="sheet_bolus" comment="%1$s=insulin with unit. Example: Bolus 3.0 U">Bolus %1$s</string>
+    <string name="sheet_percent" comment="%1$d=percent. Example: 110 %">%1$d %%</string>
+    <string name="sheet_hours" comment="%1$d=hours. Example: 2 h">%1$d h</string>
+    <string name="sheet_no_end" comment="Profile switch without an end time">no end</string>
+    <string name="sheet_left" comment="%1$s=time. Example: 1 h 20 min left">%1$s left</string>
+    <string name="sheet_minutes_left_of" comment="%1$d=minutes left, %2$d=all minutes. Example: 22 of 30 min left">%1$d of %2$d min left</string>
+    <string name="sheet_basal_profile" comment="%1$s=basal rate with unit. Example: profile 0.85 U/h">profile %1$s</string>
+    <string name="sheet_basal_none">No temp basal</string>
+    <string name="sheet_basal_own">Own temp basal</string>
+    <string name="sheet_basal_own_sub">In closed loop the loop may change it</string>
+    <string name="sheet_for" comment="Before a choice of durations">For</string>
+    <string name="sheet_basal_start" comment="%1$d=percent, %2$s=duration. Example: Start 80 % for 1 h">Start %1$d %% for %2$s</string>
+    <string name="sheet_basal_day">Basal of the day</string>
+    <string name="sheet_basal_tbr" comment="%1$s=basal rate with unit. Example: 0.94 U/h (temp basal)">%1$s (temp basal)</string>
+    <string name="sheet_tbr_percent" comment="%1$d=percent. Example: TBR 110 %">TBR %1$d %%</string>
+    <string name="sheet_tbr_rate" comment="%1$s=basal rate with unit. Example: TBR 0.50 U/h">TBR %1$s</string>
+    <string name="sheet_no_change">no change</string>
+    <string name="sheet_loop_run" comment="%1$s=time ago. Example: run 2 min ago">run %1$s</string>
+    <string name="sheet_loop_mode">Mode</string>
+    <string name="sheet_loop_pause">Pause</string>
+    <string name="sheet_loop_suspend" comment="%1$s=duration. Example: Pause 1 h">Pause %1$s</string>
+    <string name="sheet_loop_disconnect" comment="%1$s=duration. Example: Pump off 30 min">Pump off %1$s</string>
+    <string name="sheet_loop_last">Last run</string>
+    <string name="sheet_loop_decision">Decision</string>
+    <string name="sheet_loop_autosens">Autosens</string>
+    <string name="sheet_loop_run_now">Run now</string>
+    <string name="sheet_loop_details">Algorithm details</string>
+    <string name="sheet_loop_modes">All running modes</string>
+    <string name="sheet_supplies">Sensor and supplies</string>
+    <string name="sheet_time_to_change" comment="%1$s=age. Example: 2d20h · time to change">%1$s · time to change</string>
+    <string name="sheet_change">Change</string>
+    <string name="sheet_profile_switch_to">Switch to</string>
+    <string name="sheet_profile_active">active</string>
+    <string name="sheet_profile_percent">Percentage and time</string>
+    <string name="sheet_profile_percent_sub">The percentage changes basal, ISF and IC together</string>
+    <string name="sheet_switch">Switch</string>
+    <string name="sheet_profile_view">View</string>
+    <string name="sheet_pump_connected" comment="%1$s=time ago. Example: connected 1 min ago">connected %1$s</string>
+    <string name="sheet_pump_reservoir">Reservoir</string>
+    <string name="sheet_pump_battery">Battery</string>
+    <string name="sheet_pump_basal">Basal now</string>
+    <string name="sheet_pump_last_bolus">Last bolus</string>
+    <string name="sheet_pump_refresh">Refresh</string>
+    <string name="sheet_pump_history">History</string>
+    <string name="sheet_pump_disconnect">Disconnect pump</string>
+    <string name="sheet_pump_disconnect_sub">For a shower or a swim: the loop pauses</string>
+    <string name="sheet_pump_screen">Pump screen</string>
 </resources>

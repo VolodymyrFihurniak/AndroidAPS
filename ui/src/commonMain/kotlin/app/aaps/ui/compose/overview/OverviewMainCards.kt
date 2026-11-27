@@ -104,6 +104,7 @@ fun OverviewMainCards(
             onExerciseModeClick = chipsViewModel::toggleExerciseMode,
             onStartActivity = chipsViewModel::startActivityTarget,
             onCancelTempTarget = chipsViewModel::cancelTempTarget,
+            tileSheets = chipsViewModel.tileSheets,
             statusState = statusState,
             pumpName = manageState.pumpPlugin.pluginDescription.pluginName?.let { stringResource(it) }.orEmpty(),
             pumpIcon = manageState.pumpPlugin.pluginDescription.icon,

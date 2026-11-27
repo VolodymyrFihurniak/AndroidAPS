@@ -110,7 +110,8 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
   little muted (in range green, high amber, low red), so they no longer fight each other like the neon green and
   yellow did. Only the Compose screens use them; the old XML screens keep the AAPS colours.
 * On a phone the top of the overview is a grid of tiles. Each tile has an icon, a title and a small
-  arrow, and a tap opens what the tile shows:
+  arrow. A tap opens the sheet of the tile (see *Tile sheets* below); a long press opens the full
+  screen the tile showed before:
   - *BG* (wide): the value in the colour of its range, its unit, the trend, the age of the reading and
     the changes over 5, 15 and 40 minutes; it opens the BG check. Beside it *Target*: the temp target
     with its time left and the colour of its reason, or the profile target the loop corrects toward
@@ -132,6 +133,31 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
     dialog; without a preset a link to the temp targets), the effect at that target (the same formula
     as the algorithm: c / (c + target − 99), c = half basal exercise target − 99) and the steps and
     heart rate of the last hour when a watch sends them.
+  **Tile sheets.** Each sheet has the icon, the title and the state of its tile at the top, then
+  cards with the quick actions and links:
+  - *BG*: the last hour as a small line with the time in range, a meter BG entry with +/− (save as a
+    BG check, or calibrate when the CGM can), a link to the BG history.
+  - *Target*: the running temp target with *Cancel*, the presets (a tap starts one), *Custom…*, the
+    profile target now and its next change, a link to all temp targets.
+  - *Bolus*: the advice of the loop. Only when the advice is *suggest* (open loop, or no SMB) is there
+    a *Give* button for that dose; in closed loop with SMB the sheet only says that the loop gives it,
+    so the dose is never given twice. Then another dose with +/−, *Record only*, the calculator.
+  - *Carbs*: COB with a bar, the last meal, an entry with +/−, the time (now or ± minutes), the
+    *Hypo* target switch, the calculator.
+  - *IOB*: bolus and basal IOB, the activity now, the IOB curve for the next 4 hours, the last doses,
+    a link to the IOB details.
+  - *Basal*: the profile rate and the running temp basal with a bar and *Cancel*, an own temp basal
+    (percent and time), a link to the basal of the day.
+  - *Loop*: the running mode as segmented buttons, *Pause* and *Pump off* with a time, the last run,
+    its decision and autosens, *Run now*, a link to the algorithm.
+  - *Sensor*: sensor, insulin, cannula and battery with their age and a *Change* button where it
+    applies, a link to the status light settings.
+  - *Profile*: the profiles to switch to, the percentage and the time, *Switch*, *View*.
+  - *Pump*: the connection, reservoir, battery, basal now and last bolus, *Refresh*, *History*,
+    *Disconnect pump* (30 min), the pump screen.
+  Every action closes the sheet, asks for the PIN when the element is protected and shows the same
+  confirm dialog as the full screen. An AAPSClient that is not paired, or a role that may not do it,
+  sees the sheet with the buttons off.
   The titles of the tiles are small and grey, the values large. The texts stay on one line and get
   smaller with a big system font. The graph card has no title row on a phone either: the ranges and
   the history button are in one row, so the graph gets the height.
