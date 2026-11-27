@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -23,10 +25,14 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.sp
 import app.aaps.core.data.model.GlucoseUnit
 import app.aaps.core.interfaces.overview.graph.BgInfoData
 import app.aaps.core.ui.CoreUiStrings
@@ -126,7 +132,8 @@ private fun BgLine(bgInfo: BgInfoData?, timeAgoText: String, unit: String) {
             Text(text = unit, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(modifier = Modifier.width(AapsSpacing.large))
-        Column(verticalArrangement = Arrangement.spacedBy(AapsSpacing.small)) {
+        // weight: the column gets the width that is left, so its texts can shrink into it instead of breaking
+        Column(verticalArrangement = Arrangement.spacedBy(AapsSpacing.small), modifier = Modifier.weight(1f, fill = false)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 bgInfo.trendArrow?.let {
                     Icon(imageVector = it.directionToIcon(), contentDescription = null, tint = color, modifier = Modifier.size(AapsSpacing.chipIconSize))
@@ -149,7 +156,7 @@ private fun BgLine(bgInfo: BgInfoData?, timeAgoText: String, unit: String) {
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(AapsSpacing.chipIconSize)
                 )
-                Text(
+                OneLineText(
                     text = timeAgoText,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -162,18 +169,17 @@ private fun BgLine(bgInfo: BgInfoData?, timeAgoText: String, unit: String) {
 
 @Composable
 private fun DeltaCell(minutes: Int, value: String?, modifier: Modifier = Modifier) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier) {
-        Text(
+    // The padding keeps a gap between the cells when their labels fill them
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier.padding(horizontal = AapsSpacing.extraSmall)) {
+        OneLineText(
             text = stringResource(UiStrings.delta_minutes, minutes),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Text(
+        OneLineText(
             text = value ?: stringResource(UiStrings.basal_unknown),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium),
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -191,3 +197,23 @@ private fun SideValue(label: String, value: String, modifier: Modifier = Modifie
         )
     }
 }
+
+/**
+ * autoISF build: a text that always stays on one line and gets smaller when it does not fit, down to
+ * [ONE_LINE_MIN_SHARE] of its size. With a big system font on a narrow screen (Samsung "font size" and "display size")
+ * "5 min" and "Δ 15 min" broke into two or three lines, and the deltas were cut ("+3.").
+ */
+@Composable
+private fun OneLineText(text: String, style: TextStyle, color: Color, modifier: Modifier = Modifier) {
+    BasicText(
+        text = text,
+        style = style.copy(color = color, textAlign = TextAlign.Center),
+        maxLines = 1,
+        softWrap = false,
+        autoSize = TextAutoSize.StepBased(minFontSize = style.fontSize * ONE_LINE_MIN_SHARE, maxFontSize = style.fontSize, stepSize = 1.sp),
+        modifier = modifier
+    )
+}
+
+/** How small [OneLineText] may get, as a share of its normal size. */
+private const val ONE_LINE_MIN_SHARE = 0.5f

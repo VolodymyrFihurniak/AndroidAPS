@@ -107,7 +107,8 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
 * On a phone the top of the overview follows the user's concept. On top a card with what the user
   sets: the profile, the temp target and the exercise button. Under it the main card with the BG value
   in the colour of its range, its unit, the trend in words, the age of the reading, the changes over
-  5, 15 and 40 minutes, and IOB and COB on the right. Then the cards *Basal*, *Bolus* and *Loop*
+  5, 15 and 40 minutes, and IOB and COB on the right (the age and the changes stay on one line and get
+  smaller with a big system font on a narrow screen). Then the cards *Basal*, *Bolus* and *Loop*
   (running mode, when the loop last ran, in the warning colour after 15 minutes, and the autosens
   ratio, which opens the sensitivity details). The *Bolus* card shows the advice of the loop, and a
   tap opens the Insulin dialog, where the same advice stands at the top with its numbers (BG in 1 h,
