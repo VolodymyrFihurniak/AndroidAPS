@@ -87,6 +87,10 @@ private val BELT_ICON_TAP_RADIUS = 12.dp
  *   6. General with duration lines (0..K, each = 2-point at Y=1.0, top)
  *   7. Normalizer (always last)
  */
+/** Height of the belt with something in it, and of the thin strip it is without. */
+private val BELT_HEIGHT = 48.dp
+private val BELT_HEIGHT_EMPTY = 8.dp
+
 @Composable
 fun TreatmentBeltGraphCompose(
     viewModel: GraphViewModel,
@@ -129,6 +133,12 @@ fun TreatmentBeltGraphCompose(
 
     // Colors from theme
     val elementColors = AapsTheme.elementColors
+
+    // autoISF build: an empty belt is only a thin strip. It stays drawn, because its scroll gives the visible window of
+    // the graphs (see onVisibleRangeChanged), but it no longer takes 48 dp above BG for nothing. An event with a glucose
+    // value is drawn in the BG graph, and closed loop has no colour, so neither of them fills the belt.
+    val hasContent = treatmentGraphData.therapyEvents.any { it.glucoseUserUnits == null } ||
+        runningModeData.segments.any { it.mode.beltColor(elementColors) != Color.Transparent }
     val announcementColor = TherapyEventType.ANNOUNCEMENT.beltColor(elementColors)
     val careportalColor = TherapyEventType.GENERAL.beltColor(elementColors)
     val exerciseColor = TherapyEventType.EXERCISE.beltColor(elementColors)
@@ -454,7 +464,7 @@ fun TreatmentBeltGraphCompose(
         modelProducer = modelProducer,
         modifier = modifier
             .fillMaxWidth()
-            .height(48.dp),
+            .height(if (hasContent) BELT_HEIGHT else BELT_HEIGHT_EMPTY),
         scrollState = scrollState,
         zoomState = zoomState
     )

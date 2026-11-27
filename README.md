@@ -121,23 +121,33 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
   field. Nothing is given until the user confirms with OK. A run older than 15 minutes gives no
   advice. The
   graphs sit in one card *Glucose and insulin*: a button to the history, the ranges 3 h, 6 h, 12 h
-  and 24 h, a legend of what is shown, and the BG graph. On a phone the BG graph holds IOB and COB
-  as areas at the bottom (each up to a quarter of the height, scaled to its own highest value in
-  the window) and the basal as a band that hangs from the top (given basal filled, profile basal
-  dashed), as in the user's xdripswift. There is no separate IOB or COB graph any more; the graph
-  settings (pencil on the BG graph) switch each of them on or off, and *Glucose as a line* draws the
-  readings as a line instead of dots (above the high mark in the high colour; a low reading keeps
-  its red dot). The low and the high mark are dashed lines with their value on the right. A config
-  saved before gets IOB, COB and the basal in the BG graph, and a graph with COB alone below it is
-  removed. A hold on the graphs shows the values of that time in a card, as in xdripswift: the time
+  and 24 h (their labels stay on one line and get smaller with a big system font on a narrow screen,
+  as on Samsung phones), one row of layer switches, the BG graph and a strip under it. Each switch
+  (*Predictions*, *Parabola*, *GRU*, *Linear*, *IOB*, *COB*, *Basal*, *Activity*) has the colour and
+  the line of its layer, so the row is the legend too, and a tap shows or hides the layer (in simple
+  mode the switches only show what is drawn). The predictions of the loop are dashed lines in the
+  usual AAPS colours (IOB blue, COB orange, UAM yellow, zero-temp cyan) instead of dots, so the COB
+  prediction is no longer mixed up with high readings. The strip under BG holds IOB (U, left axis),
+  COB (g, right axis, in its colour), the SMBs and boluses, the insulin activity and, at the bottom,
+  the basal band: it grows up from the bottom edge (given basal filled, profile basal dashed). Before
+  this, IOB and COB were areas on the BG axis with no scale of their own and the basal hung from the
+  top of the BG graph. The graph settings (pencil on the BG graph) can still switch each layer, and
+  *Glucose as a line* draws the readings as a line instead of dots (above the high mark in the high
+  colour; a low reading keeps its red dot). Without events (notes, exercise, a running mode that is
+  not closed loop) the belt above BG is a thin strip instead of an empty 48 dp box. The names of the
+  graphs below BG are on the left, so they no longer cover the labels of the right axis, and the
+  AutoISF graph names its five lines (acce, bg, pp, dura, final) in their colours. The low and the
+  high mark are dashed lines with their value on the right. A config saved before gets IOB, COB and
+  the basal switched on, and a graph with COB alone below BG is removed. A hold on the graphs shows the values of that time in a card, as in xdripswift: the time
   (with *forecast* after now), the glucose large with its unit, then IOB, COB and basal with their
-  names. The card stands at the top on the side away from the finger. Under the BG graph a strip
+  names. The card stands at the top on the side away from the finger. Under the IOB strip a mini map
   shows the whole loaded range with the shown part framed; a tap moves the graph there, a drag moves
   it with the finger. The BG graph grows to fill the screen, with at least 200 dp. Under the graphs: the statistics of today (time in the
   overview's range, CV and the average, each with a bar; tap opens the statistics).
 * **Landscape and tablets** show the same cards: on the left the cards (a tablet has a large clock
   above them), on the right the graph card with the statistics of today. The BG graph there fills the
-  height of the screen too. Before, a turned phone showed the old screen with the BG circle and the
+  height of the screen too. The card has no title there: the ranges and the history button are in
+  one row, so the graph gets the height. Before, a turned phone showed the old screen with the BG circle and the
   chips. The status card (sensor, insulin, cannula, battery) starts collapsed in every layout.
 * **Pump button** in the status card, next to the arrow that opens it: one tap opens the screen of
   the active pump (before it was *Manage → Pump*). It is not shown where the Manage sheet has no
@@ -169,7 +179,8 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
   temp basal and the time left, the age of the pump data, the basal of the profile over the day,
   and a button to the profiles.
 * The icon-only temp basal chip is gone: the card shows the same icons.
-* IOB/BAS graph: where more basal is given than the profile, the band is orange; where less, blue.
+* IOB/BAS graph: the basal band is at the bottom and grows up, IOB starts above it. Where more basal
+  is given than the profile, the band is orange; where less, blue.
   While the pump itself is suspended the given basal is drawn as 0. Holding a graph shows the
   profile basal of the same minute next to the given basal. The basal band can be switched off in
   the settings of the IOB graph (*Basal (profile and given)*); a graph setup saved before keeps it on.
@@ -245,8 +256,8 @@ delivery**: the loop, SMB, temp basals and all limits work as before, and the lo
   screen.
 * **Graph.** The BG graph gets two layers (in the layer menu only while the plugin is on, on by
   default): the GRU curve as a solid purple line with a dashed band of its typical error, and the
-  linear curve as a dashed purple line. The legend shows only the model names, *Model: GRU* and
-  *Model: linear*, and the value card shows both values on the future part. A forecast older than 15
+  linear curve as a dashed purple line. The layer switches of the graph card name them *GRU* and
+  *Linear*, and the value card shows both values on the future part. A forecast older than 15
   minutes is not drawn.
 * **Insulin dialog.** Under the advice of the loop a second block *Model advice (experimental)*:
   the same guards first (BG low now, no fresh forecast, not ready, a low in the next 2 hours on either

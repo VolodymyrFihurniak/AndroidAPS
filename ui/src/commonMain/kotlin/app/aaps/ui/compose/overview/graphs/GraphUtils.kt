@@ -17,6 +17,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -318,27 +319,20 @@ fun Modifier.stopsBgFling(forwarder: BgScrollForwarder): Modifier = pointerInput
 }
 
 /**
- * Fraction of the graph height occupied by the basal overlay.
- *
- * The basal layer lives on its own (end) axis: basal axis max = `maxBasal / BASAL_HEIGHT_FRACTION`,
- * so the highest basal of the visible window plots at this fraction of the height. BgGraphCompose
- * draws it up from the bottom, SecondaryGraphCompose down from the top.
- *
- * e.g. 0.5 → basal occupies half the height.
+ * autoISF build: the share of an IOB graph's height that the basal band takes at the bottom. The basal grows up from
+ * the bottom edge, as a basal rate is read on a pump, and IOB (with COB, when the graph has it) starts above the band,
+ * so the two never cover each other. The owner could not read the band when it hung down from the top.
  */
-const val BASAL_HEIGHT_FRACTION = 0.5
+const val BASAL_BAND_FRACTION = 0.25
+
+/** autoISF build: the share of the basal band the highest basal of the window reaches, so a high temp stays inside it. */
+const val BASAL_BAND_FILL = 0.9
 
 /**
- * Fraction of the IOB/BAS graph height for IOB and the bolus markers, counted from the bottom.
- * IOB axis max = `dataMax / IOB_HEIGHT_FRACTION`.
- *
- * It overlaps the basal band from the top ([BASAL_HEIGHT_FRACTION]), between 50% and 75% of the
- * height. Both meet there only when a high temp basal runs with a high IOB; the loop sets a low or
- * zero temp most of the time, and basal then stays at the top. IOB gets the room in return: with
- * no overlap it had only the lower half. The free quarter above holds the label of a bolus given
- * at the IOB peak.
+ * autoISF build: the share of an IOB graph's height above its values, for the label of a bolus given at the IOB peak.
+ * The values take what is left between the basal band and this room.
  */
-const val IOB_HEIGHT_FRACTION = 0.75
+const val IOB_HEAD_ROOM_FRACTION = 0.1
 
 /**
  * Filters data points to only include those within the valid x-axis range.
@@ -504,22 +498,15 @@ internal data class TieredPointProvider(
 
 /**
  * Creates a line for BG prediction series.
- * Transparent connecting line with small filled circle points in the given color.
- * Each prediction type (IOB, COB, UAM, ZT, aCOB) uses a different color.
+ * autoISF build: a thin dashed line in the given color, not a row of dots. Dots looked like BG readings, and the COB
+ * prediction (orange) could not be told from high readings (orange too). A line keeps the colors every AAPS user knows
+ * (IOB blue, COB orange, UAM yellow, ZT cyan) and is still clearly not a reading.
  */
 fun createPredictionLine(color: Color): LineCartesianLayer.Line =
     LineCartesianLayer.Line(
-        fill = LineCartesianLayer.LineFill.single(Fill(Color.Transparent)),
-        areaFill = null,
-        pointProvider = LineCartesianLayer.PointProvider.single(
-            LineCartesianLayer.Point(
-                component = ShapeComponent(
-                    fill = Fill(color),
-                    shape = CircleShape
-                ),
-                size = 4.dp
-            )
-        )
+        fill = LineCartesianLayer.LineFill.single(Fill(color)),
+        stroke = LineCartesianLayer.LineStroke.Dashed(thickness = 2.dp, cap = StrokeCap.Round, dashLength = 5.dp, gapLength = 3.dp),
+        areaFill = null
     )
 
 /**

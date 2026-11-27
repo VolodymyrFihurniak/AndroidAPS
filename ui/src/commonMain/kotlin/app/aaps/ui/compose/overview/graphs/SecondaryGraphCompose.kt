@@ -69,11 +69,13 @@ private val AXIS_SCALE_KEY = ExtraStore.Key<AxisScale>()
 private val MAX_MANUAL_BOLUS_KEY = ExtraStore.Key<Double>()
 private val MAX_CARBS_KEY = ExtraStore.Key<Double>()
 
+/** autoISF build: the bottom edge of the left axis, down to which the areas of the basal band are filled. */
+private val BASAL_FLOOR_KEY = ExtraStore.Key<Double>()
+
 /** The axis setup that a scroll or zoom can change. Equal values mean the axes did not change. */
 private data class AxisScale(
     val left: CartesianLayerRangeProvider,
     val right: CartesianLayerRangeProvider,
-    val basal: CartesianLayerRangeProvider,
     val startAxisItemPlacer: VerticalAxis.ItemPlacer,
     val endAxisItemPlacer: VerticalAxis.ItemPlacer
 )
@@ -82,15 +84,14 @@ private data class AxisScale(
 private data class ModelInput(
     val leftSpecs: List<SeriesSpec>,
     val rightSpecs: List<SeriesSpec>,
-    val basalProfile: List<Pair<Double, Double>>,
-    val basalActual: List<Pair<Double, Double>>,
-    val hasBasalLayer: Boolean,
     val hasRightAxis: Boolean,
     val rightFirst: Boolean,
     val maxX: Double,
     val axisScale: AxisScale,
     val maxManualBolus: Double?,
-    val maxCarbs: Double?
+    val maxCarbs: Double?,
+    /** autoISF build: the bottom of the left axis when the graph has a basal band */
+    val basalFloor: Double?
 )
 
 /**
@@ -116,7 +117,7 @@ fun SecondaryGraphCompose(
     derivedTimeRange: Pair<Long, Long>?,
     nowTimestamp: Long,
     activityOverlay: Boolean = false,
-    /** autoISF build: the basal band at the top of an IOB-only graph; it can be switched off in the graph settings. */
+    /** autoISF build: the basal band at the bottom of a graph with IOB on its left axis; it can be switched off in the graph settings. */
     basalLayer: Boolean = true,
     onVisibleRangeChanged: ((Pair<Double, Double>?) -> Unit)? = null,
     /** While holding the BG graph, a line at the inspected time. Null turns it off. */
@@ -152,8 +153,8 @@ fun SecondaryGraphCompose(
 
     val hasIob = SeriesType.IOB in seriesTypes
     val hasCob = SeriesType.COB in seriesTypes
-    // The basal band takes the top of the graph, so only when IOB is the graph's only series
-    val hasBasalLayer = basalLayer && sides.left == listOf(SeriesType.IOB) && sides.right.isEmpty()
+    // autoISF build: the basal band takes the bottom of the graph, under IOB (and COB on the right axis, if there is one)
+    val hasBasalLayer = basalLayer && SeriesType.IOB in sides.left
 
     val iobData = if (hasIob) viewModel.iobGraphFlow.collectAsStateWithLifecycle().value else null
     val cobData = if (hasCob) viewModel.cobGraphFlow.collectAsStateWithLifecycle().value else null
@@ -304,17 +305,14 @@ fun SecondaryGraphCompose(
         filterToRange(pts, minX, maxX)
     }
 
-    // Flipped basal overlay — fixed on IOB graphs, rendered as a second chart layer.
-    // Uses negative Y values so area fill goes upward to y=0 (the top of the basal layer).
+    // autoISF build: the basal band at the bottom, in U/h here; mapped into the left axis' units once the axes are known
     val processedBasalProfile = remember(basalData, stableTimeRange) {
         if (!hasRealTimeRange || basalData == null) return@remember emptyList()
-        val pts = processStepPoints(basalData.profileBasal, minTimestamp, minX, maxX)
-        pts.map { (x, y) -> x to -y } // negate: y=0 at top, -maxBasal at bottom
+        processStepPoints(basalData.profileBasal, minTimestamp, minX, maxX)
     }
     val processedBasalActual = remember(basalData, stableTimeRange) {
         if (!hasRealTimeRange || basalData == null) return@remember emptyList()
-        val pts = processStepPoints(basalData.actualBasal, minTimestamp, minX, maxX)
-        pts.map { (x, y) -> x to -y }
+        processStepPoints(basalData.actualBasal, minTimestamp, minX, maxX)
     }
 
     // What each series draws: its line and its markers, the same on either axis
@@ -444,6 +442,37 @@ fun SecondaryGraphCompose(
     }
 
     val axes = remember(leftRange, rightRange, hasBasalLayer) { graphAxes(leftRange, rightRange, hasBasalLayer) }
+
+    // autoISF build: the highest basal of the visible window, so the band uses its height for what is on screen.
+    // Profile/actual are stored sparsely (only at rate changes, see rebuildBasalGraph), so a zoom window entirely inside
+    // one constant segment can contain no point of either series: the rate in effect at the window start counts too.
+    // Deliberately not windowedY: its fallback takes the whole loaded day when the window has no literal point.
+    val basalMax = remember(basalData, processedBasalProfile, processedBasalActual, visibleMinX, visibleMaxX) {
+        if (basalData == null || basalData.maxBasal <= 0.0) return@remember 0.0
+        fun inWindow(x: Double) = visibleMinX == null || visibleMaxX == null || x in visibleMinX..visibleMaxX
+        val literalWindowed = processedBasalProfile.filter { inWindow(it.first) }.map { it.second } +
+            processedBasalActual.filter { inWindow(it.first) }.map { it.second }
+        val atWindowStart = listOfNotNull(
+            visibleMinX?.let { stepValueAt(processedBasalProfile, it) },
+            visibleMinX?.let { stepValueAt(processedBasalActual, it) }
+        )
+        (literalWindowed + atWindowStart).maxOrNull()?.takeIf { it > 0.0 } ?: basalData.maxBasal
+    }
+    // autoISF build: the basal band, drawn first so IOB and its markers stay on top. In the left axis' units, so it
+    // needs no axis of its own: Vico gives all layers on one side the same range. The order is the one of the stacked
+    // areas (profile, given, the shared part) and then the two lines.
+    val basalSpecs = remember(hasBasalLayer, processedBasalProfile, processedBasalActual, basalMax, axes) {
+        if (!hasBasalLayer) return@remember emptyList()
+        fun toBand(points: List<Pair<Double, Double>>) = points.map { (x, rate) -> x to basalToBandY(rate, basalMax, axes.left) }
+        buildList {
+            addPoints(toBand(processedBasalProfile), SeriesSlot.BasalArea(BasalPart.PROFILE), countsForRange = false)
+            addPoints(toBand(processedBasalActual), SeriesSlot.BasalArea(BasalPart.GIVEN), countsForRange = false)
+            addPoints(toBand(basalOverlap(processedBasalProfile, processedBasalActual)), SeriesSlot.BasalArea(BasalPart.SHARED), countsForRange = false)
+            addPoints(toBand(processedBasalActual), SeriesSlot.BasalActualLine, countsForRange = false)
+            addPoints(toBand(processedBasalProfile), SeriesSlot.BasalProfileLine, countsForRange = false)
+        }
+    }
+    val drawnLeftSpecs = remember(basalSpecs, leftSpecs) { basalSpecs + leftSpecs }
     val hasRightAxis = sides.right.isNotEmpty()
     // Columns are drawn first, so the line of the other axis stays on top of them
     val rightFirst = sides.right.any { it in COLUMN_SERIES }
@@ -462,9 +491,6 @@ fun SecondaryGraphCompose(
     // new model is built. With the normalizer at index 0 it is still paired with itself then, so the
     // point spacing stays the same as in the other graphs. When it came last, the spacing shrank for
     // that moment, Vico cut the scroll down to the new end, and the graph stayed shifted sideways.
-    val leftLines = remember(leftSpecs, seriesColors, iobLineStyle, cobLineStyle, normalizerLine) {
-        listOf(normalizerLine) + leftSpecs.map { lineFor(it.slot, seriesColors, iobLineStyle, cobLineStyle) }
-    }
     val rightLines = remember(rightSpecs, seriesColors, iobLineStyle, cobLineStyle, normalizerLine) {
         listOf(normalizerLine) + rightSpecs.map { lineFor(it.slot, seriesColors, iobLineStyle, cobLineStyle) }
     }
@@ -500,8 +526,22 @@ fun SecondaryGraphCompose(
     val basalDecreaseFill = AapsTheme.generalColors.basalDecrease.compositeOver(graphBackground)
     val basalIncreaseFill = AapsTheme.generalColors.basalIncrease.compositeOver(graphBackground)
     val basalSharedFill = basalColor.copy(alpha = 0.3f).compositeOver(graphBackground)
-    val basalLines = remember(basalActualLine, basalProfileLine, basalDecreaseFill, basalIncreaseFill, basalSharedFill) {
-        listOf(basalAreaLine(basalDecreaseFill), basalAreaLine(basalIncreaseFill), basalAreaLine(basalSharedFill), basalActualLine, basalProfileLine)
+    val basalAreaLines = remember(basalDecreaseFill, basalIncreaseFill, basalSharedFill) {
+        mapOf(
+            BasalPart.PROFILE to basalAreaLine(basalDecreaseFill),
+            BasalPart.GIVEN to basalAreaLine(basalIncreaseFill),
+            BasalPart.SHARED to basalAreaLine(basalSharedFill)
+        )
+    }
+    val leftLines = remember(drawnLeftSpecs, seriesColors, iobLineStyle, cobLineStyle, normalizerLine, basalAreaLines, basalActualLine, basalProfileLine) {
+        listOf(normalizerLine) + drawnLeftSpecs.map { spec ->
+            when (val slot = spec.slot) {
+                is SeriesSlot.BasalArea        -> basalAreaLines.getValue(slot.part)
+                SeriesSlot.BasalActualLine     -> basalActualLine
+                SeriesSlot.BasalProfileLine    -> basalProfileLine
+                else                           -> lineFor(slot, seriesColors, iobLineStyle, cobLineStyle)
+            }
+        }
     }
 
     // =========================================================================
@@ -525,36 +565,6 @@ fun SecondaryGraphCompose(
         val right = axes.right ?: EMPTY_AXIS
         CartesianLayerRangeProvider.fixed(minX = 0.0, maxX = maxX, minY = right.min, maxY = right.max)
     }
-    // Basal range: 0 at top, -basalMaxY at bottom → basal occupies the top BASAL_HEIGHT_FRACTION of the height.
-    // Windowed to the visible scroll/zoom range, like the IOB scale above, so basal doesn't
-    // stay flattened/clipped when scrolled away from the loaded range's peak.
-    val basalMaxY = remember(basalData, processedBasalProfile, processedBasalActual, visibleMinX, visibleMaxX) {
-        if (basalData == null || basalData.maxBasal <= 0.0) return@remember 1.0
-        // Profile/actual are stored sparsely (only at rate changes — see rebuildBasalGraph), so a
-        // zoom window entirely inside one constant segment (e.g. an extended zero-temp) can contain
-        // zero literal points for either series. Deliberately NOT using windowedY here: its own
-        // ifEmpty fallback dumps the *whole loaded day's* values the moment the window has no
-        // literal point, which is exactly what over-inflated this axis in the first place. Instead,
-        // filter to the window with no fallback, and separately fold in the rate actually in effect
-        // at the window start (stepValueAt) for BOTH series — e.g. a high temp basal that started
-        // just 1 minute before the window but runs for 2 hours has no literal change-point inside
-        // the window either, so without this it would be invisible to this scale computation even
-        // though its bar is drawn across the whole visible window (and could overlap IOB if it's
-        // the true max) — reflects just this window's real level instead of the whole day's range.
-        fun inWindow(x: Double) = visibleMinX == null || visibleMaxX == null || x in visibleMinX..visibleMaxX
-        val literalWindowed = processedBasalProfile.filter { inWindow(it.first) }.map { it.second } +
-            processedBasalActual.filter { inWindow(it.first) }.map { it.second }
-        val hiddenValues = listOfNotNull(
-            visibleMinX?.let { stepValueAt(processedBasalProfile, it) },
-            visibleMinX?.let { stepValueAt(processedBasalActual, it) }
-        )
-        val windowedAbsMax = (literalWindowed + hiddenValues).map { -it }.maxOrNull()
-        (windowedAbsMax?.takeIf { it > 0.0 } ?: hiddenValues.maxOfOrNull { -it } ?: basalData.maxBasal) / BASAL_HEIGHT_FRACTION
-    }
-    val basalRangeProvider = remember(maxX, basalMaxY) {
-        CartesianLayerRangeProvider.fixed(minX = 0.0, maxX = maxX, minY = -basalMaxY, maxY = 0.0)
-    }
-
     // Build chart layers
     val leftLayer = rememberLineCartesianLayer(
         lineProvider = LineCartesianLayer.LineProvider.series(leftLines),
@@ -566,13 +576,7 @@ fun SecondaryGraphCompose(
         rangeProvider = rightRangeProvider,
         verticalAxisPosition = Axis.Position.Vertical.End
     )
-    val basalLayer = rememberLineCartesianLayer(
-        lineProvider = LineCartesianLayer.LineProvider.series(basalLines),
-        rangeProvider = basalRangeProvider,
-        verticalAxisPosition = Axis.Position.Vertical.End
-    )
-
-    // Labels only where the series has values: not on the room above IOB left for basal, not on the
+    // Labels only where the series has values: not on the basal band below IOB, not on the
     // part of an axis that was stretched to put its zero next to the other axis' zero, and none at all
     // on an axis whose series has no values
     val startAxisItemPlacer = remember(leftRange) {
@@ -583,11 +587,12 @@ fun SecondaryGraphCompose(
     }
 
     // Rebuilt only when the data or the axes change, not on every scroll step
-    val axisScale = AxisScale(leftRangeProvider, rightRangeProvider, basalRangeProvider, startAxisItemPlacer, endAxisItemPlacer)
+    val axisScale = AxisScale(leftRangeProvider, rightRangeProvider, startAxisItemPlacer, endAxisItemPlacer)
     val modelInput = ModelInput(
-        leftSpecs, rightSpecs, processedBasalProfile, processedBasalActual, hasBasalLayer, hasRightAxis, rightFirst, maxX, axisScale,
+        drawnLeftSpecs, rightSpecs, hasRightAxis, rightFirst, maxX, axisScale,
         maxManualBolus = processedIobTreatments.maxManualBolus,
-        maxCarbs = processedCarbs.maxOfOrNull { it.second }
+        maxCarbs = processedCarbs.maxOfOrNull { it.second },
+        basalFloor = if (hasBasalLayer) axes.left.min else null
     )
     val latestModelInput by rememberUpdatedState(modelInput)
     // One transaction after the other, and none is cancelled half-way. When the input changes during a
@@ -608,17 +613,7 @@ fun SecondaryGraphCompose(
             // the maxPointSize the same across all charts, see leftLines.
             val normalizer = normalizerX(input.maxX) to NORMALIZER_Y
             val left = listOf(normalizer) + input.leftSpecs.map { it.x to it.y }
-            val end = when {
-                input.hasBasalLayer -> {
-                    val actual = basalSeries(input.basalActual)
-                    val profile = basalSeries(input.basalProfile)
-                    // The order of basalLines: profile area, given basal area, the shared part, then the two lines
-                    listOf(profile, actual, basalSeries(basalOverlap(input.basalProfile, input.basalActual)), actual, profile)
-                }
-
-                input.hasRightAxis  -> listOf(normalizer) + input.rightSpecs.map { it.x to it.y }
-                else                -> null
-            }
+            val end = if (input.hasRightAxis) listOf(normalizer) + input.rightSpecs.map { it.x to it.y } else null
             // The same order as the layers handed to the chart below
             val layerSeries = if (end != null && input.rightFirst) listOf(end, left) else listOfNotNull(left, end)
             modelProducer.runTransaction {
@@ -632,6 +627,7 @@ fun SecondaryGraphCompose(
                     it[AXIS_SCALE_KEY] = input.axisScale
                     input.maxManualBolus?.let { max -> it[MAX_MANUAL_BOLUS_KEY] = max }
                     input.maxCarbs?.let { max -> it[MAX_CARBS_KEY] = max }
+                    input.basalFloor?.let { floor -> it[BASAL_FLOOR_KEY] = floor }
                 }
             }
         }
@@ -671,7 +667,6 @@ fun SecondaryGraphCompose(
     val markerController = inspect?.controller ?: defaultMarkerController
 
     val layers = when {
-        hasBasalLayer  -> listOf(leftLayer, basalLayer)
         !hasRightAxis  -> listOf(leftLayer)
         rightFirst     -> listOf(rightLayer, leftLayer)
         else           -> listOf(leftLayer, rightLayer)
@@ -690,26 +685,20 @@ fun SecondaryGraphCompose(
     )
 }
 
-/** The two series a basal layer always needs, for a basal with fewer than two points. */
-private val EMPTY_BASAL = listOf(0.0, 1.0) to listOf(0.0, 0.0)
-
-/** A basal step series for the model, or [EMPTY_BASAL] when it has fewer than two points. */
-private fun basalSeries(points: List<Pair<Double, Double>>): Pair<List<Double>, List<Double>> =
-    if (points.size >= 2) points.map { it.first } to points.map { it.second } else EMPTY_BASAL
-
 /** autoISF build: an area of the basal band, without a line of its own. */
 private fun basalAreaLine(fill: Color): LineCartesianLayer.Line =
     LineCartesianLayer.Line(
         fill = LineCartesianLayer.LineFill.single(Fill(Color.Transparent)),
         stroke = LineCartesianLayer.LineStroke.Continuous(thickness = 0.dp),
-        areaFill = LineCartesianLayer.AreaFill.single(Fill(fill)),
+        // Down to the bottom edge of the band, not to the zero of the axis, which is above the band
+        areaFill = LineCartesianLayer.AreaFill.single(Fill(fill), splitY = { it.getOrNull(BASAL_FLOOR_KEY) ?: 0.0 }),
         interpolator = Square
     )
 
 /**
  * autoISF build: the part of the basal band that the profile and the given basal share, as a step series with a point
- * at every change of either. The band is drawn downwards, so the values are negative and the shared part is the one
- * closer to 0, the larger value. Empty when either series is.
+ * at every change of either. The band grows up from the bottom, so the shared part is the smaller rate. Empty when
+ * either series is.
  */
 internal fun basalOverlap(profile: List<Pair<Double, Double>>, actual: List<Pair<Double, Double>>): List<Pair<Double, Double>> {
     if (profile.isEmpty() || actual.isEmpty()) return emptyList()
@@ -717,7 +706,7 @@ internal fun basalOverlap(profile: List<Pair<Double, Double>>, actual: List<Pair
     return xs.mapNotNull { x ->
         val p = stepValueAt(profile, x) ?: return@mapNotNull null
         val a = stepValueAt(actual, x) ?: return@mapNotNull null
-        x to maxOf(p, a)
+        x to minOf(p, a)
     }
 }
 
@@ -741,6 +730,8 @@ private fun lineFor(slot: SeriesSlot, colors: SeriesColors, iobStyles: IobLineSt
     SeriesSlot.ActivityOverlay  -> createSeriesLine(SeriesType.ACTIVITY, colors)
     is SeriesSlot.SimpleLine    -> createSeriesLine(slot.type, colors)
     is SeriesSlot.AutoIsfLine   -> createAutoIsfLine(colors.autoIsf(slot.factor))
+    // Drawn by the graph itself with the basal styles, see leftLines
+    is SeriesSlot.BasalArea, SeriesSlot.BasalActualLine, SeriesSlot.BasalProfileLine -> error("basal slot $slot")
 }
 
 // =========================================================================
@@ -774,7 +765,14 @@ internal sealed class SeriesSlot {
     data object DevSlopeMin : SeriesSlot()
     data object ActivityOverlay : SeriesSlot()
     data class AutoIsfLine(val factor: AutoIsfFactor) : SeriesSlot()
+    /** autoISF build: the basal band at the bottom of an IOB graph, see [BASAL_BAND_FRACTION] */
+    data class BasalArea(val part: BasalPart) : SeriesSlot()
+    data object BasalActualLine : SeriesSlot()
+    data object BasalProfileLine : SeriesSlot()
 }
+
+/** autoISF build: the three stacked areas of the basal band. Only where the given basal and the profile differ, a colour shows. */
+internal enum class BasalPart { PROFILE, GIVEN, SHARED }
 
 /** autoISF: the factors drawn in the AutoISF graph */
 internal enum class AutoIsfFactor { ACCE, BG, PP, DURA, FINAL }

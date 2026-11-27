@@ -7,7 +7,7 @@ import app.aaps.core.interfaces.overview.graph.SeriesType
 //   two have the same unit and so share one axis ([graphSides]);
 // - every series type has one axis rule, the same alone and in a pair ([axisRuleOf], [axisRange]);
 // - two axes keep their own ranges, only their zeros are put on one height ([alignReferences]);
-// - the IOB graph alone leaves the top of its height to the basal band ([graphAxes]).
+// - autoISF build: a graph with IOB on the left leaves the bottom of its height to the basal band ([graphAxes]).
 
 /** How the axis of a series is built from its values. */
 internal sealed interface AxisRule {
@@ -105,15 +105,31 @@ private fun AxisRange.stretchedTo(reference: Double, target: Double): AxisBounds
 internal data class GraphAxes(val left: AxisBounds, val right: AxisBounds?)
 
 /**
- * The drawn axes of a graph from the ranges of its two sides. With [basalBand], the left axis goes on
- * above its values, so they take the lower [IOB_HEIGHT_FRACTION] of the height and the basal band
- * has the top. The room is measured from the bottom of the values, not from zero: the two only
- * coincide when there is no negative part, and measured from zero the negative part would get less
- * than its share.
+ * The drawn axes of a graph from the ranges of its two sides. With [basalBand] (autoISF build), both axes go on below
+ * their values by [BASAL_BAND_FRACTION] of the height, for the basal band at the bottom, and above them by
+ * [IOB_HEAD_ROOM_FRACTION]. Both axes are stretched by the same shares, so zeros that were on one height stay there.
+ * The room is measured from the bottom of the values, not from zero: a negative part keeps its share.
  */
-internal fun graphAxes(left: AxisRange?, right: AxisRange?, basalBand: Boolean): GraphAxes = when {
-    left == null  -> GraphAxes(EMPTY_AXIS, right?.bounds)
-    basalBand     -> GraphAxes(AxisBounds(left.min, left.min + (left.max - left.min) / IOB_HEIGHT_FRACTION), null)
-    right == null -> GraphAxes(left.bounds, null)
-    else          -> alignReferences(left, right).let { (l, r) -> GraphAxes(l, r) }
+internal fun graphAxes(left: AxisRange?, right: AxisRange?, basalBand: Boolean): GraphAxes {
+    val axes = when {
+        left == null  -> GraphAxes(EMPTY_AXIS, right?.bounds)
+        right == null -> GraphAxes(left.bounds, null)
+        else          -> alignReferences(left, right).let { (l, r) -> GraphAxes(l, r) }
+    }
+    return if (basalBand) GraphAxes(axes.left.withBasalBand(), axes.right?.withBasalBand()) else axes
+}
+
+/** autoISF build: these bounds with room for the basal band below them and for a bolus label above them. */
+internal fun AxisBounds.withBasalBand(): AxisBounds {
+    val perShare = (max - min) / (1.0 - BASAL_BAND_FRACTION - IOB_HEAD_ROOM_FRACTION)
+    return AxisBounds(min - perShare * BASAL_BAND_FRACTION, max + perShare * IOB_HEAD_ROOM_FRACTION)
+}
+
+/**
+ * autoISF build: a basal rate as a y value of the left axis [bounds] of a graph with a basal band: 0 on the bottom
+ * edge, [maxBasal] at [BASAL_BAND_FILL] of the band.
+ */
+internal fun basalToBandY(rate: Double, maxBasal: Double, bounds: AxisBounds): Double {
+    val bandHeight = (bounds.max - bounds.min) * BASAL_BAND_FRACTION
+    return bounds.min + if (maxBasal > 0.0) rate / maxBasal * bandHeight * BASAL_BAND_FILL else 0.0
 }

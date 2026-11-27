@@ -71,8 +71,9 @@ import com.patrykandpatrick.vico.compose.common.data.ExtraStore
 import kotlin.concurrent.Volatile
 
 /**
- * autoISF build: the part of the height the basal band takes at the top of the BG graph, for the highest basal. The
- * band hangs from the top edge, as on the IOB graph, so it does not cover the IOB and COB areas at the bottom.
+ * autoISF build: the part of the height the basal band takes at the bottom of the BG graph, for the highest basal. It
+ * grows up from the bottom edge, as on the IOB graph. The phone's graph card draws the basal in the strip under BG
+ * instead, so this band is only seen in the history browser.
  */
 private const val BG_BASAL_BAND_FRACTION = 0.2
 
@@ -161,7 +162,7 @@ private class MutableYRangeProvider(
  * carbs below it pointing up, and a measured value (calibration, BG check) sits on its own value. See
  * [treatmentMarkers] for the placement rules.
  *
- * autoISF build: the basal (layer 1) is a band that hangs from the top, the highest basal down to [BG_BASAL_BAND_FRACTION]
+ * autoISF build: the basal (layer 1) is a band that grows up from the bottom, the highest basal up to [BG_BASAL_BAND_FRACTION]
  * of the height. IOB and COB are areas at the bottom, in a layer drawn before the readings (block 0 of submitBgModel).
  *
  * The insulin activity overlay has no axis of its own: it is mapped into the BG axis' units with
@@ -570,8 +571,7 @@ fun BgGraphCompose(
         }
     }
 
-    // autoISF build: the basal band hangs from the top. The values are negative (see block 2) and the range ends at 0, so
-    // the highest basal reaches BG_BASAL_BAND_FRACTION of the height down from the top and its area is filled up to 0.
+    // autoISF build: the basal band grows up from the bottom, the highest basal to BG_BASAL_BAND_FRACTION of the height
     val basalMaxY = remember(basalData.maxBasal) {
         if (basalData.maxBasal > 0.0) basalData.maxBasal / BG_BASAL_BAND_FRACTION else 1.0
     }
@@ -609,7 +609,7 @@ fun BgGraphCompose(
     // startAxisRangeProvider (BG axis) is created once, further up, and mutated in place — see
     // MutableYRangeProvider and submitBgModel.
     val endAxisRangeProvider = remember(maxX, basalMaxY) {
-        CartesianLayerRangeProvider.fixed(minX = 0.0, maxX = maxX, minY = -basalMaxY, maxY = 0.0)
+        CartesianLayerRangeProvider.fixed(minX = 0.0, maxX = maxX, minY = 0.0, maxY = basalMaxY)
     }
 
     // =========================================================================
@@ -889,11 +889,11 @@ private suspend fun submitBgModel(
             activeSeries.value = withData.toList()
         }
 
-        // Block 2 → Basal layer (layer 1, end axis). Negative values: the band hangs from the top, see basalMaxY.
+        // Block 2 → Basal layer (layer 1, end axis), up from the bottom, see basalMaxY
         lineModel {
             if (input.basalData.profileBasal.size >= 2) {
                 val pts = input.basalData.profileBasal
-                    .map { timestampToX(it.timestamp, minTimestamp) to -it.value }
+                    .map { timestampToX(it.timestamp, minTimestamp) to it.value }
                     .sortedBy { it.first }
                 series(x = pts.map { it.first }, y = pts.map { it.second })
             } else {
@@ -903,7 +903,7 @@ private suspend fun submitBgModel(
 
             if (input.basalData.actualBasal.size >= 2) {
                 val pts = input.basalData.actualBasal
-                    .map { timestampToX(it.timestamp, minTimestamp) to -it.value }
+                    .map { timestampToX(it.timestamp, minTimestamp) to it.value }
                     .sortedBy { it.first }
                 series(x = pts.map { it.first }, y = pts.map { it.second })
             } else {

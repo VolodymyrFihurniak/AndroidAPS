@@ -373,11 +373,34 @@ internal class SecondaryGraphScaleHelpersTest {
         }
 
         @Test
-        fun `the IOB graph leaves the top of its height to the basal band`() {
+        fun `the IOB graph leaves the bottom of its height to the basal band`() {
             val axes = graphAxes(AxisRange(0.0, 3.0, 0.0), null, basalBand = true)
+            val height = axes.left.max - axes.left.min
 
-            assertThat(axes.left).isEqualTo(AxisBounds(0.0, 3.0 / IOB_HEIGHT_FRACTION))
+            // The band below the values, the head room above them, the values in between
+            assertThat((0.0 - axes.left.min) / height).isWithin(1e-9).of(BASAL_BAND_FRACTION)
+            assertThat((axes.left.max - 3.0) / height).isWithin(1e-9).of(IOB_HEAD_ROOM_FRACTION)
             assertThat(axes.right).isNull()
+        }
+
+        @Test
+        fun `with COB on the right both zeros stay on one height above the basal band`() {
+            val axes = graphAxes(AxisRange(0.0, 3.0, 0.0), AxisRange(0.0, 60.0, 0.0), basalBand = true)
+            val right = axes.right!!
+
+            val leftZero = (0.0 - axes.left.min) / (axes.left.max - axes.left.min)
+            val rightZero = (0.0 - right.min) / (right.max - right.min)
+            assertThat(leftZero).isWithin(1e-9).of(BASAL_BAND_FRACTION)
+            assertThat(rightZero).isWithin(1e-9).of(BASAL_BAND_FRACTION)
+        }
+
+        @Test
+        fun `the highest basal fills the band to its fill share and zero sits on the bottom edge`() {
+            val bounds = AxisBounds(-1.0, 3.0)
+            val band = (bounds.max - bounds.min) * BASAL_BAND_FRACTION
+
+            assertThat(basalToBandY(0.0, 2.0, bounds)).isEqualTo(-1.0)
+            assertThat(basalToBandY(2.0, 2.0, bounds)).isWithin(1e-9).of(-1.0 + band * BASAL_BAND_FILL)
         }
 
         @Test

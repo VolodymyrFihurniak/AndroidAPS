@@ -424,6 +424,16 @@
     <string name="graph_card_title">Glucose and insulin</string>
     <string name="graph_card_history" comment="Spoken name of the button that opens the history browser from the graph card">History</string>
     <string name="graph_range_hours" comment="Button that shows the last hours on the graph. %1$d=hours. Example: 6 h">%1$d h</string>
+    <string name="graph_layer_predictions" comment="Switch of a graph layer, keep it short: the predictions of the loop">Predictions</string>
+    <string name="graph_layer_parabola" comment="Switch of a graph layer, keep it short: the BG parabola of autoISF">Parabola</string>
+    <string name="graph_layer_gru" comment="Switch of a graph layer, keep it short: the GRU model of the personal prediction. GRU is a name, do not translate">GRU</string>
+    <string name="graph_layer_linear" comment="Switch of a graph layer, keep it short: the linear model of the personal prediction">Linear</string>
+    <string name="graph_layer_activity" comment="Switch of a graph layer, keep it short: insulin activity, how fast insulin works now. Not physical exercise.">Activity</string>
+    <string name="autoisf_factor_acce" comment="Key of a line in the AutoISF graph: the acceleration factor. Short, an algorithm term">acce</string>
+    <string name="autoisf_factor_bg" comment="Key of a line in the AutoISF graph: the BG factor. Short, an algorithm term">bg</string>
+    <string name="autoisf_factor_pp" comment="Key of a line in the AutoISF graph: the post-prandial factor. Short, an algorithm term">pp</string>
+    <string name="autoisf_factor_dura" comment="Key of a line in the AutoISF graph: the duration factor. Short, an algorithm term">dura</string>
+    <string name="autoisf_factor_final" comment="Key of a line in the AutoISF graph: the final factor. Short, an algorithm term">final</string>
     <string name="insulin_brand_preset" comment="Chip that loads the peak for an insulin by its trade name. %1$s=trade name, %2$s=peak with unit. Example: Fiasp (55 min)">%1$s (%2$s)</string>
     <string name="graph_mini_map" comment="Spoken name of the small strip under the BG graph that shows the whole range">Whole range of the graph. Tap or drag to move the graph there.</string>
     <string name="inspect_forecast" comment="Beside the time in the graph card when that time is after now, so the values there are a forecast">forecast</string>

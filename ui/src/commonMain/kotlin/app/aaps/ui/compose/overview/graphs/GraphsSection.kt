@@ -48,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -142,11 +143,20 @@ private val MINI_MAP_START_PADDING = 30.dp
 /** autoISF build: the lowest height of the BG graph in the graph card. Below it the page scrolls. */
 private val CARD_BG_MIN_HEIGHT = 200.dp
 
+/** autoISF build: the least height of the strip under BG in the graph card (IOB, COB and the basal band). */
+private val CARD_STRIP_MIN_HEIGHT = 130.dp
+
 /** Size of the edit button (pencil) on a graph. The icon in it is 16 dp. */
 private val GRAPH_EDIT_BUTTON_SIZE = 28.dp
 
 /**
- * Puts the name and the pencil of a graph below BG just above the bottom line of its plot, in the bottom right
+ * autoISF build: the name and the pencil of a graph below BG start right of its left axis labels. In the bottom right
+ * corner they covered the lowest label of the right axis (COB, VSENS), which is drawn inside the plot.
+ */
+private val GRAPH_NAME_START_PADDING = 34.dp
+
+/**
+ * Puts the name and the pencil of a graph below BG just above the bottom line of its plot, in the bottom left
  * corner. The line is about 12 dp above the bottom of the graph (room for half of the lowest Y-axis label). The
  * row is 28 dp tall and the text and icon are 16 dp in its middle, so they end 8 + 6 = 14 dp above the bottom.
  */
@@ -238,6 +248,9 @@ private val CONFIGURABLE_SERIES = SeriesType.entries.filter {
 /** autoISF build: the layers of the IOB graph that can be switched on and off */
 private val IOB_OVERLAY_SERIES = listOf(SeriesType.ACTIVITY, SeriesType.BASAL)
 
+/** autoISF build: the layers the graph card draws in the strip under BG, not in the BG graph */
+private val STRIP_SERIES = setOf(SeriesType.IOB, SeriesType.COB, SeriesType.BASAL, SeriesType.ACTIVITY)
+
 @OptIn(FlowPreview::class)
 @Composable
 fun GraphsSection(
@@ -264,7 +277,9 @@ fun GraphsSection(
      */
     cardStyle: Boolean = false,
     /** autoISF build: the calendar button of the card, opens the history browser. */
-    onOpenHistory: (() -> Unit)? = null
+    onOpenHistory: (() -> Unit)? = null,
+    /** autoISF build: the card's title left out and the range buttons in one row with the history button (turned phone, tablet). */
+    compactHeader: Boolean = false
 ) {
     val dateUtil = LocalDateUtil.current
     val savedGraphConfig by graphViewModel.graphConfigFlow.collectAsStateWithLifecycle()
@@ -461,8 +476,7 @@ fun GraphsSection(
     // Auto-scroll when new BG value arrives
     val bgInfoState by graphViewModel.bgInfoState.collectAsStateWithLifecycle()
     val predictions by graphViewModel.predictionsFlow.collectAsStateWithLifecycle()
-    // autoISF build: the personal prediction, for the legend and the layer menu
-    val learnedCurve by graphViewModel.learnedCurveFlow.collectAsStateWithLifecycle()
+    // autoISF build: the personal prediction is on, for the layer switches and the layer menu
     val learnedAvailable by graphViewModel.learnedAvailable.collectAsStateWithLifecycle()
     var lastBgTimestamp by remember { mutableLongStateOf(0L) }
 
@@ -541,7 +555,12 @@ fun GraphsSection(
                 },
                 bgOverlays = graphConfig.bgOverlays,
                 onOpenHistory = onOpenHistory,
-                learned = learnedCurve?.shownIn(graphConfig.bgOverlays)
+                learnedAvailable = learnedAvailable,
+                onToggleLayer = if (isSimpleMode) null else ({ type ->
+                    val current = graphConfig.bgOverlays
+                    graphViewModel.updateGraphConfig(graphConfig.copy(bgOverlays = if (type in current) current - type else current + type))
+                }),
+                compact = compactHeader
             )
         }
         // Treatment Belt Graph - running mode background + therapy events. A hold or a tap shows the pill.
@@ -633,7 +652,8 @@ fun GraphsSection(
         ) {
             BgGraphCompose(
                 viewModel = graphViewModel,
-                bgOverlays = graphConfig.bgOverlays,
+                // autoISF build: in the card IOB, COB, the basal and the activity are in the strip under BG
+                bgOverlays = if (cardStyle) graphConfig.bgOverlays - STRIP_SERIES else graphConfig.bgOverlays,
                 scrollState = bgScrollState,
                 zoomState = bgZoomState,
                 derivedTimeRange = derivedTimeRange,
@@ -697,6 +717,87 @@ fun GraphsSection(
                     .semantics { contentDescription = description }
             )
         }
+        if (editingBgOverlays) {
+            GraphSeriesBottomSheet(
+                title = stringResource(CoreUiStrings.graph_bg),
+                selectedSeries = graphConfig.bgOverlays,
+                availableSeries = if (learnedAvailable) BG_OVERLAY_SERIES else BG_OVERLAY_SERIES - LEARNED_SERIES,
+                height = graphConfig.bgHeight,
+                onHeightChange = { h ->
+                    graphViewModel.updateGraphConfig(graphConfig.copy(bgHeight = h))
+                },
+                onToggle = { type ->
+                    val current = graphConfig.bgOverlays.toMutableList()
+                    if (type in current) current.remove(type) else current.add(type)
+                    graphViewModel.updateGraphConfig(graphConfig.copy(bgOverlays = current))
+                },
+                onDismiss = { editingBgOverlays = false }
+            )
+        }
+        // Fixed IOB graph (Graph 1) with optional Activity overlay.
+        // autoISF build: in the graph card of a phone it is the strip under BG, with IOB (U, left axis), COB (g, right
+        // axis), the SMBs, the basal band at the bottom and the activity, each switched with the layers of the card.
+        // They used to be drawn inside the BG graph, on the BG axis, with no scale of their own.
+        val stripShown = cardStyle && STRIP_SERIES.any { it in graphConfig.bgOverlays }
+        if (!cardStyle || stripShown) {
+            var editingIobOverlays by remember { mutableStateOf(false) }
+            val stripSeries = if (cardStyle && SeriesType.COB in graphConfig.bgOverlays) listOf(SeriesType.IOB, SeriesType.COB) else listOf(SeriesType.IOB)
+            val overlays = if (cardStyle) graphConfig.bgOverlays else graphConfig.iobOverlays
+            Box(
+                modifier = Modifier
+                    .pullUp(IOB_GRAPH_PULL_UP)
+                    .graphInspectTouch(inspect)
+                    .scrollsBgGraph(bgScrollForwarder, inspect, graphViewModel::onGraphInteraction)
+            ) {
+                SecondaryGraphCompose(
+                    viewModel = graphViewModel,
+                    seriesTypes = stripSeries,
+                    scrollState = iobScrollState,
+                    zoomState = iobZoomState,
+                    derivedTimeRange = derivedTimeRange,
+                    nowTimestamp = nowTimestamp,
+                    activityOverlay = SeriesType.ACTIVITY in overlays,
+                    basalLayer = SeriesType.BASAL in overlays,
+                    inspect = inspect,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        // autoISF build: the strip holds IOB, COB and the basal band, so it gets a usable minimum height
+                        .height((if (cardStyle) max(graphConfig.iobHeight.dp, CARD_STRIP_MIN_HEIGHT) else graphConfig.iobHeight.dp) - REMOVED_TIME_LABELS_HEIGHT)
+                )
+                val iobName = if (SeriesType.COB in stripSeries)
+                    stringResource(InterfacesStrings.values_with_slash, stringResource(CoreUiStrings.iob), stringResource(CoreUiStrings.cob))
+                else stringResource(CoreUiStrings.iob)
+                GraphNameRow(
+                    name = if (SeriesType.BASAL in overlays)
+                        stringResource(InterfacesStrings.values_with_slash, iobName, stringResource(CoreUiStrings.basal_shortname))
+                    else iobName,
+                    editName = stringResource(CoreUiStrings.iob),
+                    // In the card the strip's layers are switched in the card's header
+                    onEdit = if (isSimpleMode || cardStyle) null else ({ editingIobOverlays = true }),
+                    // autoISF build: at the top, in the room kept for bolus labels, because the basal band is at the bottom
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(start = GRAPH_NAME_START_PADDING)
+                )
+            }
+            if (editingIobOverlays) {
+                GraphSeriesBottomSheet(
+                    title = stringResource(InterfacesStrings.values_with_slash, stringResource(CoreUiStrings.iob), stringResource(CoreUiStrings.basal_shortname)),
+                    selectedSeries = graphConfig.iobOverlays,
+                    availableSeries = IOB_OVERLAY_SERIES,
+                    height = graphConfig.iobHeight,
+                    onHeightChange = { h ->
+                        graphViewModel.updateGraphConfig(graphConfig.copy(iobHeight = h))
+                    },
+                    onToggle = { type ->
+                        val current = graphConfig.iobOverlays.toMutableList()
+                        if (type in current) current.remove(type) else current.add(type)
+                        graphViewModel.updateGraphConfig(graphConfig.copy(iobOverlays = current))
+                    },
+                    onDismiss = { editingIobOverlays = false }
+                )
+            }
+        }
         // autoISF build: the whole range in a strip under the BG graph, with the shown part framed, as in xdripswift
         if (cardStyle) {
             val bucketed by graphViewModel.bucketedDataFlow.collectAsStateWithLifecycle()
@@ -718,76 +819,6 @@ fun GraphsSection(
                 modifier = Modifier.padding(start = MINI_MAP_START_PADDING, top = AapsSpacing.small, bottom = AapsSpacing.medium)
             )
         }
-        if (editingBgOverlays) {
-            GraphSeriesBottomSheet(
-                title = stringResource(CoreUiStrings.graph_bg),
-                selectedSeries = graphConfig.bgOverlays,
-                availableSeries = if (learnedAvailable) BG_OVERLAY_SERIES else BG_OVERLAY_SERIES - LEARNED_SERIES,
-                height = graphConfig.bgHeight,
-                onHeightChange = { h ->
-                    graphViewModel.updateGraphConfig(graphConfig.copy(bgHeight = h))
-                },
-                onToggle = { type ->
-                    val current = graphConfig.bgOverlays.toMutableList()
-                    if (type in current) current.remove(type) else current.add(type)
-                    graphViewModel.updateGraphConfig(graphConfig.copy(bgOverlays = current))
-                },
-                onDismiss = { editingBgOverlays = false }
-            )
-        }
-        // Fixed IOB graph (Graph 1) with optional Activity overlay.
-        // autoISF build: not in the graph card of a phone. There IOB, COB and the basal are layers of the BG graph.
-        if (!cardStyle) {
-            var editingIobOverlays by remember { mutableStateOf(false) }
-            Box(
-                modifier = Modifier
-                    .pullUp(IOB_GRAPH_PULL_UP)
-                    .graphInspectTouch(inspect)
-                    .scrollsBgGraph(bgScrollForwarder, inspect, graphViewModel::onGraphInteraction)
-            ) {
-                SecondaryGraphCompose(
-                    viewModel = graphViewModel,
-                    seriesTypes = listOf(SeriesType.IOB),
-                    scrollState = iobScrollState,
-                    zoomState = iobZoomState,
-                    derivedTimeRange = derivedTimeRange,
-                    nowTimestamp = nowTimestamp,
-                    activityOverlay = SeriesType.ACTIVITY in graphConfig.iobOverlays,
-                    basalLayer = SeriesType.BASAL in graphConfig.iobOverlays,
-                    inspect = inspect,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(graphConfig.iobHeight.dp - REMOVED_TIME_LABELS_HEIGHT)
-                )
-                GraphNameRow(
-                    name = if (SeriesType.BASAL in graphConfig.iobOverlays)
-                        stringResource(InterfacesStrings.values_with_slash, stringResource(CoreUiStrings.iob), stringResource(CoreUiStrings.basal_shortname))
-                    else stringResource(CoreUiStrings.iob),
-                    editName = stringResource(CoreUiStrings.iob),
-                    onEdit = if (isSimpleMode) null else ({ editingIobOverlays = true }),
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(end = 4.dp, bottom = GRAPH_NAME_BOTTOM_PADDING)
-                )
-            }
-            if (editingIobOverlays) {
-                GraphSeriesBottomSheet(
-                    title = stringResource(InterfacesStrings.values_with_slash, stringResource(CoreUiStrings.iob), stringResource(CoreUiStrings.basal_shortname)),
-                    selectedSeries = graphConfig.iobOverlays,
-                    availableSeries = IOB_OVERLAY_SERIES,
-                    height = graphConfig.iobHeight,
-                    onHeightChange = { h ->
-                        graphViewModel.updateGraphConfig(graphConfig.copy(iobHeight = h))
-                    },
-                    onToggle = { type ->
-                        val current = graphConfig.iobOverlays.toMutableList()
-                        if (type in current) current.remove(type) else current.add(type)
-                        graphViewModel.updateGraphConfig(graphConfig.copy(iobOverlays = current))
-                    },
-                    onDismiss = { editingIobOverlays = false }
-                )
-            }
-        }
 
         // Secondary graphs — config-driven (labels start at "Graph 2")
         var editingGraphIndex by remember { mutableIntStateOf(-1) }
@@ -795,8 +826,8 @@ fun GraphsSection(
             val secondary = graphConfig.secondaryGraphs[i]
             Box(
                 modifier = Modifier
-                    // autoISF build: right under BG when there is no IOB graph, as the IOB graph was
-                    .pullUp(if (i == 0 && cardStyle) IOB_GRAPH_PULL_UP else GRAPH_OVERLAP)
+                    // autoISF build: right under BG when there is no strip, as the IOB graph was
+                    .pullUp(if (i == 0 && cardStyle && !stripShown) IOB_GRAPH_PULL_UP else GRAPH_OVERLAP)
                     .graphInspectTouch(inspect)
                     .scrollsBgGraph(bgScrollForwarder, inspect, graphViewModel::onGraphInteraction)
             ) {
@@ -815,10 +846,11 @@ fun GraphsSection(
                 GraphNameRow(
                     name = seriesListLabel(secondary.series),
                     editName = seriesListLabel(secondary.series),
+                    keys = if (SeriesType.AUTOISF in secondary.series) autoIsfKeys() else emptyList(),
                     onEdit = if (isSimpleMode) null else ({ editingGraphIndex = i }),
                     modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(end = 4.dp, bottom = GRAPH_NAME_BOTTOM_PADDING)
+                        .align(Alignment.BottomStart)
+                        .padding(start = GRAPH_NAME_START_PADDING, bottom = GRAPH_NAME_BOTTOM_PADDING)
                 )
             }
         }
@@ -950,6 +982,19 @@ internal fun withSecondaryGraphHeight(config: GraphConfig, index: Int, expectedS
 // =========================================================================
 
 /** Generate a short label from the series types in a graph (e.g., "IOB", "COB", "BGI / DEV") */
+/** autoISF build: the five factors of the AutoISF graph, each in the colour of its line */
+@Composable
+private fun autoIsfKeys(): List<Pair<String, Color>> {
+    val colors = rememberSeriesColors()
+    return listOf(
+        stringResource(UiStrings.autoisf_factor_acce) to colors.autoIsf(AutoIsfFactor.ACCE),
+        stringResource(UiStrings.autoisf_factor_bg) to colors.autoIsf(AutoIsfFactor.BG),
+        stringResource(UiStrings.autoisf_factor_pp) to colors.autoIsf(AutoIsfFactor.PP),
+        stringResource(UiStrings.autoisf_factor_dura) to colors.autoIsf(AutoIsfFactor.DURA),
+        stringResource(UiStrings.autoisf_factor_final) to colors.autoIsf(AutoIsfFactor.FINAL)
+    )
+}
+
 @Composable
 private fun seriesListLabel(seriesList: List<SeriesType>): String {
     val names = seriesList.map { stringResource(seriesShortNameId(it)) }
@@ -1016,17 +1061,26 @@ private fun GraphNameRow(
     name: String,
     editName: String,
     onEdit: (() -> Unit)?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** autoISF build: names of the lines of the graph in their own colours, for a graph with more lines than names */
+    keys: List<Pair<String, Color>> = emptyList()
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.heightIn(min = GRAPH_EDIT_BUTTON_SIZE)
+        horizontalArrangement = Arrangement.spacedBy(AapsSpacing.small),
+        modifier = modifier
+            .heightIn(min = GRAPH_EDIT_BUTTON_SIZE)
+            // autoISF build: a line under the name does not make it unreadable
+            .clip(RoundedCornerShape(AapsSpacing.small))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.7f))
+            .padding(horizontal = AapsSpacing.small)
     ) {
         Text(
             text = name,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
+        for ((key, color) in keys) Text(text = key, style = MaterialTheme.typography.labelSmall, color = color)
         if (onEdit != null) GraphEditButton(onClick = onEdit, graphName = editName)
     }
 }

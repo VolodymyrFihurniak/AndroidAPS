@@ -392,6 +392,16 @@
     <string name="graph_card_title">Глюкоза та інсулін</string>
     <string name="graph_card_history">Історія</string>
     <string name="graph_range_hours">%1$d год</string>
+    <string name="graph_layer_predictions">Прогнози</string>
+    <string name="graph_layer_parabola">Парабола</string>
+    <string name="graph_layer_gru">GRU</string>
+    <string name="graph_layer_linear">Лінійна</string>
+    <string name="graph_layer_activity">Активність</string>
+    <string name="autoisf_factor_acce">acce</string>
+    <string name="autoisf_factor_bg">bg</string>
+    <string name="autoisf_factor_pp">pp</string>
+    <string name="autoisf_factor_dura">dura</string>
+    <string name="autoisf_factor_final">final</string>
     <string name="insulin_brand_preset">%1$s (%2$s)</string>
     <string name="graph_mini_map">Увесь проміжок графіка. Торкніться або потягніть, щоб пересунути графік туди.</string>
     <string name="inspect_forecast">прогноз</string>

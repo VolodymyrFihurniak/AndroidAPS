@@ -212,6 +212,8 @@ fun OverviewGraphsColumn(
                 overlaidBarsHeight = overlaidBarsHeight,
                 bgExtraHeight = bgExtraHeight,
                 cardStyle = true,
+                // autoISF build: a turned phone and a tablet need the height for the graph, not for a title
+                compactHeader = true,
                 onOpenHistory = { onNavigate(NavigationRequest.Element(ElementType.HISTORY_BROWSER)) },
                 footer = {
                     TodayStatsRow(
