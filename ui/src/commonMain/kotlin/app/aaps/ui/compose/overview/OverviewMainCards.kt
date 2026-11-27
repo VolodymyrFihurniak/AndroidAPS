@@ -102,6 +102,8 @@ fun OverviewMainCards(
             bolusRecommendation = bolusRecommendation,
             exerciseModeUiState = exerciseModeUiState,
             onExerciseModeClick = chipsViewModel::toggleExerciseMode,
+            onStartActivity = chipsViewModel::startActivityTarget,
+            onCancelTempTarget = chipsViewModel::cancelTempTarget,
             statusState = statusState,
             pumpName = manageState.pumpPlugin.pluginDescription.pluginName?.let { stringResource(it) }.orEmpty(),
             pumpIcon = manageState.pumpPlugin.pluginDescription.icon,

@@ -3,12 +3,23 @@ package app.aaps.ui.compose.overview.chips
 import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.aaps.core.data.configuration.Constants
+import app.aaps.core.data.model.GlucoseUnit
+import app.aaps.core.data.model.TT
+import app.aaps.core.data.model.TTPreset
+import app.aaps.core.data.time.T
+import app.aaps.core.data.ue.Sources
 import app.aaps.core.interfaces.InterfacesStrings
 import app.aaps.core.interfaces.aps.Loop
+import app.aaps.core.interfaces.bolus.BatchAction
+import app.aaps.core.interfaces.bolus.BatchExecutor
+import app.aaps.core.interfaces.clientcontrol.ActionProgress
+import app.aaps.core.interfaces.clientcontrol.isNotDeliveryError
 import app.aaps.core.interfaces.configuration.Config
 import app.aaps.core.interfaces.db.PersistenceLayer
 import app.aaps.core.interfaces.db.ProcessedTbrEbData
 import app.aaps.core.interfaces.iob.IobCobCalculator
+import app.aaps.core.interfaces.navigation.ElementType
 import app.aaps.core.interfaces.nsclient.ProcessedDeviceStatusData
 import app.aaps.core.interfaces.overview.SensitivityOverview
 import app.aaps.core.interfaces.overview.graph.OverviewDataCache
@@ -19,21 +30,25 @@ import app.aaps.core.interfaces.profile.ProfileUtil
 import app.aaps.core.interfaces.resources.TextResolver
 import app.aaps.core.interfaces.rx.bus.RxBus
 import app.aaps.core.interfaces.rx.events.EventShowDialog
+import app.aaps.core.interfaces.tempTargets.ttPresets
 import app.aaps.core.interfaces.utils.DateUtil
 import app.aaps.core.interfaces.utils.DecimalFormatter
 import app.aaps.core.interfaces.widget.WidgetUpdater
-import app.aaps.core.data.model.GlucoseUnit
 import app.aaps.core.keys.BooleanKey
 import app.aaps.core.keys.UnitDoubleKey
 import app.aaps.core.keys.interfaces.Preferences
 import app.aaps.core.objects.extensions.convertedToAbsolute
 import app.aaps.core.objects.extensions.round
 import app.aaps.core.ui.CoreUiStrings
+import app.aaps.core.ui.clientcontrol.failText
+import app.aaps.core.ui.compose.navigation.icon
 import app.aaps.core.ui.extensions.displayText
 import app.aaps.ui.UiStrings
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
+import kotlin.math.roundToInt
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -64,7 +79,10 @@ class ChipsViewModel(
     private val processedDeviceStatusData: ProcessedDeviceStatusData,
     private val dateUtil: DateUtil,
     private val profileUtil: ProfileUtil,
-    private val bolusRecommendationSource: BolusRecommendationSource
+    private val bolusRecommendationSource: BolusRecommendationSource,
+    private val batchExecutor: BatchExecutor,
+    // Unqualified, as in TempTargetManagementViewModel: the graph binds the application scope under this name too
+    private val appScope: CoroutineScope
 ) : ViewModel() {
 
     @AssistedFactory
@@ -134,11 +152,14 @@ class ChipsViewModel(
     // autoISF: the exercise mode button. The preference is read when the flow is collected, not when
     // the view model is built. The ticker re-checks the active APS now and then: a plugin switch is
     // rare and does not change the preference.
+    // autoISF build: the activity tile also shows the running target, the effect on basal and ISF, and the steps and
+    // heart rate of the last hour, so it follows the temp target too.
     val exerciseModeUiState: StateFlow<ExerciseModeUiState> = combine(
         iobCobTicker,
-        flow { emitAll(preferences.observe(BooleanKey.ApsAutoIsfHighTtRaisesSens)) }
-    ) { _, enabled ->
-        ExerciseModeUiState(visible = exerciseModeApplies(config, activePlugin), enabled = enabled)
+        flow { emitAll(preferences.observe(BooleanKey.ApsAutoIsfHighTtRaisesSens)) },
+        cache.tempTargetFlow
+    ) { _, enabled, _ ->
+        buildExerciseModeUiState(enabled)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -316,6 +337,94 @@ class ChipsViewModel(
     fun toggleExerciseMode() {
         preferences.put(BooleanKey.ApsAutoIsfHighTtRaisesSens, !preferences.get(BooleanKey.ApsAutoIsfHighTtRaisesSens))
         widgetUpdater.update("ExerciseMode")
+    }
+
+    private fun activityPreset(): TTPreset? = preferences.ttPresets().firstOrNull { it.reason == TT.Reason.ACTIVITY }
+
+    private suspend fun buildExerciseModeUiState(enabled: Boolean): ExerciseModeUiState {
+        val visible = exerciseModeApplies(config, activePlugin)
+        if (!visible) return ExerciseModeUiState(visible = false, enabled = enabled)
+        val now = dateUtil.now()
+        val tt = persistenceLayer.getTemporaryTargetActiveAt(now)
+        val preset = activityPreset()
+        val runningText = tt?.let {
+            rh.gs(UiStrings.activity_target_left, profileUtil.fromMgdlToStringWithUnits(it.lowTarget), dateUtil.untilString(it.timestamp + it.duration, rh, withParentheses = false))
+        }.orEmpty()
+        val presetText = preset?.let {
+            rh.gs(UiStrings.activity_target_preset, profileUtil.fromMgdlToStringWithUnits(it.targetValue), rh.gs(CoreUiStrings.format_mins, (it.duration / 60_000L).toInt()))
+        }.orEmpty()
+        // The same rule as the algorithm (DetermineBasalAutoISF): above the normal target of 100 mg/dL the ratio is
+        // c / (c + target - 100), with c = the half basal exercise target - 100, at most min(1.5, autosens max)
+        val runningHigh = tt?.lowTarget?.takeIf { it > Constants.NORMAL_TARGET_MGDL }
+        val effectTarget = runningHigh ?: preset?.targetValue?.takeIf { it > Constants.NORMAL_TARGET_MGDL }
+        val ratio = effectTarget?.let { sensitivityRatioAt(it) }
+        // Steps and heart rate of the last hour, only when a watch or another source sends them
+        val hourAgo = now - T.hours(1).msecs()
+        val steps = persistenceLayer.getStepsCountFromTime(now - T.mins(15).msecs()).maxByOrNull { it.timestamp }?.steps60min
+        val heartRates = persistenceLayer.getHeartRatesFromTime(hourAgo)
+        return ExerciseModeUiState(
+            visible = true,
+            enabled = enabled,
+            targetRunning = tt != null,
+            activityRunning = tt?.reason == TT.Reason.ACTIVITY,
+            runningTargetText = runningText,
+            presetText = presetText,
+            effectTargetText = effectTarget?.let { profileUtil.fromMgdlToStringWithUnits(it) }.orEmpty(),
+            basalPercent = ratio?.let { (it * 100).roundToInt() },
+            isfFactorText = ratio?.let { decimalFormatter.to1Decimal(1.0 / it) }.orEmpty(),
+            effectNow = enabled && runningHigh != null && ratio != null,
+            steps = steps,
+            heartRate = heartRates.takeIf { it.isNotEmpty() }?.map { it.beatsPerMinute }?.average()?.roundToInt()
+        )
+    }
+
+    private fun sensitivityRatioAt(targetMgdl: Double): Double? {
+        val halfBasalTarget = profileUtil.convertToMgdlDetect(preferences.get(UnitDoubleKey.ApsAutoIsfHalfBasalExerciseTarget))
+        val c = halfBasalTarget - Constants.NORMAL_TARGET_MGDL
+        if (c <= 0.0) return null
+        val ratio = c / (c + targetMgdl - Constants.NORMAL_TARGET_MGDL)
+        return (ratio * 100).roundToInt() / 100.0
+    }
+
+    /** Starts the activity temp target of the presets. The master confirms it, as in the temp target screen. */
+    fun startActivityTarget() {
+        val preset = activityPreset() ?: return
+        val minutes = (preset.duration / 60_000L).toInt()
+        runTempTargetAction(
+            BatchAction.TempTarget(TT.Reason.ACTIVITY.text, preset.targetValue, preset.targetValue, minutes, 0, null),
+            rh.gs(CoreUiStrings.clientcontrol_action_set_temp_target)
+        )
+    }
+
+    /** Cancels the running temp target, with the same confirmation. */
+    fun cancelTempTarget() {
+        runTempTargetAction(
+            BatchAction.TempTarget(TT.Reason.CUSTOM.text, 0.0, 0.0, 0, 0),
+            rh.gs(CoreUiStrings.clientcontrol_action_cancel_temp_target)
+        )
+    }
+
+    // The same two steps as the temp target screen: prepare (the confirmation lines come from the master), then
+    // commit on OK in the app scope, so leaving the screen does not lose it.
+    private fun runTempTargetAction(action: BatchAction, label: String) {
+        viewModelScope.launch {
+            when (val prepared = batchExecutor.prepare(listOf(action), Sources.TTDialog, label)) {
+                is ActionProgress.Prepared ->
+                    rxBus.send(
+                        EventShowDialog.OkCancel(
+                            title = rh.gs(CoreUiStrings.temporary_target), message = "", confirmationLines = prepared.lines,
+                            icon = ElementType.TEMP_TARGET_MANAGEMENT.icon(),
+                            onOk = { appScope.launch { batchExecutor.commit(prepared.id, Sources.TTDialog, label) } }
+                        )
+                    )
+
+                is ActionProgress.Rejected ->
+                    if (!config.AAPSCLIENT || prepared.reason.isNotDeliveryError())
+                        rxBus.send(EventShowDialog.Ok(title = rh.gs(CoreUiStrings.temporary_target), message = prepared.detail ?: rh.gs(prepared.reason.failText())))
+
+                else                       -> Unit
+            }
+        }
     }
 
     private suspend fun buildSensitivityUiState(): SensitivityUiState {

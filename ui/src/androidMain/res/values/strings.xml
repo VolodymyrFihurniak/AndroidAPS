@@ -513,4 +513,21 @@
     <string name="bg_tile_age" comment="Line under the trend on the BG tile of the overview. %1$s=age of the reading, %2$s=the BG changes (bg_tile_deltas). Example: 5 min · Δ +4 / +3.5 / +2.0">%1$s · %2$s</string>
     <string name="bg_tile_deltas" comment="The BG changes over 5, 15 and 40 minutes on the BG tile. %1$s, %2$s, %3$s=the changes. Example: Δ +4 / +3.5 / +2.0">Δ %1$s / %2$s / %3$s</string>
     <string name="graph_target_label" comment="Label of the target line on the BG graph. %1$s=target value. Example: target 100">target %1$s</string>
+    <string name="activity_tile" comment="Name of the overview tile for the autoISF exercise mode and the activity temp target">Activity</string>
+    <string name="activity_waiting" comment="Activity tile: the exercise mode is on, but no high temp target runs">waits for an activity target</string>
+    <string name="activity_no_effect" comment="Activity tile: the exercise mode is off, so a high temp target does not change the insulin sensitivity">a target does not change ISF</string>
+    <string name="activity_basal" comment="Activity tile value: the share of the profile basal the loop uses now. %1$d=percent. Example: basal 60 %">basal %1$d %%</string>
+    <string name="activity_isf" comment="How much larger the insulin sensitivity factor is. %1$s=factor. Example: ISF ×1.7">ISF ×%1$s</string>
+    <string name="activity_effect" comment="Activity sheet: the effect of a high temp target. %1$s=target with unit, %2$d=basal percent, %3$s=ISF factor. Example: At target 140 mg/dL: basal about 60 %, ISF ×1.7">At target %1$s: basal about %2$d %%, ISF ×%3$s</string>
+    <string name="activity_effect_off" comment="Activity sheet: shown when the exercise mode is off">With the mode off, a high target only raises the BG target. The sensitivity stays the same.</string>
+    <string name="activity_mode_summary">A high temp target raises the insulin sensitivity</string>
+    <string name="activity_target_title">Activity target</string>
+    <string name="activity_target_preset" comment="The activity preset of the temp targets. %1$s=target with unit, %2$s=duration. Example: 140 mg/dL · 60 min">%1$s · %2$s</string>
+    <string name="activity_target_left" comment="The running temp target. %1$s=target with unit, %2$s=time left. Example: 140 mg/dL · 45 min left">%1$s · %2$s left</string>
+    <string name="activity_no_preset">There is no activity preset. Add one in the temp targets.</string>
+    <string name="activity_start">Start</string>
+    <string name="activity_open_targets">Temp targets</string>
+    <string name="activity_last_hour">Last hour</string>
+    <string name="activity_steps" comment="%1$d=number of steps. Example: 1240 steps">%1$d steps</string>
+    <string name="activity_heart_rate" comment="%1$d=mean heart rate. Example: 112 bpm">%1$d bpm</string>
 </resources>

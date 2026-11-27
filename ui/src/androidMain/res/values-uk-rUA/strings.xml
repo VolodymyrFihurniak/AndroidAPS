@@ -482,4 +482,21 @@
     <string name="bg_tile_age">%1$s · %2$s</string>
     <string name="bg_tile_deltas">Δ %1$s / %2$s / %3$s</string>
     <string name="graph_target_label">ціль %1$s</string>
+    <string name="activity_tile">Активність</string>
+    <string name="activity_waiting">чекає цілі активності</string>
+    <string name="activity_no_effect">ціль не змінює ISF</string>
+    <string name="activity_basal">базал %1$d %%</string>
+    <string name="activity_isf">ISF ×%1$s</string>
+    <string name="activity_effect">При цілі %1$s: базал ≈ %2$d %%, ISF ×%3$s</string>
+    <string name="activity_effect_off">Коли режим вимкнено, висока ціль лише піднімає цільову ГК. Чутливість не змінюється.</string>
+    <string name="activity_mode_summary">Висока тимчасова ціль підвищує чутливість до інсуліну</string>
+    <string name="activity_target_title">Ціль активності</string>
+    <string name="activity_target_preset">%1$s · %2$s</string>
+    <string name="activity_target_left">%1$s · ще %2$s</string>
+    <string name="activity_no_preset">Немає шаблону активності. Додайте його в тимчасових цілях.</string>
+    <string name="activity_start">Почати</string>
+    <string name="activity_open_targets">Тимчасові цілі</string>
+    <string name="activity_last_hour">Остання година</string>
+    <string name="activity_steps">%1$d кроків</string>
+    <string name="activity_heart_rate">%1$d уд/хв</string>
 </resources>

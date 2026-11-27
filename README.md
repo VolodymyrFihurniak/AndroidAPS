@@ -51,9 +51,9 @@ and carb ratios.
 * BG parabola on the BG graph (option *BG parabola (autoISF)* in the BG graph settings, on by
   default): the fitted part is a solid line, the next 20 minutes are dashed and shown only together
   with the predictions.
-* Exercise mode button in the overview, next to the temp basal chip: it shows and switches
-  *High temp target raises sensitivity*. It is shown while AutoISF or SMB is the active APS.
-  While the mode is on, the widget shows the same icon next to the temp basal icon.
+* Exercise mode in the overview: the *Activity* tile (see the tiles below). It shows and switches *High temp target raises sensitivity*.
+  It is shown while AutoISF or SMB is the active APS. While the mode is on, the widget shows the same
+  icon next to the temp basal icon.
 * AAPSClient shows the algorithm of the master (*ALG: AutoISF*, *DynISF*, *SMB*, ...) next to the
   OpenAPS status. Tap the card to see the debug lines of the last loop run of the master (the
   "Script debug" of aisf).
@@ -114,8 +114,7 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
   - *BG* (wide): the value in the colour of its range, its unit, the trend, the age of the reading and
     the changes over 5, 15 and 40 minutes; it opens the BG check. Beside it *Target*: the temp target
     with its time left and the colour of its reason, or the profile target the loop corrects toward
-    when no temp target runs; it opens the temp targets. The exercise button sits on this tile, because the
-    exercise mode works through a high temp target. The BG tile has no title line.
+    when no temp target runs; it opens the temp targets. The BG tile has no title line.
   - *Bolus* (the advice of the loop, see below), *Carbs* and *IOB* (opens the IOB details).
   - *Basal* (the temp basal; opens the temp basal dialog; its status line opens the basal details), *Loop*
     (opens the running modes; shows when the loop last ran, in the warning colour after 15 minutes,
@@ -126,6 +125,13 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
     cannula and of the insulin; the pump battery is shown only when it is critical (the AAPS warning
     level is 51 %, so a half full battery was always shown). It opens the
     screen of the active pump, or the status sheet where the Manage sheet has no pump (AAPSClient).
+    *Activity* (only while AutoISF or SMB is the active APS): *Off*, *On* (waits for a high temp target),
+    or, while a high temp target runs with the mode on, the basal share and the ISF factor the loop
+    uses (e.g. *basal 60 %, ISF ×1.7*). It opens a sheet with the mode switch, the activity target
+    (start the *Activity* temp target preset, or cancel the running target, both with a confirm
+    dialog; without a preset a link to the temp targets), the effect at that target (the same formula
+    as the algorithm: c / (c + target − 99), c = half basal exercise target − 99) and the steps and
+    heart rate of the last hour when a watch sends them.
   The titles of the tiles are small and grey, the values large. The texts stay on one line and get
   smaller with a big system font. The graph card has no title row on a phone either: the ranges and
   the history button are in one row, so the graph gets the height.

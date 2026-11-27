@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -26,6 +27,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,6 +63,7 @@ import app.aaps.core.ui.compose.AapsTheme
 import app.aaps.core.ui.compose.LocalClientRole
 import app.aaps.core.ui.compose.StatusLevel
 import app.aaps.core.ui.compose.dialogs.OkCancelDialog
+import app.aaps.core.ui.compose.icons.IcActivity
 import app.aaps.core.ui.compose.icons.IcCannulaChange
 import app.aaps.core.ui.compose.icons.IcCgmInsert
 import app.aaps.core.ui.compose.icons.IcPluginInsulin
@@ -80,7 +87,6 @@ import app.aaps.ui.compose.overview.chips.BasalUiState
 import app.aaps.ui.compose.overview.chips.BolusRecommendation
 import app.aaps.ui.compose.overview.chips.BolusRecommendationKind
 import app.aaps.ui.compose.overview.chips.CobUiState
-import app.aaps.ui.compose.overview.chips.ExerciseModeChip
 import app.aaps.ui.compose.overview.chips.ExerciseModeUiState
 import app.aaps.ui.compose.overview.chips.IobUiState
 import app.aaps.ui.compose.overview.chips.LoopUiState
@@ -103,8 +109,9 @@ import app.aaps.ui.compose.overview.statusLights.StatusUiState
  * - Target: the temp target, or the profile target when none runs. Opens the temp targets.
  * - Bolus: the advice of the last loop run. Opens the Insulin dialog, where the dose is entered and confirmed.
  * - Carbs (COB), IOB, temp basal, loop (running mode), sensor.
- * - Profile and pump (two wide tiles): the profile with its change and time left; the pump with its reservoir and the
- *   age of cannula and insulin. The pump battery is shown only when it is critical.
+ * - Profile, pump and activity: the profile with its change and time left; the pump with its reservoir and the
+ *   age of cannula and insulin (the battery only when it is critical); the exercise mode with its effect on basal and
+ *   ISF, which opens the activity sheet.
  *
  * The sensor tile opens the status sheet (sensor change, fill, battery change, status light settings), which were in
  * the status row before.
@@ -133,6 +140,8 @@ fun OverviewTiles(
     bolusRecommendation: BolusRecommendation,
     exerciseModeUiState: ExerciseModeUiState,
     onExerciseModeClick: () -> Unit,
+    onStartActivity: () -> Unit,
+    onCancelTempTarget: () -> Unit,
     statusState: StatusUiState,
     pumpName: String,
     pumpIcon: ImageVector?,
@@ -149,6 +158,7 @@ fun OverviewTiles(
     var showStatusSheet by rememberSaveable { mutableStateOf(false) }
     var showSensitivityDialog by remember { mutableStateOf(false) }
     var showBasalDetails by remember { mutableStateOf(false) }
+    var showActivitySheet by rememberSaveable { mutableStateOf(false) }
     val warning = AapsTheme.generalColors.statusWarning
 
     Column(verticalArrangement = Arrangement.spacedBy(AapsSpacing.medium), modifier = modifier.fillMaxWidth()) {
@@ -161,11 +171,6 @@ fun OverviewTiles(
                 reason = tempTargetReason,
                 sceneManaged = tempTargetSceneManaged,
                 onClick = open(ElementType.TEMP_TARGET_MANAGEMENT),
-                // The exercise mode works through a high temp target, so its button is on this tile (a row of its own
-                // was an empty line on the phone)
-                trailing = if (exerciseModeUiState.visible) ({
-                    ExerciseModeChip(enabled = exerciseModeUiState.enabled, onClick = onExerciseModeClick, clickable = commandsAllowed)
-                }) else null,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -245,6 +250,8 @@ fun OverviewTiles(
                 onClick = if (showPump) ({ onNavigate(NavigationRequest.Element(ElementType.PUMP)) }) else ({ showStatusSheet = true }),
                 modifier = Modifier.weight(1f)
             )
+            // The exercise mode as a tile of its own, only where the algorithm reads it (the master with AutoISF or SMB)
+            if (exerciseModeUiState.visible) ActivityTile(exerciseModeUiState, onClick = { showActivitySheet = true }, modifier = Modifier.weight(1f))
         }
     }
 
@@ -257,6 +264,17 @@ fun OverviewTiles(
             onPumpClick = if (showPump) ({ showStatusSheet = false; onNavigate(NavigationRequest.Element(ElementType.PUMP)) }) else null,
             pumpIcon = pumpIcon,
             onDismiss = { showStatusSheet = false }
+        )
+    }
+    if (showActivitySheet && exerciseModeUiState.visible) {
+        ActivitySheet(
+            state = exerciseModeUiState,
+            commandsAllowed = commandsAllowed,
+            onToggleMode = onExerciseModeClick,
+            onStart = { showActivitySheet = false; onStartActivity() },
+            onCancelTarget = { showActivitySheet = false; onCancelTempTarget() },
+            onOpenTargets = { showActivitySheet = false; onNavigate(NavigationRequest.Element(ElementType.TEMP_TARGET_MANAGEMENT)) },
+            onDismiss = { showActivitySheet = false }
         )
     }
     if (showBasalDetails) {
@@ -301,7 +319,6 @@ private fun Tile(
     modifier: Modifier = Modifier,
     tint: Color? = null,
     sceneManaged: Boolean = false,
-    trailing: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
@@ -323,7 +340,6 @@ private fun Tile(
                     modifier = Modifier.weight(1f)
                 )
                 if (sceneManaged) SceneBadge()
-                trailing?.invoke()
                 if (onClick != null) Chevron()
             }
             content()
@@ -445,7 +461,6 @@ private fun TargetTile(
     reason: TT.Reason?,
     sceneManaged: Boolean,
     onClick: (() -> Unit)?,
-    trailing: (@Composable () -> Unit)?,
     modifier: Modifier = Modifier
 ) {
     val stateColor = when (state) {
@@ -464,7 +479,6 @@ private fun TargetTile(
         onClick = onClick,
         tint = stateColor,
         sceneManaged = sceneManaged,
-        trailing = trailing,
         modifier = modifier
     ) {
         TileValue(value.ifEmpty { stringResource(UiStrings.basal_unknown) }, stateColor)
@@ -612,6 +626,144 @@ internal fun FitText(text: String, style: TextStyle, color: Color, modifier: Mod
         autoSize = TextAutoSize.StepBased(minFontSize = style.fontSize * FIT_MIN_SHARE, maxFontSize = style.fontSize, stepSize = 1.sp),
         modifier = modifier
     )
+}
+
+/**
+ * The exercise mode of autoISF ("a high temp target raises sensitivity"). Off: grey. On: what it does, which needs a
+ * high temp target. While one runs, the tile is in the primary colour and shows the basal share and the ISF factor.
+ */
+@Composable
+private fun ActivityTile(state: ExerciseModeUiState, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val active = MaterialTheme.colorScheme.primary
+    val color = if (state.effectNow) active else null
+    Tile(
+        icon = IcActivity,
+        iconColor = if (state.enabled) active else MaterialTheme.colorScheme.onSurfaceVariant,
+        title = stringResource(UiStrings.activity_tile),
+        onClick = onClick,
+        tint = color,
+        modifier = modifier
+    ) {
+        when {
+            !state.enabled  -> {
+                TileValue(stringResource(UiStrings.exercise_mode_off), MaterialTheme.colorScheme.onSurfaceVariant)
+                TileLine(stringResource(UiStrings.activity_no_effect))
+            }
+
+            state.effectNow -> {
+                TileValue(stringResource(UiStrings.activity_basal, state.basalPercent ?: 100), active)
+                TileLine(stringResource(UiStrings.activity_isf, state.isfFactorText))
+            }
+
+            else            -> {
+                TileValue(stringResource(UiStrings.exercise_mode_on))
+                TileLine(stringResource(UiStrings.activity_waiting))
+            }
+        }
+    }
+}
+
+/**
+ * The activity sheet: the exercise mode switch, the activity target (start it from the preset, or cancel the running
+ * target), the effect on basal and ISF, and the steps and heart rate of the last hour when a source sends them.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ActivitySheet(
+    state: ExerciseModeUiState,
+    commandsAllowed: Boolean,
+    onToggleMode: () -> Unit,
+    onStart: () -> Unit,
+    onCancelTarget: () -> Unit,
+    onOpenTargets: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        ActivitySheetContent(state, commandsAllowed, onToggleMode, onStart, onCancelTarget, onOpenTargets)
+    }
+}
+
+/** The body of [ActivitySheet], apart from the sheet so a screenshot test can draw it. */
+@Composable
+internal fun ActivitySheetContent(
+    state: ExerciseModeUiState,
+    commandsAllowed: Boolean,
+    onToggleMode: () -> Unit,
+    onStart: () -> Unit,
+    onCancelTarget: () -> Unit,
+    onOpenTargets: () -> Unit
+) {
+    val boxColor = MaterialTheme.colorScheme.surfaceContainerHigh
+    Column(
+        verticalArrangement = Arrangement.spacedBy(AapsSpacing.medium),
+        modifier = Modifier.padding(start = AapsSpacing.large, end = AapsSpacing.large, bottom = AapsSpacing.large)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(AapsSpacing.medium)) {
+            Icon(imageVector = IcActivity, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Text(text = stringResource(UiStrings.activity_tile), style = MaterialTheme.typography.titleLarge)
+        }
+        // The mode itself
+        SheetBox(boxColor) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = stringResource(UiStrings.exercise_mode), style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        text = stringResource(UiStrings.activity_mode_summary),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(checked = state.enabled, onCheckedChange = { onToggleMode() }, enabled = commandsAllowed)
+            }
+        }
+        // The target: the running one, or the activity preset
+        SheetBox(if (state.effectNow) MaterialTheme.colorScheme.primaryContainer else boxColor) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(AapsSpacing.medium)) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = stringResource(UiStrings.activity_target_title), style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        text = when {
+                            state.targetRunning           -> state.runningTargetText
+                            state.presetText.isNotEmpty() -> state.presetText
+                            else                          -> stringResource(UiStrings.activity_no_preset)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                when {
+                    state.targetRunning           -> OutlinedButton(onClick = onCancelTarget, enabled = commandsAllowed) { Text(stringResource(CoreUiStrings.cancel)) }
+                    state.presetText.isNotEmpty() -> Button(onClick = onStart, enabled = commandsAllowed) { Text(stringResource(UiStrings.activity_start)) }
+                    else                          -> TextButton(onClick = onOpenTargets) { Text(stringResource(UiStrings.activity_open_targets)) }
+                }
+            }
+            val effect = when {
+                !state.enabled                                                 -> stringResource(UiStrings.activity_effect_off)
+                state.basalPercent != null && state.effectTargetText.isNotEmpty() ->
+                    stringResource(UiStrings.activity_effect, state.effectTargetText, state.basalPercent, state.isfFactorText)
+
+                else                                                           -> ""
+            }
+            if (effect.isNotEmpty()) Text(text = effect, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+        }
+        // The last hour, only with a step or heart rate source
+        if (state.steps != null || state.heartRate != null) {
+            SheetBox(boxColor) {
+                Text(text = stringResource(UiStrings.activity_last_hour), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(horizontalArrangement = Arrangement.spacedBy(AapsSpacing.large)) {
+                    state.steps?.let { Text(text = stringResource(UiStrings.activity_steps, it), style = MaterialTheme.typography.bodyMedium) }
+                    state.heartRate?.let { Text(text = stringResource(UiStrings.activity_heart_rate, it), style = MaterialTheme.typography.bodyMedium) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SheetBox(color: Color, content: @Composable ColumnScope.() -> Unit) {
+    Surface(color = color, shape = MaterialTheme.shapes.medium) {
+        Column(verticalArrangement = Arrangement.spacedBy(AapsSpacing.small), modifier = Modifier.fillMaxWidth().padding(AapsSpacing.medium), content = content)
+    }
 }
 
 /** The status sheet: what the status row showed when opened (sensor, insulin, cannula, battery, their buttons). */

@@ -25,14 +25,34 @@ data class CobUiState(
 )
 
 /**
- * autoISF: the exercise mode button ("high temp target raises sensitivity").
+ * autoISF: the exercise mode ("high temp target raises sensitivity") and the activity tile of the overview.
  *
  * [visible] only while the active APS uses the mode (AutoISF, and SMB with the aisf changes).
  */
 @Immutable
 data class ExerciseModeUiState(
     val visible: Boolean = false,
-    val enabled: Boolean = false
+    val enabled: Boolean = false,
+    /** A temp target runs now, of any reason */
+    val targetRunning: Boolean = false,
+    /** The running temp target is an activity one */
+    val activityRunning: Boolean = false,
+    /** The running temp target with its time left, e.g. "140 mg/dL · 45 min" */
+    val runningTargetText: String = "",
+    /** The activity preset of the temp targets, e.g. "140 mg/dL · 60 min"; empty when there is none */
+    val presetText: String = "",
+    /** The target the effect is worked out for (the running high target, else the activity preset) */
+    val effectTargetText: String = "",
+    /** The share of the profile basal the loop uses at [effectTargetText]; null when a target there changes nothing */
+    val basalPercent: Int? = null,
+    /** How much larger the ISF is at [effectTargetText], e.g. 1.7 */
+    val isfFactorText: String = "",
+    /** The effect works now: the mode is on and a high temp target runs */
+    val effectNow: Boolean = false,
+    /** Steps of the last hour, null without a step source */
+    val steps: Int? = null,
+    /** Mean heart rate of the last hour, null without a heart rate source */
+    val heartRate: Int? = null
 )
 
 @Immutable

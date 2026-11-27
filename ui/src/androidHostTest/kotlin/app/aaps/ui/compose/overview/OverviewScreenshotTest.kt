@@ -1,18 +1,31 @@
 package app.aaps.ui.compose.overview
 
 import android.graphics.Bitmap
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
 import app.aaps.core.data.iob.CobInfo
+import app.aaps.core.data.model.HR
 import app.aaps.core.data.model.RM
+import app.aaps.core.data.model.SC
+import app.aaps.core.data.model.TT
 import app.aaps.core.data.model.TrendArrow
+import app.aaps.core.interfaces.aps.APS
+import app.aaps.core.interfaces.aps.APSResult
 import app.aaps.core.interfaces.aps.IobTotal
 import app.aaps.core.interfaces.aps.LearnedForecast
 import app.aaps.core.interfaces.aps.LearnedPoint
+import app.aaps.core.interfaces.overview.graph.ActivityGraphData
 import app.aaps.core.interfaces.overview.graph.AutoIsfGraphData
 import app.aaps.core.interfaces.overview.graph.BasalGraphData
 import app.aaps.core.interfaces.overview.graph.BgDataPoint
@@ -20,6 +33,7 @@ import app.aaps.core.interfaces.overview.graph.BgInfoData
 import app.aaps.core.interfaces.overview.graph.BgParabolaData
 import app.aaps.core.interfaces.overview.graph.BgRange
 import app.aaps.core.interfaces.overview.graph.BgType
+import app.aaps.core.interfaces.overview.graph.BgiGraphData
 import app.aaps.core.interfaces.overview.graph.BolusGraphPoint
 import app.aaps.core.interfaces.overview.graph.BolusType
 import app.aaps.core.interfaces.overview.graph.CarbsGraphPoint
@@ -31,28 +45,33 @@ import app.aaps.core.interfaces.overview.graph.DeviationsGraphData
 import app.aaps.core.interfaces.overview.graph.EpsGraphPoint
 import app.aaps.core.interfaces.overview.graph.GraphConfig
 import app.aaps.core.interfaces.overview.graph.GraphDataPoint
+import app.aaps.core.interfaces.overview.graph.HeartRateGraphData
 import app.aaps.core.interfaces.overview.graph.IobGraphData
-import app.aaps.core.interfaces.overview.graph.ActivityGraphData
-import app.aaps.core.interfaces.overview.graph.BgiGraphData
 import app.aaps.core.interfaces.overview.graph.RatioGraphData
+import app.aaps.core.interfaces.overview.graph.RunningModeGraphData
+import app.aaps.core.interfaces.overview.graph.RunningModeSegment
 import app.aaps.core.interfaces.overview.graph.SecondaryGraph
 import app.aaps.core.interfaces.overview.graph.SeriesType
+import app.aaps.core.interfaces.overview.graph.StepsGraphData
 import app.aaps.core.interfaces.overview.graph.TargetLineData
 import app.aaps.core.interfaces.overview.graph.TherapyEventGraphPoint
 import app.aaps.core.interfaces.overview.graph.TherapyEventType
 import app.aaps.core.interfaces.overview.graph.TimeRange
 import app.aaps.core.interfaces.overview.graph.TreatmentGraphData
 import app.aaps.core.interfaces.overview.graph.VarSensGraphData
-import app.aaps.core.interfaces.overview.graph.HeartRateGraphData
-import app.aaps.core.interfaces.overview.graph.StepsGraphData
-import app.aaps.core.interfaces.overview.graph.RunningModeGraphData
-import app.aaps.core.interfaces.overview.graph.RunningModeSegment
+import app.aaps.core.keys.BooleanKey
 import app.aaps.core.keys.StringKey
+import app.aaps.core.keys.StringNonKey
+import app.aaps.core.keys.UnitDoubleKey
 import app.aaps.core.ui.compose.preference.PreferenceSubScreenDef
 import app.aaps.ui.compose.main.TempTargetChipState
 import app.aaps.ui.compose.testing.AapsScreenFixture
 import app.aaps.ui.compose.testing.OverviewViewModelFixture
 import app.aaps.ui.compose.testing.setAapsContent
+import java.io.File
+import kotlin.math.exp
+import kotlin.math.max
+import kotlin.math.sin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -66,14 +85,11 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.kotlin.any
+import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import java.io.File
-import kotlin.math.exp
-import kotlin.math.max
-import kotlin.math.sin
 
 /**
  * Design review only, not a regression test: renders the overview with every graph layer switched on and a busy
@@ -219,7 +235,29 @@ class OverviewScreenshotTest {
         ) else GraphConfig()
         whenever(vm.graphConfigRepository.graphConfigFlow).thenReturn(MutableStateFlow(config))
 
+        // autoISF build: the activity tile. The exercise mode is on; with all series an activity target runs too.
+        whenever(screen.config.APS).thenReturn(true)
+        val aps = mock<APS>()
+        whenever(aps.algorithm).thenReturn(APSResult.Algorithm.AUTO_ISF)
+        whenever(vm.activePlugin.activeAPS).thenReturn(aps)
+        whenever(screen.preferences.observe(BooleanKey.ApsAutoIsfHighTtRaisesSens)).thenReturn(MutableStateFlow(true))
+        whenever(screen.preferences.get(StringNonKey.TempTargetPresets))
+            .thenReturn("""[{"id":"a","reason":"Activity","targetValue":140,"duration":3600000,"isDeletable":false}]""")
+        whenever(screen.preferences.get(UnitDoubleKey.ApsAutoIsfHalfBasalExerciseTarget)).thenReturn(160.0)
+        whenever(screen.dateUtil.untilString(any(), any(), any())).thenReturn("45 min")
+        whenever(screen.profileUtil.convertToMgdlDetect(any())).thenAnswer { it.arguments[0] as Double }
+        whenever(screen.profileUtil.fromMgdlToStringWithUnits(any())).thenAnswer { "${(it.arguments[0] as Double).toInt()} mg/dL" }
+
         runBlocking {
+            whenever(vm.persistenceLayer.getTemporaryTargetActiveAt(any())).thenReturn(
+                if (allSeries) TT(timestamp = now - 15 * 60_000L, duration = 60 * 60_000L, reason = TT.Reason.ACTIVITY, lowTarget = 140.0, highTarget = 140.0) else null
+            )
+            whenever(vm.persistenceLayer.getStepsCountFromTime(any())).thenReturn(
+                listOf(SC(duration = 300_000L, timestamp = now - 60_000L, steps5min = 420, steps10min = 800, steps15min = 1200, steps30min = 2300, steps60min = 4180, steps180min = 6000, device = "watch"))
+            )
+            whenever(vm.persistenceLayer.getHeartRatesFromTime(any())).thenReturn(
+                listOf(98.0, 112.0, 124.0).mapIndexed { i, bpm -> HR(duration = 300_000L, timestamp = now - (3 - i) * 300_000L, beatsPerMinute = bpm, device = "watch") }
+            )
             whenever(vm.iobCobCalculator.calculateIobFromBolus()).thenReturn(IobTotal(now, iob = 2.1, activity = 0.02))
             whenever(vm.iobCobCalculator.calculateIobFromTempBasalsIncludingConvertedExtended()).thenReturn(IobTotal(now, basaliob = 0.4))
             whenever(vm.iobCobCalculator.getCobInfo(any())).thenReturn(CobInfo(now, 22.0, 0.0))
@@ -295,6 +333,32 @@ class OverviewScreenshotTest {
     // autoISF build: a new install as on the owner's phone: no BG, no profile, loop disabled
     @Test @Config(qualifiers = "w360dp-h800dp-port-night-xxhdpi", fontScale = 1.15f)
     fun newInstallDark() { dark(); render("11_new_install_dark", false, empty = true) }
+
+    /** autoISF build: the activity sheet, with the state the ViewModel works out from the running activity target */
+    private fun renderActivitySheet(name: String, running: Boolean) {
+        val chips = vm.chipsViewModel
+        compose.setAapsContent(screen) {
+            val state by chips.exerciseModeUiState.collectAsState()
+            Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
+                Column(modifier = Modifier.padding(top = 24.dp)) {
+                    ActivitySheetContent(state = state, commandsAllowed = true, onToggleMode = {}, onStart = {}, onCancelTarget = {}, onOpenTargets = {})
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.mainClock.advanceTimeBy(2_000)
+        compose.waitForIdle()
+        val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
+        val dir = File("build/screenshots").apply { mkdirs() }
+        File(dir, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        check(running == chips.exerciseModeUiState.value.targetRunning)
+    }
+
+    @Test @Config(qualifiers = "w393dp-h520dp-port-night-xxhdpi")
+    fun activitySheetRunningDark() { fill(true); dark(); renderActivitySheet("12_activity_sheet_running_dark", running = true) }
+
+    @Test @Config(qualifiers = "w393dp-h520dp-port-xxhdpi")
+    fun activitySheetReadyLight() { fill(false); renderActivitySheet("13_activity_sheet_ready_light", running = false) }
 
     @Test @Config(qualifiers = "w780dp-h360dp-land-xxhdpi", fontScale = 1.5f)
     fun samsungLandscapeFont15() { fill(false); render("10_land_w780_font15", true) }
