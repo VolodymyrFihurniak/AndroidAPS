@@ -26,6 +26,7 @@ import app.aaps.core.interfaces.overview.graph.BgRange
 import app.aaps.core.interfaces.overview.graph.GraphConfig
 import app.aaps.core.interfaces.overview.graph.GraphConfigRepository
 import app.aaps.core.interfaces.plugin.ActivePlugin
+import app.aaps.core.interfaces.plugin.PluginDescription
 import app.aaps.core.interfaces.profile.ProfileFunction
 import app.aaps.core.interfaces.pump.PumpInsulin
 import app.aaps.core.interfaces.pump.PumpWithConcentration
@@ -183,6 +184,8 @@ internal class OverviewViewModelFixture(private val screen: AapsScreenFixture) {
         whenever(activePump.lastDataTime).thenReturn(MutableStateFlow(0L))
         whenever(pumpPlugin.pumpDescription).thenReturn(pumpDescription)
         whenever(pumpPlugin.batteryLevel).thenReturn(MutableStateFlow<Int?>(null))
+        // A real plugin always has a description; the overview reads its icon for the Pump button.
+        whenever(pumpPlugin.pluginDescription).thenReturn(PluginDescription())
         whenever(rxBus.toFlow(EventInitializationChanged::class)).thenReturn(emptyFlow())
         whenever(rxBus.toFlow(EventConfigBuilderChange::class)).thenReturn(emptyFlow())
         whenever(rxBus.toFlow(EventNsClientStatusUpdated::class)).thenReturn(emptyFlow())
