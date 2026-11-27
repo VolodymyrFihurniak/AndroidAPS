@@ -1,5 +1,13 @@
 # Project Preferences
 
+## This fork (read first)
+
+This is the autoISF fork of AAPS (`VolodymyrFihurniak/AndroidAPS`), not upstream. Before any work
+read `.claude/fork/README.md` (what the fork is, branches, the `autoISF build` marker, safety) and
+`.claude/fork/HANDOFF.md` (current state and open work). For the personal prediction plugin use
+`.claude/procedures/personal-prediction.md`. The rest of this file is the upstream one; its Windows
+and macOS rules apply only on those machines, not in a cloud chat.
+
 ## CRITICAL: Bash Command Rules (applies to ALL agents too)
 
 - **NEVER use `cd && command` or `cd; command` in Bash calls** — triggers security approval prompts
