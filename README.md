@@ -109,18 +109,21 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
   - *BG* (wide): the value in the colour of its range, its unit, the trend, the age of the reading and
     the changes over 5, 15 and 40 minutes; it opens the BG check. Beside it *Target*: the temp target
     with its time left and the colour of its reason, or the profile target the loop corrects toward
-    when no temp target runs; it opens the temp targets.
+    when no temp target runs; it opens the temp targets. The exercise button sits on this tile, because the
+    exercise mode works through a high temp target. The BG tile has no title line.
   - *Bolus* (the advice of the loop, see below), *Carbs* and *IOB* (opens the IOB details).
-  - *Temp basal* (opens the temp basal dialog; its status line opens the basal details), *Loop*
+  - *Basal* (the temp basal; opens the temp basal dialog; its status line opens the basal details), *Loop*
     (opens the running modes; shows when the loop last ran, in the warning colour after 15 minutes,
     the running mode and the autosens ratio, which opens the sensitivity details) and *Sensor* (opens
     a sheet with the status: sensor, insulin, cannula, battery).
   - *Profile*: the name, the time left of a temporary profile with a bar, yellow when the profile is
     changed; it opens the profile management. *Pump*: the pump name, the reservoir, the age of the
-    cannula and of the insulin; the pump battery is shown only when it is low or old. It opens the
+    cannula and of the insulin; the pump battery is shown only when it is critical (the AAPS warning
+    level is 51 %, so a half full battery was always shown). It opens the
     screen of the active pump, or the status sheet where the Manage sheet has no pump (AAPSClient).
-  - The exercise button under the tiles, when it is shown.
-  The texts in the tiles stay on one line and get smaller with a big system font.
+  The titles of the tiles are small and grey, the values large. The texts stay on one line and get
+  smaller with a big system font. The graph card has no title row on a phone either: the ranges and
+  the history button are in one row, so the graph gets the height.
   The *Bolus* tile shows the advice of the loop, and a
   tap opens the Insulin dialog, where the same advice stands at the top with its numbers (BG in 1 h,
   eventual BG, insulin the loop needs, ISF, age of the run). The advice comes from the last algorithm
@@ -162,8 +165,8 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
   height of the screen too. The card has no title there: the ranges and the history button are in
   one row, so the graph gets the height. Before, a turned phone showed the old screen with the BG circle and the
   chips. The status (sensor, insulin, cannula, battery) opens from the *Sensor* tile.
-* The bottom menu: *Log* (the treatment history), *Statistics*, *History*, a large *+* in the middle
-  (the treatments sheet), *Scenes* and *Manage*, and the buttons that need the user (pump setup, BG
+* The bottom menu: *Log* (the treatment history), *Statistics*, *History*, a *+* in the middle as a
+  filled button (the treatments sheet), *Scenes* and *Manage*, and the buttons that need the user (pump setup, BG
   source, objectives, loop request, permissions). There is no *Home*: the menu belongs to the home
   screen, so Home did nothing. It holds at most 5 buttons: when more are needed, History, then
   Statistics, then Log give way (they are in the side menu too).

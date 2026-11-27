@@ -135,6 +135,8 @@ fun OverviewScreenStacked(
                     overlaidBarsHeight = overlaidBarsHeight,
                     bgExtraHeight = bgExtraHeight,
                     cardStyle = true,
+                    // autoISF build: no title row, as in the tiles design: the ranges and the history button in one row, so the graph gets the height
+                    compactHeader = true,
                     onOpenHistory = { onNavigate(NavigationRequest.Element(ElementType.HISTORY_BROWSER)) },
                     footer = {
                         // autoISF build: the statistics of today of the user's concept. The treatments are in the bottom menu.

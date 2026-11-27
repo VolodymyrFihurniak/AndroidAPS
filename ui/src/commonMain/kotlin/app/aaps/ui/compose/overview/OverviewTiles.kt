@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -45,7 +46,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
-import app.aaps.core.data.model.GlucoseUnit
 import app.aaps.core.data.model.RM
 import app.aaps.core.data.model.TT
 import app.aaps.core.interfaces.InterfacesStrings
@@ -55,16 +55,15 @@ import app.aaps.core.ui.CoreUiStrings
 import app.aaps.core.ui.compose.AapsSpacing
 import app.aaps.core.ui.compose.AapsTheme
 import app.aaps.core.ui.compose.LocalClientRole
-import app.aaps.core.ui.compose.LocalProfileUtil
 import app.aaps.core.ui.compose.StatusLevel
 import app.aaps.core.ui.compose.dialogs.OkCancelDialog
 import app.aaps.core.ui.compose.icons.IcCannulaChange
 import app.aaps.core.ui.compose.icons.IcCgmInsert
-import app.aaps.core.ui.compose.icons.IcHistory
 import app.aaps.core.ui.compose.icons.IcPluginInsulin
 import app.aaps.core.ui.compose.icons.IcPumpBattery
 import app.aaps.core.ui.compose.icons.IcPumpCartridge
 import app.aaps.core.ui.compose.icons.IcQuestion
+import app.aaps.core.ui.compose.icons.IcSmb
 import app.aaps.core.ui.compose.icons.IcTarget
 import app.aaps.core.ui.compose.navigation.NavigationRequest
 import app.aaps.core.ui.compose.navigation.color
@@ -105,7 +104,7 @@ import app.aaps.ui.compose.overview.statusLights.StatusUiState
  * - Bolus: the advice of the last loop run. Opens the Insulin dialog, where the dose is entered and confirmed.
  * - Carbs (COB), IOB, temp basal, loop (running mode), sensor.
  * - Profile and pump (two wide tiles): the profile with its change and time left; the pump with its reservoir and the
- *   age of cannula and insulin. The pump battery is shown only when it is low.
+ *   age of cannula and insulin. The pump battery is shown only when it is critical.
  *
  * The sensor tile opens the status sheet (sensor change, fill, battery change, status light settings), which were in
  * the status row before.
@@ -162,6 +161,11 @@ fun OverviewTiles(
                 reason = tempTargetReason,
                 sceneManaged = tempTargetSceneManaged,
                 onClick = open(ElementType.TEMP_TARGET_MANAGEMENT),
+                // The exercise mode works through a high temp target, so its button is on this tile (a row of its own
+                // was an empty line on the phone)
+                trailing = if (exerciseModeUiState.visible) ({
+                    ExerciseModeChip(enabled = exerciseModeUiState.enabled, onClick = onExerciseModeClick, clickable = commandsAllowed)
+                }) else null,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -176,7 +180,8 @@ fun OverviewTiles(
                 TileLine(stringResource(CoreUiStrings.cob))
             }
             Tile(
-                icon = ElementType.INSULIN.icon(), iconColor = AapsTheme.generalColors.iobPrediction,
+                // The insulin drop: the syringe is the Bolus tile
+                icon = IcSmb, iconColor = AapsTheme.generalColors.iobPrediction,
                 title = stringResource(CoreUiStrings.iob),
                 onClick = onIobClick, modifier = Modifier.weight(1f)
             ) {
@@ -187,10 +192,11 @@ fun OverviewTiles(
             if (basalUiState.visible) {
                 Tile(
                     icon = basalUiState.direction.toTbrState().toIcon(), iconColor = AapsTheme.elementColors.tempBasal,
-                    title = stringResource(CoreUiStrings.temp_basal),
+                    // "Basal", not "Temp basal": the long title did not fit a third of a phone screen
+                    title = stringResource(CoreUiStrings.basal),
                     onClick = open(ElementType.TEMP_BASAL), modifier = Modifier.weight(1f)
                 ) {
-                    TileValue(basalUiState.rateText)
+                    TileValue(basalUiState.rateText, AapsTheme.elementColors.tempBasal)
                     // The tile opens the temp basal; its second line opens the basal details, as the basal card did
                     TileLine(
                         basalUiState.statusText,
@@ -206,7 +212,10 @@ fun OverviewTiles(
                 sceneManaged = runningModeSceneManaged,
                 modifier = Modifier.weight(1f)
             ) {
-                TileValue(loopUiState.lastRunText.ifEmpty { stringResource(UiStrings.basal_unknown) }, if (loopUiState.isOld) warning else null)
+                TileValue(
+                    loopUiState.lastRunText.ifEmpty { stringResource(UiStrings.basal_unknown) },
+                    if (loopUiState.isOld) warning else runningMode?.toColor()
+                )
                 TileLine(runningModeText)
                 if (sensitivityUiState.asText.isNotEmpty()) {
                     TileLine(
@@ -236,9 +245,6 @@ fun OverviewTiles(
                 onClick = if (showPump) ({ onNavigate(NavigationRequest.Element(ElementType.PUMP)) }) else ({ showStatusSheet = true }),
                 modifier = Modifier.weight(1f)
             )
-        }
-        if (exerciseModeUiState.visible) {
-            ExerciseModeChip(enabled = exerciseModeUiState.enabled, onClick = onExerciseModeClick, clickable = commandsAllowed)
         }
     }
 
@@ -295,6 +301,7 @@ private fun Tile(
     modifier: Modifier = Modifier,
     tint: Color? = null,
     sceneManaged: Boolean = false,
+    trailing: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
@@ -303,26 +310,21 @@ private fun Tile(
     val body: @Composable ColumnScope.() -> Unit = {
         Column(
             verticalArrangement = Arrangement.spacedBy(AapsSpacing.extraSmall),
-            modifier = Modifier.padding(horizontal = AapsSpacing.medium, vertical = AapsSpacing.medium)
+            modifier = Modifier.padding(TILE_PADDING)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(imageVector = icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(AapsSpacing.chipIconSize))
+                Icon(imageVector = icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(TITLE_ICON_SIZE))
                 Spacer(Modifier.width(AapsSpacing.small))
+                // Small grey title, as in the design: the value is what the eye looks for
                 FitText(
                     text = title,
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
                 )
                 if (sceneManaged) SceneBadge()
-                if (onClick != null) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(AapsSpacing.chipIconSize)
-                    )
-                }
+                trailing?.invoke()
+                if (onClick != null) Chevron()
             }
             content()
         }
@@ -347,68 +349,92 @@ private fun TileLine(text: String, color: Color? = null, modifier: Modifier = Mo
     FitText(text = text, style = MaterialTheme.typography.labelSmall, color = color ?: MaterialTheme.colorScheme.onSurfaceVariant, modifier = modifier)
 }
 
+/**
+ * The BG tile has no title line, as in the design: the value large, the trend beside it, and under the trend the age of
+ * the reading with the changes over 5, 15 and 40 minutes.
+ */
 @Composable
 private fun BgTile(bgInfo: BgInfoData?, timeAgoText: String, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {
+    val haptic = LocalHapticFeedback.current
     val color = bgInfo?.bgRange?.toColor() ?: MaterialTheme.colorScheme.outline
-    val unit = stringResource(if (LocalProfileUtil.current.units == GlucoseUnit.MGDL) CoreUiStrings.mgdl else CoreUiStrings.mmol)
-    Tile(
-        icon = IcHistory, iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        title = if (bgInfo == null) unit else stringResource(UiStrings.bg_tile_age, timeAgoText, unit),
-        onClick = onClick, modifier = modifier
-    ) {
-        if (bgInfo == null) {
-            TileValue("---")
-            return@Tile
-        }
+    val unknown = stringResource(UiStrings.basal_unknown)
+    val description = bgInfo?.let {
         // One stop for a screen reader: value, range, trend, delta and age in one sentence
-        val description = bgSpokenDescription(
-            bgText = bgInfo.bgText,
-            range = bgInfo.bgRange,
-            trend = bgInfo.trendDescription,
-            deltaText = bgInfo.deltaText,
+        bgSpokenDescription(
+            bgText = it.bgText,
+            range = it.bgRange,
+            trend = it.trendDescription,
+            deltaText = it.deltaText,
             timeAgo = timeAgoText,
-            isOutdated = bgInfo.isOutdated
+            isOutdated = it.isOutdated
         )
+    } ?: stringResource(CoreUiStrings.no_data)
+    val colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+    val body: @Composable ColumnScope.() -> Unit = {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(AapsSpacing.medium),
-            modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = description }
+            modifier = Modifier
+                .padding(TILE_PADDING)
+                .semantics(mergeDescendants = true) { contentDescription = description }
         ) {
             BasicText(
-                text = bgInfo.bgText,
+                text = bgInfo?.bgText ?: "---",
                 style = AapsTheme.typography.bgValue.copy(
                     color = color,
-                    textDecoration = if (bgInfo.isOutdated) TextDecoration.LineThrough else TextDecoration.None
+                    textDecoration = if (bgInfo?.isOutdated == true) TextDecoration.LineThrough else TextDecoration.None
                 ),
                 maxLines = 1,
                 softWrap = false,
                 autoSize = TextAutoSize.StepBased(minFontSize = BG_MIN_SIZE, maxFontSize = AapsTheme.typography.bgValue.fontSize, stepSize = 2.sp)
             )
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    bgInfo.trendArrow?.let {
-                        Icon(imageVector = it.directionToIcon(), contentDescription = null, tint = color, modifier = Modifier.size(AapsSpacing.chipIconSize))
+                if (bgInfo == null) {
+                    FitText(text = stringResource(CoreUiStrings.no_data), style = MaterialTheme.typography.titleSmall, color = color)
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        bgInfo.trendArrow?.let {
+                            Icon(imageVector = it.directionToIcon(), contentDescription = null, tint = color, modifier = Modifier.size(AapsSpacing.chipIconSize))
+                        }
+                        FitText(
+                            text = bgInfo.trendDescription,
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Medium),
+                            color = color,
+                            modifier = Modifier.padding(start = AapsSpacing.small)
+                        )
                     }
                     FitText(
-                        text = bgInfo.trendDescription,
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Medium),
-                        color = color,
-                        modifier = Modifier.padding(start = AapsSpacing.small)
+                        text = stringResource(
+                            UiStrings.bg_tile_age,
+                            timeAgoText,
+                            stringResource(
+                                UiStrings.bg_tile_deltas,
+                                bgInfo.deltaText ?: unknown,
+                                bgInfo.shortAvgDeltaText ?: unknown,
+                                bgInfo.longAvgDeltaText ?: unknown
+                            )
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                FitText(
-                    text = stringResource(
-                        UiStrings.bg_tile_deltas,
-                        bgInfo.deltaText ?: stringResource(UiStrings.basal_unknown),
-                        bgInfo.shortAvgDeltaText ?: stringResource(UiStrings.basal_unknown),
-                        bgInfo.longAvgDeltaText ?: stringResource(UiStrings.basal_unknown)
-                    ),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
+            if (onClick != null) Chevron(modifier = Modifier.align(Alignment.Top))
         }
     }
+    val cardModifier = modifier.fillMaxHeight()
+    if (onClick != null) ElevatedCard(onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); onClick() }, modifier = cardModifier, colors = colors, content = body)
+    else ElevatedCard(modifier = cardModifier, colors = colors, content = body)
+}
+
+@Composable
+private fun Chevron(modifier: Modifier = Modifier) {
+    Icon(
+        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.size(TITLE_ICON_SIZE)
+    )
 }
 
 @Composable
@@ -419,6 +445,7 @@ private fun TargetTile(
     reason: TT.Reason?,
     sceneManaged: Boolean,
     onClick: (() -> Unit)?,
+    trailing: (@Composable () -> Unit)?,
     modifier: Modifier = Modifier
 ) {
     val stateColor = when (state) {
@@ -437,6 +464,7 @@ private fun TargetTile(
         onClick = onClick,
         tint = stateColor,
         sceneManaged = sceneManaged,
+        trailing = trailing,
         modifier = modifier
     ) {
         TileValue(value.ifEmpty { stringResource(UiStrings.basal_unknown) }, stateColor)
@@ -499,13 +527,14 @@ private fun ProfileTile(name: String, isModified: Boolean, progress: Float, scen
         sceneManaged = sceneManaged,
         modifier = modifier
     ) {
-        TileValue(value.ifEmpty { stringResource(CoreUiStrings.no_profile_set) }, stateColor)
+        // "No profile" in normal letters: the all-caps "NO PROFILE SET" filled the whole tile
+        TileValue(value.ifEmpty { stringResource(UiStrings.basal_no_profile) }, stateColor)
         TileLine(left)
         if (progress > 0f) TileProgress(progress, stateColor ?: MaterialTheme.colorScheme.primary)
     }
 }
 
-/** The pump: reservoir, age of cannula and insulin. The battery only when it is low, as a warning. */
+/** The pump: reservoir, age of cannula and insulin. The battery only when it is critical, as a warning. */
 @Composable
 private fun PumpTile(
     name: String,
@@ -526,9 +555,10 @@ private fun PumpTile(
             cannula?.let { StatusLine(IcCannulaChange, it.age, statusColor(it.ageStatus)) }
             insulin?.let { StatusLine(IcPluginInsulin, it.age, statusColor(it.ageStatus)) }
         }
-        val batteryLow = battery != null && (battery.levelStatus.isAlarm() || battery.ageStatus.isAlarm())
+        // Only a critical battery: the AAPS warning level is 51 %, so a half full battery was always on the tile
+        val batteryLow = battery != null && (battery.levelStatus == StatusLevel.CRITICAL || battery.ageStatus == StatusLevel.CRITICAL)
         if (batteryLow) {
-            val status = if (battery.levelStatus.isAlarm()) battery.levelStatus else battery.ageStatus
+            val status = if (battery.levelStatus == StatusLevel.CRITICAL) battery.levelStatus else battery.ageStatus
             StatusLine(IcPumpBattery, battery.level ?: battery.age, statusColor(status))
         }
     }
@@ -624,3 +654,5 @@ private const val FIT_MIN_SHARE = 0.5f
 
 private val BG_MIN_SIZE = 24.sp
 private val STATUS_ICON_SIZE = AapsSpacing.chipIconSize * 0.8f
+private val TITLE_ICON_SIZE = AapsSpacing.chipIconSize * 0.75f
+private val TILE_PADDING = PaddingValues(horizontal = AapsSpacing.medium, vertical = AapsSpacing.small)

@@ -1,9 +1,10 @@
 package app.aaps.ui.compose.main
 
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.GppMaybe
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.PlayCircle
@@ -14,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -122,7 +124,18 @@ fun MainNavigationBar(
         if (showTreatmentsSheet && onTreatmentClick != null) NavigationBarItem(
             selected = false,
             onClick = onTreatmentClick,
-            icon = { Icon(imageVector = Icons.Filled.AddCircle, contentDescription = null, modifier = Modifier.size(TREATMENT_ICON_SIZE)) },
+            // A filled square button in the primary colour, as in the design, so the actions stand out from the places
+            icon = {
+                Surface(color = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary, shape = MaterialTheme.shapes.medium) {
+                    Icon(
+                        imageVector = Icons.Filled.Add,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(TREATMENT_ICON_PADDING)
+                            .size(TREATMENT_ICON_SIZE)
+                    )
+                }
+            },
             label = { Text(text = stringResource(CoreUiStrings.treatments), textAlign = TextAlign.Center, maxLines = 1) },
             colors = navColors
         )
@@ -350,4 +363,5 @@ private fun Modifier.badgeState(state: String?): Modifier =
 private const val MAX_BAR_ITEMS = 5
 
 /** autoISF build: the "+" of the treatments is a little larger than the other icons, it is the main button. */
-private val TREATMENT_ICON_SIZE = 30.dp
+private val TREATMENT_ICON_SIZE = 24.dp
+private val TREATMENT_ICON_PADDING = 6.dp

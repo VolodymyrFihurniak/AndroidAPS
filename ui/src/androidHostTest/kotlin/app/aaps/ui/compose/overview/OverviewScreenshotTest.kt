@@ -232,23 +232,25 @@ class OverviewScreenshotTest {
 
     private val statusLightsDef = PreferenceSubScreenDef(key = "statuslights", titleResId = app.aaps.core.ui.R.string.statuslights)
 
-    private fun render(name: String, split: Boolean) {
+    private fun render(name: String, split: Boolean, empty: Boolean = false) {
+        val profileName = if (empty) "" else "Profile A"
+        val runningMode = if (empty) RM.Mode.DISABLED_LOOP else RM.Mode.CLOSED_LOOP
         val graph = vm.graphViewModel
         val chips = vm.chipsViewModel
         val manage = vm.manageViewModel
         val status = vm.awaitStatusItems()
         compose.setAapsContent(screen) {
             if (split) OverviewScreenSplit(
-                profileName = "Profile A", isProfileModified = true, profileProgress = 0.4f,
-                tempTargetText = "100", tempTargetState = TempTargetChipState.None, tempTargetProgress = 0f, tempTargetReason = null,
-                runningMode = RM.Mode.CLOSED_LOOP, runningModeText = "Closed Loop",
+                profileName = profileName, isProfileModified = !empty, profileProgress = if (empty) 0f else 0.4f,
+                tempTargetText = if (empty) "" else "100", tempTargetState = TempTargetChipState.None, tempTargetProgress = 0f, tempTargetReason = null,
+                runningMode = runningMode, runningModeText = if (empty) "Loop disabled" else "Closed Loop",
                 isSimpleMode = false,
                 graphViewModel = graph, chipsViewModel = chips, manageViewModel = manage, statusViewModel = status,
                 statusLightsDef = statusLightsDef, onNavigate = {}, onIobChipClick = {}, paddingValues = PaddingValues(0.dp)
             ) else OverviewScreenStacked(
-                profileName = "Profile A", isProfileModified = true, profileProgress = 0.4f,
-                tempTargetText = "100", tempTargetState = TempTargetChipState.None, tempTargetProgress = 0f, tempTargetReason = null,
-                runningMode = RM.Mode.CLOSED_LOOP, runningModeText = "Closed Loop",
+                profileName = profileName, isProfileModified = !empty, profileProgress = if (empty) 0f else 0.4f,
+                tempTargetText = if (empty) "" else "100", tempTargetState = TempTargetChipState.None, tempTargetProgress = 0f, tempTargetReason = null,
+                runningMode = runningMode, runningModeText = if (empty) "Loop disabled" else "Closed Loop",
                 isSimpleMode = false,
                 graphViewModel = graph, chipsViewModel = chips, manageViewModel = manage, statusViewModel = status,
                 statusLightsDef = statusLightsDef, onNavigate = {}, onIobChipClick = {}, paddingValues = PaddingValues(0.dp)
@@ -289,6 +291,10 @@ class OverviewScreenshotTest {
 
     @Test @Config(qualifiers = "w360dp-h780dp-port-xxhdpi", fontScale = 2.0f)
     fun samsungNarrowFont20() { fill(false); render("09_w360_font20", false) }
+
+    // autoISF build: a new install as on the owner's phone: no BG, no profile, loop disabled
+    @Test @Config(qualifiers = "w360dp-h800dp-port-night-xxhdpi", fontScale = 1.15f)
+    fun newInstallDark() { dark(); render("11_new_install_dark", false, empty = true) }
 
     @Test @Config(qualifiers = "w780dp-h360dp-land-xxhdpi", fontScale = 1.5f)
     fun samsungLandscapeFont15() { fill(false); render("10_land_w780_font15", true) }
