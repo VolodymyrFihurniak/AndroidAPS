@@ -52,6 +52,7 @@ import app.aaps.plugins.aps.learned.LearnedStatus
 import app.aaps.plugins.aps.learned.LiveScore
 import app.aaps.plugins.aps.learned.model.CARB_HOURS
 import app.aaps.plugins.aps.learned.model.LearnedModel
+import app.aaps.plugins.aps.learned.model.LowCheck
 import app.aaps.plugins.aps.learned.model.Metrics
 import app.aaps.plugins.aps.learned.train.Samples
 import app.aaps.plugins.aps.learned.train.Trainer
@@ -299,6 +300,7 @@ private fun ErrorsCard(model: LearnedModel) {
                 ErrorRow(stringResource(ApsStrings.learned_row_expected), values(if (paired) model.expectedOnAutoIsfMoments else model.expectedMetrics), bold = true)
             }
             ErrorRow(stringResource(ApsStrings.learned_row_no_insulin), values(if (paired) model.modelOnAutoIsfMoments else model.model), bold = true)
+            if (model.cgmOnly != null) ErrorRow(stringResource(ApsStrings.learned_row_cgm_only), values(if (paired) model.cgmOnlyOnAutoIsfMoments else model.cgmOnly))
             ErrorRow(stringResource(ApsStrings.openaps_auto_isf), values(if (paired) model.autoIsf else null))
             ErrorRow(stringResource(ApsStrings.learned_row_naive), values(if (paired) model.naiveOnAutoIsfMoments else model.naive))
             Text(
@@ -310,6 +312,33 @@ private fun ErrorsCard(model: LearnedModel) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            val names = mapOf(
+                LearnedModel.EXPECTED to stringResource(ApsStrings.learned_row_expected),
+                LearnedModel.LINEAR to stringResource(ApsStrings.learned_row_no_insulin),
+                LearnedModel.CGM_ONLY to stringResource(ApsStrings.learned_row_cgm_only),
+                LearnedModel.AUTOISF to stringResource(ApsStrings.openaps_auto_isf),
+                LearnedModel.NAIVE to stringResource(ApsStrings.learned_row_naive)
+            )
+            // How sure the difference to AutoISF is: a range that holds 0 means the test days cannot tell them apart
+            if (paired && model.versusAutoIsf60.isNotEmpty()) {
+                val ranges = LearnedModel.CURVES.mapNotNull { curve ->
+                    model.versusAutoIsf60[curve]?.let { range ->
+                        "${names.getValue(curve)} ${profileUtil.fromMgdlToSignedStringInUnits(range.mean)} " +
+                            "(${profileUtil.fromMgdlToSignedStringInUnits(range.low)} … ${profileUtil.fromMgdlToSignedStringInUnits(range.high)})"
+                    }
+                }.joinToString(", ")
+                Text(stringResource(ApsStrings.learned_versus_autoisf, ranges), style = MaterialTheme.typography.bodySmall)
+            }
+            // Lows: an error that is small on average can still miss them
+            val lows = if (paired) model.lowsOnAutoIsfMoments else model.lows
+            val lowCount = lows.values.firstOrNull()?.lows
+            if (lowCount != null) {
+                val seen = LearnedModel.CURVES.mapNotNull { curve -> lows[curve]?.let { "${names.getValue(curve)} ${it.caught} (${it.falseWarnings})" } }.joinToString(", ")
+                Text(
+                    stringResource(ApsStrings.learned_lows_seen, profileUtil.fromMgdlToStringWithUnits(LowCheck.LOW_MGDL), lowCount, seen),
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
         }
     }
 }

@@ -23,8 +23,8 @@ import kotlin.time.TimeSource
  *
  * It learns from the valid steps of every phase grid, at most [Settings.maxSamples] of them, each kept with the same
  * chance.
- * The test days stop the training once they stop getting better; then the GRU is trained again on all days for the
- * same number of epochs. Each of the two loops stops after [LOOP_LIMIT], so a slow phone still gets a model inside the
+ * The validation days stop the training once they stop getting better; the test days only measure it. Then the GRU is
+ * trained again on all days for the same number of epochs. Each of the two loops stops after [LOOP_LIMIT], so a slow phone still gets a model inside the
  * time limit of the whole training.
  */
 class ExpectedCurveTrainer(
@@ -38,7 +38,9 @@ class ExpectedCurveTrainer(
 
     /**
      * What the GRU learns from. The step rows of each grid are made once and scaled in place. A sample is a phase
-     * (an index into [grids]) and a step; its sequence, context and target are made when its batch is built.
+     * (an index into [grids]) and a step; its sequence, context and target are made when its batch is built. [role]
+     * says what each sample is for: [LEARN], [VALIDATE], [TEST], or [EDGE] for one whose next 2 hours reach into the
+     * next part (only the final training on all days uses it).
      */
     class Data(
         val grids: List<HistoryGrid>,
@@ -48,8 +50,11 @@ class ExpectedCurveTrainer(
         val phase: IntArray,
         val step: IntArray,
         val weight: FloatArray,
-        val test: BooleanArray
-    )
+        val role: ByteArray
+    ) {
+
+        fun indicesOf(role: Byte): List<Int> = this.role.indices.filter { this.role[it] == role }
+    }
 
     /**
      * The size of the training. The defaults are the ones the plugin uses; tests that do not look at the expected curve
@@ -60,8 +65,8 @@ class ExpectedCurveTrainer(
     /** A trained GRU, the scaling of its context values, and the epoch it was best at */
     class Fit(val network: GruNetwork, val contextScaling: Scaling, val bestEpoch: Int)
 
-    /** The samples of [grids] from [windowStart]; those from [testFrom] on are test samples */
-    suspend fun prepare(grids: List<HistoryGrid>, now: Long, windowStart: Long, testFrom: Long): Data {
+    /** The samples of [grids] from [windowStart]; those from [validationFrom] on validate, those from [testFrom] on test */
+    suspend fun prepare(grids: List<HistoryGrid>, now: Long, windowStart: Long, validationFrom: Long, testFrom: Long): Data {
         progress("Expected curve: preparing")
         val effects = grids.map { Effects(it) }
         val rows = grids.mapIndexed { p, grid ->
@@ -84,19 +89,19 @@ class ExpectedCurveTrainer(
             }
         }
         val weight = FloatArray(phase.size) { Samples.weight(now - grids[phase[it]].timeOf(step[it])).toFloat() }
-        val test = BooleanArray(phase.size) { grids[phase[it]].timeOf(step[it]) >= testFrom }
+        val role = ByteArray(phase.size) { roleOf(grids[phase[it]].timeOf(step[it]), validationFrom, testFrom) }
         log("Expected curve: ${phase.size} of $count samples from ${grids.size} phases")
-        return Data(grids, effects, rows, stepScaling, phase.toIntArray(), step.toIntArray(), weight, test)
+        return Data(grids, effects, rows, stepScaling, phase.toIntArray(), step.toIntArray(), weight, role)
     }
 
     /**
-     * Trains on the learning days and stops when the test days stop getting better. Null with too few samples. Starts
-     * from [start], the GRU of the last model, when it has the same size: a day more of data needs few epochs then.
+     * Trains on the learning days and stops when the validation days stop getting better. Null with too few samples.
+     * Starts from [start] when it has the same size; it must be a GRU that never saw the validation and test days.
      */
     suspend fun learn(data: Data, linear: LinearModel, start: GruState? = null): Fit? {
-        val learn = data.test.indices.filter { !data.test[it] }
-        val test = data.test.indices.filter { data.test[it] }
-        if (learn.isEmpty() || test.isEmpty()) {
+        val learn = data.indicesOf(LEARN)
+        val validation = data.indicesOf(VALIDATE)
+        if (learn.isEmpty() || validation.isEmpty() || data.indicesOf(TEST).isEmpty()) {
             log("Expected curve: not enough data")
             return null
         }
@@ -105,15 +110,15 @@ class ExpectedCurveTrainer(
         contextScaling.apply(contexts)
         val network = newNetwork(start)
         if (start != null && network.parameters().contentEquals(start.parameters.toDoubleArray())) log("Expected curve: starts from the last model")
-        fun testLoss() = network.loss(test.size) { sample(data, contexts, test[it]) }
-        var bestLoss = testLoss()
+        fun validationLoss() = network.loss(validation.size) { sample(data, contexts, validation[it]) }
+        var bestLoss = validationLoss()
         var bestEpoch = 0
         var best = network.parameters()
         val start = timeSource.markNow()
         for (epoch in 1..settings.maxEpochs) {
             currentCoroutineContext().ensureActive()
             network.trainEpoch(learn.size, { sample(data, contexts, learn[it]) }, batch = BATCH, lr = LEARNING_RATE, epoch = epoch, threads = threads)
-            val loss = testLoss()
+            val loss = validationLoss()
             progress("Expected curve: epoch $epoch of at most ${settings.maxEpochs}")
             if (loss < bestLoss) {
                 bestLoss = loss
@@ -127,7 +132,7 @@ class ExpectedCurveTrainer(
         }
         network.setParameters(best)
         // The loss is the sum over the 24 points of the squared error divided by 50
-        log("Expected curve: best epoch $bestEpoch, test error ${bg(sqrt(bestLoss / HORIZONS) * SequenceFeatures.TARGET_SCALE)}")
+        log("Expected curve: best epoch $bestEpoch, validation error ${bg(sqrt(bestLoss / HORIZONS) * SequenceFeatures.TARGET_SCALE)}")
         return Fit(network, contextScaling, bestEpoch)
     }
 
@@ -138,6 +143,7 @@ class ExpectedCurveTrainer(
         val contextScaling = Scaling.of(contexts)
         contextScaling.apply(contexts)
         val network = newNetwork(start)
+        if (start != null && network.parameters().contentEquals(start.parameters.toDoubleArray())) log("Expected curve: final training starts from the last model")
         val start = timeSource.markNow()
         for (epoch in 1..epochs) {
             currentCoroutineContext().ensureActive()
@@ -205,6 +211,21 @@ class ExpectedCurveTrainer(
     }
 
     companion object {
+
+        const val LEARN: Byte = 0
+        const val VALIDATE: Byte = 1
+        const val TEST: Byte = 2
+        const val EDGE: Byte = 3
+
+        /** What a sample at [time] is for; a sample needs the BG of the next 2 hours, which must not reach the next part */
+        fun roleOf(time: Long, validationFrom: Long, testFrom: Long): Byte {
+            val end = time + HORIZONS * 5 * 60_000L
+            return when {
+                time >= testFrom       -> TEST
+                time >= validationFrom -> if (end < testFrom) VALIDATE else EDGE
+                else                   -> if (end < validationFrom) LEARN else EDGE
+            }
+        }
 
         const val PATIENCE = 4
         const val MIN_FINAL_EPOCHS = 3

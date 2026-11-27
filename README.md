@@ -204,11 +204,22 @@ delivery**: the loop, SMB, temp basals and all limits work as before, and the lo
   With a 1-minute sensor
   the grid is built 5 times, shifted by 0 to 4 minutes (for the last 180 days at most), so the
   expected curve sees 5 times more moments; it keeps at most 100 000 of them.
-* **How it is measured.** The last 14 days are kept back. On them both curves, AutoISF (its stored
-  loop runs) and "BG stays the same" are compared as they would be live, at 30, 60 and 120 minutes,
-  on the same moments. A curve is *ready* when it beats AutoISF at 60 minutes there, and those
-  moments cover at least half of the test days; without enough stored AutoISF runs neither curve is
-  ready. Then both learn again on all days. The database may keep the loop runs for fewer days, so
+* **How it is measured.** The last 14 days are kept back as test days, and the 7 days before them
+  as validation days. The networks learn from the days before those and stop when the validation
+  days stop getting better; the test days only measure. A moment whose next 2 hours reach into the
+  next part is left out, so no part sees the BG of the next one. On the test days both curves,
+  AutoISF (its stored loop runs), a yardstick that reads only BG and "BG stays the same" are
+  compared as they would be live, at 30, 60 and 120 minutes, on the same moments. The yardstick
+  ("BG only": one ridge fit per point on the BG change over 5 to 60 minutes, BG against its 24-hour
+  mean, BG and the time of day, the idea of the forecast of
+  [JugglucoNG](https://github.com/ctqvva/JugglucoNG)) shows whether a curve earns its size. For each
+  curve the plugin also counts the lows below 70 mg/dl at 30 or 60 minutes that it saw coming and
+  its false warnings, and gives the 60-minute error minus that of AutoISF with a 95 % range over
+  the test days (whole days drawn again 1000 times); a range that holds 0 is not sure. A curve is
+  *ready* when it beats AutoISF at 60 minutes there, and those moments cover at least half of the
+  test days, and, once there are at least 20 lows on those moments, it sees at least as many of
+  them coming as AutoISF; without enough stored AutoISF runs neither curve is ready. Then both
+  learn again on all days. The database may keep the loop runs for fewer days, so
   the plugin keeps its own copy of the AutoISF predictions of the last 15 days (at 30, 60 and 120
   minutes, one every 5 minutes); the log shows for each test day which part of it had a run.
 * **Live check.** The plugin also keeps its own forecasts of the last 8 days and checks them every
@@ -216,11 +227,14 @@ delivery**: the loop, SMB, temp basals and all limits work as before, and the lo
   give a dose only when it is better than AutoISF at 60 minutes in this live check, on at least 3
   days of moments with an AutoISF prediction. The screen shows the table of the last 7 days.
 * **When it learns.** When it is switched on without a model, then once a day while the phone is
-  charging (after two days also without a charger), or on *Train now*. The GRU starts from the one
-  of the last model when it has the same size, so one more day of data needs few epochs.
+  charging (after two days also without a charger), or on *Train now*. The final GRU starts from
+  the one of the last model when it has the same size, so one more day of data needs few epochs.
+  The GRU that is measured does so only when the last model never saw the validation and test days;
+  else its test error would look better than it is.
   A training stops after 20 minutes at most (each of the two passes of the expected curve after 6
   minutes), and *Stop* ends it; the old model stays until a new one is ready. It needs at least about
-  2 weeks of history. A model saved by an older version is not used; it learns again.
+  4 weeks of history (3 of them are kept back to validate and test). A model saved by an older
+  version is not used; it learns again.
 * **Every minute.** Each new reading in the database gives a new forecast that starts at that
   reading, not at the last whole 5 minutes.
 * **Its screen** shows one ready line per curve, the error table (both curves, AutoISF and "BG stays

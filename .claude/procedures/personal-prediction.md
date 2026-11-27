@@ -16,7 +16,12 @@ a bigger change.
   fresh forecast, not ready, a low on either curve in 2 h, BG falling) come first.
 - The expected (GRU) curve gives no dose. Only the "no more insulin" curve does.
 - A curve is *ready* only after a fair comparison with AutoISF on the same moments of the kept-back
-  test days. A dose needs the live check too. Do not loosen these to make a curve look ready.
+  test days, and it must not see fewer lows coming than AutoISF there (from 20 lows on). A dose
+  needs the live check too. Do not loosen these to make a curve look ready.
+- The test days only measure. Early stopping uses the validation days before them; 2 hours at each
+  edge are left out; the measured GRU never starts from a model that saw the validation or test
+  days. A change that lets the test days choose anything (an epoch, a setting) makes the ready flag
+  too kind.
 - In closed loop data insulin follows rising BG, so a free model learns that insulin raises BG.
   The insulin effect keeps a known curve and a fixed sign. Do not let a network learn it freely.
 - Everything is plain Kotlin in `commonMain`. The owner chose no Rust and no ML library.
@@ -31,7 +36,9 @@ a bigger change.
   - `model/` - `Effects` (insulin and carb curves), `LinearModel` + `RidgeFit`, `ResidualNetwork`,
     `GruNetwork`, `LearnedModel` (the saved model, with a version).
   - `train/` - `Trainer` (linear part), `ExpectedCurveTrainer` (GRU), `ErrorBands`,
-    `UnannouncedMeals`, `MealInProgress`, `SequenceFeatures`, `Samples`, `Scaling`.
+    `UnannouncedMeals`, `MealInProgress`, `SequenceFeatures`, `Samples`, `Scaling`,
+    `CgmOnlyBaseline` (the "BG only" yardstick, idea from JugglucoNG, GPL-3.0, no code copied),
+    `DayResampling` (95 % ranges over the test days).
   - `Forecaster`, `LiveScore`, `ForecastArchive`, `AutoIsfRunArchive`, `ForecastAlerts`,
     `TrainingSchedule`, `LearnedReport`, `KeptRecords`.
   - `LearnedFiles` - model and records are files of the plugin (`model.json`, `autoisf_runs.txt`,
