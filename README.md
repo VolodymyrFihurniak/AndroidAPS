@@ -104,13 +104,24 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
   (Fiasp about 91 min, Lyumjev about 120 min), and the loop would then give more insulin.
 
 ### Basal card on the main screen
-* On a phone the top of the overview follows the user's concept. On top a card with what the user
-  sets: the profile, the temp target and the exercise button. Under it the main card with the BG value
-  in the colour of its range, its unit, the trend in words, the age of the reading, the changes over
-  5, 15 and 40 minutes, and IOB and COB on the right (the age and the changes stay on one line and get
-  smaller with a big system font on a narrow screen). Then the cards *Basal*, *Bolus* and *Loop*
-  (running mode, when the loop last ran, in the warning colour after 15 minutes, and the autosens
-  ratio, which opens the sensitivity details). The *Bolus* card shows the advice of the loop, and a
+* On a phone the top of the overview is a grid of tiles. Each tile has an icon, a title and a small
+  arrow, and a tap opens what the tile shows:
+  - *BG* (wide): the value in the colour of its range, its unit, the trend, the age of the reading and
+    the changes over 5, 15 and 40 minutes; it opens the BG check. Beside it *Target*: the temp target
+    with its time left and the colour of its reason, or the profile target the loop corrects toward
+    when no temp target runs; it opens the temp targets.
+  - *Bolus* (the advice of the loop, see below), *Carbs* and *IOB* (opens the IOB details).
+  - *Temp basal* (opens the temp basal dialog; its status line opens the basal details), *Loop*
+    (opens the running modes; shows when the loop last ran, in the warning colour after 15 minutes,
+    the running mode and the autosens ratio, which opens the sensitivity details) and *Sensor* (opens
+    a sheet with the status: sensor, insulin, cannula, battery).
+  - *Profile*: the name, the time left of a temporary profile with a bar, yellow when the profile is
+    changed; it opens the profile management. *Pump*: the pump name, the reservoir, the age of the
+    cannula and of the insulin; the pump battery is shown only when it is low or old. It opens the
+    screen of the active pump, or the status sheet where the Manage sheet has no pump (AAPSClient).
+  - The exercise button under the tiles, when it is shown.
+  The texts in the tiles stay on one line and get smaller with a big system font.
+  The *Bolus* tile shows the advice of the loop, and a
   tap opens the Insulin dialog, where the same advice stands at the top with its numbers (BG in 1 h,
   eventual BG, insulin the loop needs, ISF, age of the run). The advice comes from the last algorithm
   run, not from the bolus wizard (which counts a negative IOB as missing insulin and so could advise
@@ -138,7 +149,8 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
   not closed loop) the belt above BG is a thin strip instead of an empty 48 dp box. The names of the
   graphs below BG are on the left, so they no longer cover the labels of the right axis, and the
   AutoISF graph names its five lines (acce, bg, pp, dura, final) in their colours. The low and the
-  high mark are dashed lines with their value on the right. A config saved before gets IOB, COB and
+  high mark are dashed lines with their value on the right. The target is a thicker line with
+  *target* and its value on the left. A config saved before gets IOB, COB and
   the basal switched on, and a graph with COB alone below BG is removed. A hold on the graphs shows the values of that time in a card, as in xdripswift: the time
   (with *forecast* after now), the glucose large with its unit, then IOB, COB and basal with their
   names. The card stands at the top on the side away from the finger. Under the IOB strip a mini map
@@ -149,15 +161,12 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
   above them), on the right the graph card with the statistics of today. The BG graph there fills the
   height of the screen too. The card has no title there: the ranges and the history button are in
   one row, so the graph gets the height. Before, a turned phone showed the old screen with the BG circle and the
-  chips. The status card (sensor, insulin, cannula, battery) starts collapsed in every layout.
-* **Pump button** in the status card, next to the arrow that opens it: one tap opens the screen of
-  the active pump (before it was *Manage → Pump*). It is not shown where the Manage sheet has no
-  pump either (AAPSClient).
-* The bottom menu: *Home*, *Log* (the treatment history), *Statistics*, *History*, *Scenes* and
-  *Manage*, and the buttons that need the user (pump setup, BG source, objectives, loop request,
-  permissions). It holds at most 6 buttons: when more are needed, History, then Statistics, then
-  Log, then Home give way (they are in the side menu too). The treatments themselves are on the
-  *Bolus* card; the tablet layout keeps a *Treatments* button as well.
+  chips. The status (sensor, insulin, cannula, battery) opens from the *Sensor* tile.
+* The bottom menu: *Log* (the treatment history), *Statistics*, *History*, a large *+* in the middle
+  (the treatments sheet), *Scenes* and *Manage*, and the buttons that need the user (pump setup, BG
+  source, objectives, loop request, permissions). There is no *Home*: the menu belongs to the home
+  screen, so Home did nothing. It holds at most 5 buttons: when more are needed, History, then
+  Statistics, then Log give way (they are in the side menu too).
 * **Who gave it**, in the treatment history: each bolus and each temp basal gets a small line
   *Algorithm* (an SMB or a TBR of the loop), *Automation*, *Client: <device name>*, or *You* with the
   screen it came from (*You · Bolus wizard*, *You · Wear*, ...). It is read from the user entry log,

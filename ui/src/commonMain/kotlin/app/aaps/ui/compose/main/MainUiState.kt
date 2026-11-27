@@ -41,12 +41,8 @@ data class MainUiState(
     // Running mode state for chip
     val runningMode: RM.Mode? = null,
     val runningModeText: String = "",
-    val runningModeRemaining: String = "", // short remaining time, e.g. "30'" (temporary modes only)
-    val runningModeProgress: Float = 0f, // 0-1 progress for temporary modes
     val runningModeRecordId: Long = 0, // DB record ID (for scene override detection)
     // Running TBR state for chip (HIGH / LOW / NONE)
-    // SMB enabled in APS preferences — drives a small triangle marker on the running-mode chip
-    val smbEnabled: Boolean = false,
     // QuickWizard entries for treatment bottom sheet
     val quickWizardItems: List<QuickWizardItem> = emptyList(),
     // Navigation-triggered dialogs

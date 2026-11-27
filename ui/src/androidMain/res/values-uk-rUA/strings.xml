@@ -478,4 +478,8 @@
     <string name="food_source_ai">Фото</string>
     <string name="food_per_100">%1$s вуглеводів на 100 %2$s</string>
     <string name="food_row_detail">%1$s · %2$s</string>
+    <string name="target_tile">Ціль</string>
+    <string name="bg_tile_age">%1$s · %2$s</string>
+    <string name="bg_tile_deltas">Δ %1$s / %2$s / %3$s</string>
+    <string name="graph_target_label">ціль %1$s</string>
 </resources>

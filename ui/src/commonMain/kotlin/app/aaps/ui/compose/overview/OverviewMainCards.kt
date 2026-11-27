@@ -1,10 +1,8 @@
 package app.aaps.ui.compose.overview
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -22,17 +20,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.aaps.core.data.model.RM
 import app.aaps.core.data.model.TT
 import app.aaps.core.interfaces.navigation.ElementType
-import app.aaps.core.ui.compose.AapsCard
 import app.aaps.core.ui.compose.AapsSpacing
 import app.aaps.core.ui.compose.AapsTheme
 import app.aaps.core.ui.compose.LocalConfig
 import app.aaps.core.ui.compose.navigation.NavigationRequest
+import app.aaps.core.ui.compose.stringResource
 import app.aaps.core.ui.compose.preference.PreferenceSubScreenDef
 import app.aaps.ui.compose.main.TempTargetChipState
 import app.aaps.ui.compose.manageSheet.ManageViewModel
 import app.aaps.ui.compose.overview.aapsClient.AapsClientStatusCard
 import app.aaps.ui.compose.overview.chips.ChipsViewModel
-import app.aaps.ui.compose.overview.chips.OverviewCardRow
 import app.aaps.ui.compose.overview.chips.TodayStatsRow
 import app.aaps.ui.compose.overview.graphs.GraphViewModel
 import app.aaps.ui.compose.overview.graphs.GraphsSection
@@ -57,10 +54,7 @@ fun OverviewMainCards(
     tempTargetSceneManaged: Boolean,
     runningMode: RM.Mode?,
     runningModeText: String,
-    runningModeRemaining: String,
-    runningModeProgress: Float,
     runningModeSceneManaged: Boolean,
-    smbEnabled: Boolean,
     graphViewModel: GraphViewModel,
     chipsViewModel: ChipsViewModel,
     manageViewModel: ManageViewModel,
@@ -69,8 +63,6 @@ fun OverviewMainCards(
     onNavigate: (NavigationRequest) -> Unit,
     onIobChipClick: () -> Unit,
     commandsAllowed: Boolean,
-    statusExpanded: Boolean,
-    onStatusExpandedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val config = LocalConfig.current
@@ -86,82 +78,39 @@ fun OverviewMainCards(
     val manageState by manageViewModel.uiState.collectAsStateWithLifecycle()
 
     Column(modifier = modifier) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(AapsSpacing.medium),
-            modifier = Modifier.padding(horizontal = AapsSpacing.large, vertical = AapsSpacing.medium)
-        ) {
-            AapsCard(modifier = Modifier.fillMaxWidth()) {
-                OverviewChipsColumn(
-                    runningMode = runningMode,
-                    runningModeText = runningModeText,
-                    runningModeRemaining = runningModeRemaining,
-                    runningModeProgress = runningModeProgress,
-                    runningModeSceneManaged = runningModeSceneManaged,
-                    smbEnabled = smbEnabled,
-                    profileName = profileName,
-                    isProfileModified = isProfileModified,
-                    profileProgress = profileProgress,
-                    profileSceneManaged = profileSceneManaged,
-                    tempTargetText = tempTargetText,
-                    tempTargetState = tempTargetState,
-                    tempTargetProgress = tempTargetProgress,
-                    tempTargetReason = tempTargetReason,
-                    tempTargetSceneManaged = tempTargetSceneManaged,
-                    basalUiState = basalUiState,
-                    iobUiState = iobUiState,
-                    cobUiState = cobUiState,
-                    sensitivityUiState = sensitivityUiState,
-                    onNavigate = onNavigate,
-                    onIobChipClick = onIobChipClick,
-                    commandsAllowed = commandsAllowed,
-                    exerciseModeUiState = exerciseModeUiState,
-                    onExerciseModeClick = chipsViewModel::toggleExerciseMode,
-                    // In the cards: IOB and COB in the main card, the rest and the running mode in the card row
-                    showMetrics = false,
-                    showRunningMode = false,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = AapsSpacing.small, vertical = AapsSpacing.small)
-                )
-            }
-            MainBgCard(
-                bgInfo = bgInfoState.bgInfo,
-                timeAgoText = bgInfoState.timeAgoText,
-                iobText = iobUiState.text,
-                cobText = cobUiState.text,
-                onIobClick = onIobChipClick
-            )
-            OverviewCardRow(
-                basalUiState = basalUiState,
-                sensitivityUiState = sensitivityUiState,
-                bolusRecommendation = bolusRecommendation,
-                loopUiState = loopUiState,
-                runningMode = runningMode,
-                runningModeText = runningModeText,
-                commandsAllowed = commandsAllowed,
-                onNavigate = onNavigate
-            )
-        }
-
-        OverviewStatusSection(
-            sensorStatus = statusState.sensorStatus,
-            insulinStatus = statusState.insulinStatus,
-            cannulaStatus = statusState.cannulaStatus,
-            batteryStatus = statusState.batteryStatus,
-            showFill = statusState.showFill,
-            showPumpBatteryChange = statusState.showPumpBatteryChange,
+        // autoISF build: the tiles of the design the user chose, see OverviewTiles
+        OverviewTiles(
+            bgInfo = bgInfoState.bgInfo,
+            timeAgoText = bgInfoState.timeAgoText,
+            profileName = profileName,
+            isProfileModified = isProfileModified,
+            profileProgress = profileProgress,
+            profileSceneManaged = profileSceneManaged,
+            tempTargetText = tempTargetText,
+            tempTargetState = tempTargetState,
+            tempTargetProgress = tempTargetProgress,
+            tempTargetReason = tempTargetReason,
+            tempTargetSceneManaged = tempTargetSceneManaged,
+            runningMode = runningMode,
+            runningModeText = runningModeText,
+            runningModeSceneManaged = runningModeSceneManaged,
+            iobUiState = iobUiState,
+            cobUiState = cobUiState,
+            basalUiState = basalUiState,
+            loopUiState = loopUiState,
+            sensitivityUiState = sensitivityUiState,
+            bolusRecommendation = bolusRecommendation,
+            exerciseModeUiState = exerciseModeUiState,
+            onExerciseModeClick = chipsViewModel::toggleExerciseMode,
+            statusState = statusState,
+            pumpName = manageState.pumpPlugin.pluginDescription.pluginName?.let { stringResource(it) }.orEmpty(),
+            pumpIcon = manageState.pumpPlugin.pluginDescription.icon,
+            showPump = manageState.showPump,
+            statusLightsDef = statusLightsDef,
             commandsAllowed = commandsAllowed,
             onNavigate = onNavigate,
-            statusLightsDef = statusLightsDef,
-            expanded = statusExpanded,
-            onExpandedChange = onStatusExpandedChange,
-            // The pump screen as in the Manage sheet, one tap from the reservoir and the battery. It shows no button
-            // where the Manage sheet shows none (AAPSClient).
-            onPumpClick = if (manageState.showPump) ({ onNavigate(NavigationRequest.Element(ElementType.PUMP)) }) else null,
-            pumpIcon = manageState.pumpPlugin.pluginDescription.icon,
-            // The section adds 4 dp itself, this brings it to the 12 dp of the cards above, so it no longer reaches
-            // out past them
-            modifier = Modifier.padding(horizontal = AapsSpacing.medium)
+            onIobClick = onIobChipClick,
+            modifier = Modifier.padding(horizontal = AapsSpacing.large, vertical = AapsSpacing.medium)
         )
 
         if (config.AAPSCLIENT) {

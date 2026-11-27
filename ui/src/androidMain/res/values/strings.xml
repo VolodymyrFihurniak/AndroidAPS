@@ -413,13 +413,11 @@
     <string name="basal_details_daily_profile">Basal of the profile over the day</string>
     <string name="basal_details_open_profiles">Profiles</string>
     <string name="basal_inspect_with_profile" comment="Basal on the graph at the chosen time. %1$s=basal given with unit, %2$s=basal of the profile with unit. Example: 0.75 U/h (profile 0.50 U/h)">%1$s (profile %2$s)</string>
-    <string name="delta_minutes" comment="Label of a BG change over some minutes on the main card. %1$d=minutes. Example: Δ 15 min">Δ %1$d min</string>
     <string name="today_stats_title">Today</string>
     <string name="today_tir_short" comment="Short name of time in range on the overview statistics">TIR</string>
     <string name="today_cv_short" comment="Short name of the coefficient of variation of BG on the overview statistics">CV</string>
     <string name="today_percent_whole" comment="%1$d=percent. Example: 51%">%1$d%%</string>
     <string name="today_percent_one_decimal" comment="%1$.1f=percent with one decimal. Example: 39.5%">%1$.1f%%</string>
-    <string name="nav_home" comment="Bottom menu: the main screen. Keep it short.">Home</string>
     <string name="nav_history" comment="Bottom menu: opens the history browser. Keep it short.">History</string>
     <string name="graph_card_title">Glucose and insulin</string>
     <string name="graph_card_history" comment="Spoken name of the button that opens the history browser from the graph card">History</string>
@@ -511,4 +509,8 @@
     <string name="food_source_ai">Photo</string>
     <string name="food_per_100" comment="%1$s=carbs with unit, %2$s=unit of the food. Example: 12 g carbs per 100 g">%1$s carbs per 100 %2$s</string>
     <string name="food_row_detail" comment="%1$s=carbs per 100, %2$s=where the food comes from. Example: 12 g carbs per 100 g · Common foods">%1$s · %2$s</string>
+    <string name="target_tile" comment="Name of the overview tile that shows the BG target the loop works toward now (the temp target, or the target of the profile)">Target</string>
+    <string name="bg_tile_age" comment="Title line of the BG tile on the overview. %1$s=age of the reading, %2$s=BG unit. Example: 5 min · mg/dL">%1$s · %2$s</string>
+    <string name="bg_tile_deltas" comment="The BG changes over 5, 15 and 40 minutes on the BG tile. %1$s, %2$s, %3$s=the changes. Example: Δ +4 / +3.5 / +2.0">Δ %1$s / %2$s / %3$s</string>
+    <string name="graph_target_label" comment="Label of the target line on the BG graph. %1$s=target value. Example: target 100">target %1$s</string>
 </resources>

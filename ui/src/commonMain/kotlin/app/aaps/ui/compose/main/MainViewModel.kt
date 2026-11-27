@@ -262,10 +262,7 @@ class MainViewModel(
             tempTargetRecordId = chip.tempTargetRecordId,
             runningMode = chip.runningMode,
             runningModeText = chip.runningModeText,
-            runningModeRemaining = chip.runningModeRemaining,
-            runningModeProgress = chip.runningModeProgress,
             runningModeRecordId = chip.runningModeRecordId,
-            smbEnabled = ev.smbEnabled,
             quickWizardItems = chip.quickWizardItems
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
@@ -273,9 +270,6 @@ class MainViewModel(
     init {
         preferences.observe(BooleanKey.GeneralSimpleMode)
             .onEach { simple -> _eventState.update { it.copy(isSimpleMode = simple) } }
-            .launchIn(viewModelScope)
-        preferences.observe(BooleanKey.ApsUseSmb)
-            .onEach { smb -> _eventState.update { it.copy(smbEnabled = smb) } }
             .launchIn(viewModelScope)
         observeQuickLaunch()
     }
@@ -340,21 +334,15 @@ class MainViewModel(
             }
         } else ""
 
-        // Running mode progress and display text
-        val rmProgress = if (rmIsFinite && !rmExpired) {
-            val elapsed = now - rmData.timestamp
-            (elapsed.toFloat() / rmData.duration.toFloat()).coerceIn(0f, 1f)
-        } else 0f
-
+        // Running mode display text
         val rmIsTemporaryFinite = rmData != null && rmData.mode.mustBeTemporary() && rmIsFinite && !rmExpired
-        // Short remaining time shown on the (label-less) running mode chip, e.g. "30'".
+        // Time left of a temporary mode, e.g. "30'"
         val rmRemaining = if (rmIsTemporaryFinite) {
             dateUtil.untilString(rmData.timestamp + rmData.duration, rh, withParentheses = false)
         } else ""
 
         val rmText = if (rmData != null) {
             val modeName = getModeNameString(rmData.mode)
-            // Full text kept for the icon's content description (accessibility).
             if (rmIsTemporaryFinite) {
                 rh.gs(InterfacesStrings.value_with_detail, modeName, rmRemaining)
             } else {
@@ -376,8 +364,6 @@ class MainViewModel(
             tempTargetRecordId = if (ttExpired) 0 else ttData?.recordId ?: 0,
             runningMode = rmData?.mode,
             runningModeText = rmText,
-            runningModeRemaining = rmRemaining,
-            runningModeProgress = rmProgress,
             runningModeRecordId = if (rmExpired) 0 else rmData?.recordId ?: 0,
             quickWizardItems = computeQuickWizardItems(rmData?.mode)
         )
@@ -1006,7 +992,6 @@ class MainViewModel(
 private data class EventState(
     val isDrawerOpen: Boolean = false,
     val isSimpleMode: Boolean = true,
-    val smbEnabled: Boolean = false,
     val showAboutDialog: Boolean = false,
     val showMaintenanceSheet: Boolean = false,
     val showAuthFailedDialog: Boolean = false
@@ -1030,8 +1015,6 @@ private data class ChipState(
     val tempTargetRecordId: Long = 0,
     val runningMode: RM.Mode? = null,
     val runningModeText: String = "",
-    val runningModeRemaining: String = "",
-    val runningModeProgress: Float = 0f,
     val runningModeRecordId: Long = 0,
     val quickWizardItems: List<QuickWizardItem> = emptyList()
 )

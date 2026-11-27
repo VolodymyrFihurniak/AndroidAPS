@@ -12,8 +12,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
@@ -44,10 +42,7 @@ fun OverviewScreenSplit(
     tempTargetSceneManaged: Boolean = false,
     runningMode: RM.Mode?,
     runningModeText: String,
-    runningModeRemaining: String,
-    runningModeProgress: Float,
     runningModeSceneManaged: Boolean = false,
-    smbEnabled: Boolean,
     isSimpleMode: Boolean,
     graphViewModel: GraphViewModel,
     chipsViewModel: ChipsViewModel,
@@ -71,7 +66,6 @@ fun OverviewScreenSplit(
     overlaidBarsHeight: Dp = 0.dp,
     modifier: Modifier = Modifier
 ) {
-    var statusExpanded by rememberSaveable { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -114,10 +108,7 @@ fun OverviewScreenSplit(
                     tempTargetSceneManaged = tempTargetSceneManaged,
                     runningMode = runningMode,
                     runningModeText = runningModeText,
-                    runningModeRemaining = runningModeRemaining,
-                    runningModeProgress = runningModeProgress,
                     runningModeSceneManaged = runningModeSceneManaged,
-                    smbEnabled = smbEnabled,
                     graphViewModel = graphViewModel,
                     chipsViewModel = chipsViewModel,
                     manageViewModel = manageViewModel,
@@ -125,9 +116,7 @@ fun OverviewScreenSplit(
                     statusLightsDef = statusLightsDef,
                     onNavigate = onNavigate,
                     onIobChipClick = onIobChipClick,
-                    commandsAllowed = commandsAllowed,
-                    statusExpanded = statusExpanded,
-                    onStatusExpandedChange = { statusExpanded = it }
+                    commandsAllowed = commandsAllowed
                 )
                 // The QuickLaunch toolbar is centred over both columns, so this one needs space at its end too,
                 // like the graphs column has

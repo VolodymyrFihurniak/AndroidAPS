@@ -11,7 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
@@ -48,10 +47,7 @@ fun OverviewScreenStacked(
     tempTargetSceneManaged: Boolean = false,
     runningMode: RM.Mode?,
     runningModeText: String,
-    runningModeRemaining: String,
-    runningModeProgress: Float,
     runningModeSceneManaged: Boolean = false,
-    smbEnabled: Boolean,
     isSimpleMode: Boolean,
     graphViewModel: GraphViewModel,
     chipsViewModel: ChipsViewModel,
@@ -78,8 +74,6 @@ fun OverviewScreenStacked(
     val iobUiState by chipsViewModel.iobUiState.collectAsStateWithLifecycle()
     val cobUiState by chipsViewModel.cobUiState.collectAsStateWithLifecycle()
     val todayStatsUiState by chipsViewModel.todayStatsUiState.collectAsStateWithLifecycle()
-
-    var statusExpanded by rememberSaveable { mutableStateOf(false) }
 
     // autoISF build: the BG graph takes the screen height the content leaves free, so there is no empty space under
     // the graphs. The content is measured without that extra height, so adding it changes nothing in the next pass.
@@ -125,10 +119,7 @@ fun OverviewScreenStacked(
                     tempTargetSceneManaged = tempTargetSceneManaged,
                     runningMode = runningMode,
                     runningModeText = runningModeText,
-                    runningModeRemaining = runningModeRemaining,
-                    runningModeProgress = runningModeProgress,
                     runningModeSceneManaged = runningModeSceneManaged,
-                    smbEnabled = smbEnabled,
                     graphViewModel = graphViewModel,
                     chipsViewModel = chipsViewModel,
                     manageViewModel = manageViewModel,
@@ -136,9 +127,7 @@ fun OverviewScreenStacked(
                     statusLightsDef = statusLightsDef,
                     onNavigate = onNavigate,
                     onIobChipClick = onIobChipClick,
-                    commandsAllowed = commandsAllowed,
-                    statusExpanded = statusExpanded,
-                    onStatusExpandedChange = { statusExpanded = it }
+                    commandsAllowed = commandsAllowed
                 )
 
                 GraphsSection(

@@ -46,10 +46,9 @@ private const val WIDE = "w1280dp-h800dp"
  * All three take the same view model set, so they are fed one [OverviewViewModelFixture] and exactly
  * the same data - which is what lets a difference these tests find be attributed to the layout
  * rather than to the fixture. What is pinned is what a user would notice if the three drifted apart:
- *  - autoISF build: all three show the same cards (`OverviewMainCards`): the BG card with its "time ago"
- *    line, and the status card that starts **collapsed**, with the Pump button that opens the pump
- *    screen. Collapsed shows an "expand" affordance and no heading. Before, a turned phone showed the
- *    old screen.
+ *  - autoISF build: all three show the same tiles (`OverviewMainCards`): the BG tile with its "time ago",
+ *    the sensor tile that opens the status sheet, and the pump tile that opens the pump screen. Before,
+ *    a turned phone showed the old screen.
  *  - only the tablet layout carries a [LargeClock], with the time only (the BG card has the age).
  *  - with no BG reading, the BG card shows the "---" placeholder rather than nothing.
  *
@@ -69,7 +68,7 @@ class OverviewScreenVariantsTest {
     private lateinit var context: Context
 
     private lateinit var statusHeading: String
-    private lateinit var expandLabel: String
+    private lateinit var sensorLabel: String
     private lateinit var collapseLabel: String
     private lateinit var pumpLabel: String
 
@@ -82,7 +81,7 @@ class OverviewScreenVariantsTest {
         viewModels = OverviewViewModelFixture(screen)
         context = RuntimeEnvironment.getApplication()
         statusHeading = context.getString(app.aaps.core.ui.R.string.status)
-        expandLabel = context.getString(app.aaps.core.ui.R.string.expand)
+        sensorLabel = context.getString(app.aaps.core.ui.R.string.sensor_label)
         collapseLabel = context.getString(app.aaps.core.ui.R.string.collapse)
         pumpLabel = context.getString(app.aaps.core.ui.R.string.pump_management)
     }
@@ -111,8 +110,7 @@ class OverviewScreenVariantsTest {
                     tempTargetText = TT_TEXT, tempTargetState = TempTargetChipState.None,
                     tempTargetProgress = 0f, tempTargetReason = null,
                     runningMode = RM.Mode.OPEN_LOOP, runningModeText = RM_TEXT,
-                    runningModeRemaining = "", runningModeProgress = 0f,
-                    smbEnabled = false, isSimpleMode = true,
+                    isSimpleMode = true,
                     graphViewModel = graph, chipsViewModel = chips, manageViewModel = manage,
                     statusViewModel = status, statusLightsDef = statusLightsDef,
                     onNavigate = { navigated += it }, onIobChipClick = {},
@@ -124,8 +122,7 @@ class OverviewScreenVariantsTest {
                     tempTargetText = TT_TEXT, tempTargetState = TempTargetChipState.None,
                     tempTargetProgress = 0f, tempTargetReason = null,
                     runningMode = RM.Mode.OPEN_LOOP, runningModeText = RM_TEXT,
-                    runningModeRemaining = "", runningModeProgress = 0f,
-                    smbEnabled = false, isSimpleMode = true,
+                    isSimpleMode = true,
                     graphViewModel = graph, chipsViewModel = chips, manageViewModel = manage,
                     statusViewModel = status, statusLightsDef = statusLightsDef,
                     onNavigate = { navigated += it }, onIobChipClick = {},
@@ -137,8 +134,7 @@ class OverviewScreenVariantsTest {
                     tempTargetText = TT_TEXT, tempTargetState = TempTargetChipState.None,
                     tempTargetProgress = 0f, tempTargetReason = null,
                     runningMode = RM.Mode.OPEN_LOOP, runningModeText = RM_TEXT,
-                    runningModeRemaining = "", runningModeProgress = 0f,
-                    smbEnabled = false, isSimpleMode = true,
+                    isSimpleMode = true,
                     graphViewModel = graph, chipsViewModel = chips, manageViewModel = manage,
                     statusViewModel = status, statusLightsDef = statusLightsDef,
                     onNavigate = { navigated += it }, onIobChipClick = {},
@@ -164,8 +160,8 @@ class OverviewScreenVariantsTest {
         setScreen(Variant.STACKED)
 
         compose.onNodeWithText(OverviewViewModelFixture.BG_TEXT).assertIsDisplayed()
-        compose.onNodeWithText(OverviewViewModelFixture.DELTA_TEXT).assertIsDisplayed()
-        compose.onNodeWithText(OverviewViewModelFixture.TIME_AGO).assertIsDisplayed()
+        compose.onNodeWithText(OverviewViewModelFixture.DELTA_TEXT, substring = true).assertIsDisplayed()
+        compose.onNodeWithText(OverviewViewModelFixture.TIME_AGO, substring = true).assertIsDisplayed()
         compose.onNodeWithText(NO_BG_PLACEHOLDER).assertDoesNotExist()
     }
 
@@ -175,7 +171,7 @@ class OverviewScreenVariantsTest {
         viewModels.withBg()
         setScreen(Variant.SPLIT)
 
-        compose.onNodeWithText(OverviewViewModelFixture.TIME_AGO).assertIsDisplayed()
+        compose.onNodeWithText(OverviewViewModelFixture.TIME_AGO, substring = true).assertIsDisplayed()
     }
 
     @Test
@@ -185,7 +181,7 @@ class OverviewScreenVariantsTest {
         setScreen(Variant.TABLET)
 
         compose.onNodeWithText(OverviewViewModelFixture.BG_TEXT).assertIsDisplayed()
-        compose.onNodeWithText(OverviewViewModelFixture.TIME_AGO).assertIsDisplayed()
+        compose.onNodeWithText(OverviewViewModelFixture.TIME_AGO, substring = true).assertIsDisplayed()
     }
 
     // ---------------------------------------------------------------- clock
@@ -219,25 +215,29 @@ class OverviewScreenVariantsTest {
         compose.onNodeWithText(clockText).assertDoesNotExist()
     }
 
-    // ---------------------------------------------------------------- status card
+    // ---------------------------------------------------------------- status sheet
 
     @Test
-    fun `stacked layout starts with the status card collapsed`() = assertStatusCollapsed(Variant.STACKED)
-
-    @Test
-    @Config(qualifiers = WIDE)
-    fun `split layout starts with the status card collapsed`() = assertStatusCollapsed(Variant.SPLIT)
+    fun `stacked layout opens the status sheet from the sensor tile`() = assertStatusSheet(Variant.STACKED)
 
     @Test
     @Config(qualifiers = WIDE)
-    fun `tablet layout starts with the status card collapsed`() = assertStatusCollapsed(Variant.TABLET)
+    fun `split layout opens the status sheet from the sensor tile`() = assertStatusSheet(Variant.SPLIT)
 
-    private fun assertStatusCollapsed(variant: Variant) {
+    @Test
+    @Config(qualifiers = WIDE)
+    fun `tablet layout opens the status sheet from the sensor tile`() = assertStatusSheet(Variant.TABLET)
+
+    /** autoISF build: the status row is gone; its content (sensor change, fill, ...) is a sheet behind the sensor tile. */
+    private fun assertStatusSheet(variant: Variant) {
         setScreen(variant)
-
-        compose.onNodeWithContentDescription(expandLabel).assertIsDisplayed()
         compose.onNodeWithText(statusHeading).assertDoesNotExist()
-        compose.onNodeWithContentDescription(collapseLabel).assertDoesNotExist()
+
+        compose.onNodeWithText(sensorLabel).assertIsDisplayed().performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithText(statusHeading).assertIsDisplayed()
+        compose.onNodeWithContentDescription(collapseLabel).assertIsDisplayed()
     }
 
     // ---------------------------------------------------------------- pump button
@@ -258,6 +258,26 @@ class OverviewScreenVariantsTest {
 
         compose.onNodeWithText(pumpLabel).assertIsDisplayed().performClick()
         assertEquals(listOf<NavigationRequest>(NavigationRequest.Element(ElementType.PUMP)), navigated)
+    }
+
+    // ---------------------------------------------------------------- tiles
+
+    /** autoISF build: the quick access the user asked for: one tap from the bolus and the target tiles. */
+    @Test
+    fun `bolus tile opens the insulin dialog`() {
+        setScreen(Variant.STACKED)
+
+        compose.onNodeWithText(context.getString(app.aaps.ui.R.string.bolus_card)).performClick()
+        assertEquals(listOf<NavigationRequest>(NavigationRequest.Element(ElementType.INSULIN)), navigated)
+    }
+
+    @Test
+    fun `target tile shows the target and opens the temp targets`() {
+        setScreen(Variant.STACKED)
+
+        compose.onNodeWithText(TT_TEXT).assertIsDisplayed()
+        compose.onNodeWithText(context.getString(app.aaps.ui.R.string.target_tile)).performClick()
+        assertEquals(listOf<NavigationRequest>(NavigationRequest.Element(ElementType.TEMP_TARGET_MANAGEMENT)), navigated)
     }
 
     companion object {

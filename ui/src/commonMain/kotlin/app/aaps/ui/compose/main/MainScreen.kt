@@ -51,13 +51,10 @@ import app.aaps.core.interfaces.pump.BolusProgressState
 import app.aaps.core.ui.CoreUiStrings
 import app.aaps.core.ui.compose.LocalDateUtil
 import app.aaps.core.ui.compose.LocalSnackbarHostState
-import app.aaps.core.ui.compose.TABLET_MIN_SW_DP
 import app.aaps.core.ui.compose.dialogs.OkCancelDialog
 import app.aaps.core.ui.compose.dialogs.ThreeButtonDialog
-import app.aaps.core.ui.compose.isLandscape
 import app.aaps.core.ui.compose.navigation.NavigationRequest
 import app.aaps.core.ui.compose.preference.PreferenceSubScreenDef
-import app.aaps.core.ui.compose.smallestScreenWidthDp
 import app.aaps.core.ui.compose.stringResource
 import app.aaps.ui.UiStrings
 import app.aaps.ui.compose.aboutDialog.AboutAlertDialog
@@ -274,10 +271,7 @@ fun MainScreen(
                         tempTargetRecordId = uiState.tempTargetRecordId,
                         runningMode = uiState.runningMode,
                         runningModeText = uiState.runningModeText,
-                        runningModeRemaining = uiState.runningModeRemaining,
-                        runningModeProgress = uiState.runningModeProgress,
                         runningModeRecordId = uiState.runningModeRecordId,
-                        smbEnabled = uiState.smbEnabled,
                         isSimpleMode = uiState.isSimpleMode,
                         calcProgress = calcProgress,
                         graphViewModel = graphViewModel,
@@ -436,11 +430,11 @@ fun MainScreen(
                             onManageClick = { manageSheetState.show() },
                             masterOrPairedClient = masterOrPairedClient,
                             treatmentsHistoryEnabled = uiState.isProfileLoaded,
-                            // autoISF build: only the tablet layout keeps a button for the treatments sheet
-                            onTreatmentClick = if (isLandscape() && smallestScreenWidthDp() >= TABLET_MIN_SW_DP) ({
+                            // autoISF build: the "+" in the middle of the bar opens the treatments sheet
+                            onTreatmentClick = {
                                 treatmentViewModel.refreshState()
                                 showTreatmentSheet = true
-                            }) else null,
+                            },
                             onAutomationClick = {
                                 scenesViewModel.refreshState()
                                 showAutomationSheet = true

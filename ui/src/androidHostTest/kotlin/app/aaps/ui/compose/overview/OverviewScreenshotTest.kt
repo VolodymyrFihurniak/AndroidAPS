@@ -241,15 +241,15 @@ class OverviewScreenshotTest {
             if (split) OverviewScreenSplit(
                 profileName = "Profile A", isProfileModified = true, profileProgress = 0.4f,
                 tempTargetText = "100", tempTargetState = TempTargetChipState.None, tempTargetProgress = 0f, tempTargetReason = null,
-                runningMode = RM.Mode.CLOSED_LOOP, runningModeText = "Closed Loop", runningModeRemaining = "", runningModeProgress = 0f,
-                smbEnabled = true, isSimpleMode = false,
+                runningMode = RM.Mode.CLOSED_LOOP, runningModeText = "Closed Loop",
+                isSimpleMode = false,
                 graphViewModel = graph, chipsViewModel = chips, manageViewModel = manage, statusViewModel = status,
                 statusLightsDef = statusLightsDef, onNavigate = {}, onIobChipClick = {}, paddingValues = PaddingValues(0.dp)
             ) else OverviewScreenStacked(
                 profileName = "Profile A", isProfileModified = true, profileProgress = 0.4f,
                 tempTargetText = "100", tempTargetState = TempTargetChipState.None, tempTargetProgress = 0f, tempTargetReason = null,
-                runningMode = RM.Mode.CLOSED_LOOP, runningModeText = "Closed Loop", runningModeRemaining = "", runningModeProgress = 0f,
-                smbEnabled = true, isSimpleMode = false,
+                runningMode = RM.Mode.CLOSED_LOOP, runningModeText = "Closed Loop",
+                isSimpleMode = false,
                 graphViewModel = graph, chipsViewModel = chips, manageViewModel = manage, statusViewModel = status,
                 statusLightsDef = statusLightsDef, onNavigate = {}, onIobChipClick = {}, paddingValues = PaddingValues(0.dp)
             )

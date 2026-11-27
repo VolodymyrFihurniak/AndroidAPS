@@ -3,8 +3,8 @@ package app.aaps.ui.compose.main
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.GppMaybe
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.Badge
@@ -44,8 +44,7 @@ fun MainNavigationBar(
     /** autoISF build: the treatment history needs a profile, as in the side menu */
     treatmentsHistoryEnabled: Boolean = true,
     /**
-     * autoISF build: the button that opens the treatments sheet, only in the tablet layout, which has the room for it.
-     * Null leaves it out: on a phone the Bolus card opens the Insulin dialog.
+     * autoISF build: the "+" button in the middle of the bar, which opens the treatments sheet. Null leaves it out.
      */
     onTreatmentClick: (() -> Unit)? = null,
     onAutomationClick: () -> Unit = {},
@@ -88,11 +87,11 @@ fun MainNavigationBar(
         windowInsets = WindowInsets(0),
         modifier = modifier
     ) {
-        // autoISF build: the places of the user's concept: Home, the treatment history ("Log"), Statistics, History, then
-        // Scenes and Manage. The treatments themselves (bolus, carbs, wizard) are on the Bolus card of the overview.
-        // The buttons that need the user (setup, warnings, loop request) come first: with too many buttons the
-        // labels are cut, so History, then Statistics, then the log, then Home give way. All of them are in the side
-        // menu too.
+        // autoISF build: the design the user chose: the treatment history ("Log"), Statistics, History, the treatments
+        // ("+"), then Scenes and Manage. There is no Home: the bar belongs to the home screen, so Home was always the
+        // selected place and did nothing. The single treatments (bolus, carbs, temp basal, ...) are tiles of the
+        // overview. The buttons that need the user (setup, warnings, loop request) come first: with too many buttons
+        // the labels are cut, so History, then Statistics, then the log give way. All of them are in the side menu too.
         val showTreatmentsSheet = onTreatmentClick != null && masterOrPairedClient && role.allows(ElementType.TREATMENT.role)
         val otherItems = listOf(
             showTreatmentsSheet,
@@ -104,27 +103,12 @@ fun MainNavigationBar(
             loopActionAvailable,
             permissionsMissing
         ).count { it }
-        val fixedItems = (MAX_BAR_ITEMS - otherItems).coerceIn(0, 4)
-        if (fixedItems >= 1) NavigationBarItem(
-            // The screen this bar belongs to, so it is always the selected place and a tap does nothing
-            selected = true,
-            onClick = {},
-            icon = { Icon(imageVector = Icons.Default.Home, contentDescription = null, modifier = Modifier.size(24.dp)) },
-            label = { Text(text = stringResource(UiStrings.nav_home), textAlign = TextAlign.Center, maxLines = 1) },
-            colors = navColors
-        )
-        if (showTreatmentsSheet && onTreatmentClick != null) NavigationBarItem(
-            selected = false,
-            onClick = onTreatmentClick,
-            icon = { Icon(imageVector = ElementType.TREATMENT.icon(), contentDescription = null, modifier = Modifier.size(24.dp)) },
-            label = { Text(text = stringResource(CoreUiStrings.treatments), textAlign = TextAlign.Center, maxLines = 1) },
-            colors = navColors
-        )
+        val fixedItems = (MAX_BAR_ITEMS - otherItems).coerceIn(0, 3)
         for ((element, label) in listOf(
             ElementType.TREATMENTS to UiStrings.nav_treatments_log,
             ElementType.STATISTICS to CoreUiStrings.statistics,
             ElementType.HISTORY_BROWSER to UiStrings.nav_history
-        ).take((fixedItems - 1).coerceAtLeast(0))) {
+        ).take(fixedItems)) {
             NavigationBarItem(
                 selected = false,
                 enabled = element != ElementType.TREATMENTS || treatmentsHistoryEnabled,
@@ -134,6 +118,14 @@ fun MainNavigationBar(
                 colors = navColors
             )
         }
+        // autoISF build: the treatments ("+") after the places, in the middle of the bar
+        if (showTreatmentsSheet && onTreatmentClick != null) NavigationBarItem(
+            selected = false,
+            onClick = onTreatmentClick,
+            icon = { Icon(imageVector = Icons.Filled.AddCircle, contentDescription = null, modifier = Modifier.size(TREATMENT_ICON_SIZE)) },
+            label = { Text(text = stringResource(CoreUiStrings.treatments), textAlign = TextAlign.Center, maxLines = 1) },
+            colors = navColors
+        )
 
         // Scenes/automation button — visible whenever scenes or automation items exist on a paired
         // client (regardless of pump/loop/profile state). The badge counts only items the user can act
@@ -355,4 +347,7 @@ private fun Modifier.badgeState(state: String?): Modifier =
     if (state != null) semantics { stateDescription = state } else this
 
 /** autoISF build: more buttons than this make the labels too narrow on a phone (seen at 411 dp with eight). */
-private const val MAX_BAR_ITEMS = 6
+private const val MAX_BAR_ITEMS = 5
+
+/** autoISF build: the "+" of the treatments is a little larger than the other icons, it is the main button. */
+private val TREATMENT_ICON_SIZE = 30.dp

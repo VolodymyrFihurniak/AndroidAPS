@@ -141,6 +141,13 @@ fun TempTargetChip(
 @Composable
 private fun TT.Reason?.toIconColor(): Color = ttReasonColor(AapsTheme.generalColors)
 
+/** autoISF build: the colour of a running temp target, for the target tile of the overview. */
+@Composable
+internal fun TT.Reason?.ttReasonIconColor(): Color = toIconColor()
+
+/** autoISF build: the icon of a running temp target, for the target tile of the overview. */
+internal fun TT.Reason?.ttReasonIcon(): ImageVector = toIcon()
+
 /**
  * Why the temp target is running, in words. Same wording as `TranslatorImpl.translate(TT.Reason?)`,
  * which cannot be used here because it needs an injected Translator and this is a leaf composable.

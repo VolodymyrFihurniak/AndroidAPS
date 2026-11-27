@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,6 +44,8 @@ import app.aaps.core.ui.compose.LocalDecimalFormatter
 import app.aaps.core.ui.compose.LocalProfileUtil
 import app.aaps.core.ui.compose.icons.IcBgCheck
 import app.aaps.core.ui.compose.icons.IcProfile
+import app.aaps.core.ui.compose.stringResource
+import app.aaps.ui.UiStrings
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.CartesianDrawingContext
 import com.patrykandpatrick.vico.compose.cartesian.VicoScrollState
@@ -55,9 +58,9 @@ import com.patrykandpatrick.vico.compose.cartesian.data.CartesianLayerRangeProvi
 import com.patrykandpatrick.vico.compose.cartesian.data.lineModel
 import com.patrykandpatrick.vico.compose.cartesian.decoration.Decoration
 import com.patrykandpatrick.vico.compose.cartesian.decoration.HorizontalLine
-import com.patrykandpatrick.vico.compose.cartesian.marker.CartesianMarkerController
 import com.patrykandpatrick.vico.compose.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.marker.CartesianMarkerController
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.compose.common.DashedShape
 import com.patrykandpatrick.vico.compose.common.Fill
@@ -432,7 +435,8 @@ fun BgGraphCompose(
     val targetLine = remember(targetLineColor) {
         LineCartesianLayer.Line(
             fill = LineCartesianLayer.LineFill.single(Fill(targetLineColor)),
-            stroke = LineCartesianLayer.LineStroke.Continuous(thickness = 1.dp),
+            // autoISF build: 2 dp, the level the loop corrects BG to should be easy to find
+            stroke = LineCartesianLayer.LineStroke.Continuous(thickness = 2.dp),
             areaFill = null,
             interpolator = Square
         )
@@ -598,8 +602,10 @@ fun BgGraphCompose(
     val clockChanges = rememberClockChangeDecoration(minTimestamp, maxTimestamp, bgReadings, showIcon = true)
     // autoISF build: the low and the high mark as dashed lines with their value on the right, as in the user's xdripswift
     val thresholds = rememberThresholdLines(lowMark, highMark, LocalProfileUtil.current.units)
-    val decorations = remember(inRangeBox, thresholds, nowLine, clockChanges, inspectLine) {
-        listOfNotNull(inRangeBox, nowLine, clockChanges, inspectLine) + thresholds
+    // autoISF build: the target the loop works toward now, as a label on the target line
+    val targetLabel = rememberTargetLabel(targetData.targets.lastOrNull()?.value, LocalProfileUtil.current.units, targetLineColor)
+    val decorations = remember(inRangeBox, thresholds, nowLine, clockChanges, inspectLine, targetLabel) {
+        listOfNotNull(inRangeBox, nowLine, clockChanges, inspectLine, targetLabel) + thresholds
     }
 
     // =========================================================================
@@ -1087,6 +1093,35 @@ private val LINE_HIDDEN = LineCartesianLayer.Line(
     fill = LineCartesianLayer.LineFill.single(Fill(Color.Transparent)),
     areaFill = null
 )
+
+/**
+ * autoISF build: the label of the target line, "target 100", at the left end. The line itself is a layer of the graph
+ * (it can step during the day); this only names its current value. Null when there is no target.
+ */
+@Composable
+private fun rememberTargetLabel(target: Double?, units: GlucoseUnit, color: Color): Decoration? {
+    val decimalFormatter = LocalDecimalFormatter.current
+    val text = target?.let {
+        stringResource(UiStrings.graph_target_label, if (units == GlucoseUnit.MGDL) decimalFormatter.to0Decimal(it) else decimalFormatter.to1Decimal(it))
+    }
+    val label = rememberTextComponent(
+        style = TextStyle(color = color, fontSize = 10.sp, fontWeight = FontWeight.Medium),
+        margins = Insets(start = 4.dp, bottom = 1.dp)
+    )
+    return remember(target, text, label) {
+        if (target == null || text == null) null
+        else HorizontalLine(
+            y = { target },
+            // The line is drawn by the target layer, this decoration only adds the label
+            line = LineComponent(fill = Fill(Color.Transparent), thickness = 0.dp),
+            labelComponent = label,
+            label = { text },
+            horizontalLabelPosition = Position.Horizontal.Start,
+            verticalLabelPosition = Position.Vertical.Top,
+            verticalAxisPosition = Axis.Position.Vertical.Start
+        )
+    }
+}
 
 /**
  * autoISF build: the low and the high mark as dashed lines, each with its value at the right end, as in the user's
