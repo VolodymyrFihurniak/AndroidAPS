@@ -86,7 +86,9 @@ data class IobSheetState(
     /** IOB in 2 hours, U */
     val inTwoHoursText: String = "",
     /** The last doses, newest first: "SMB 0.3 U" to "12 min ago" */
-    val lastDoses: List<Pair<String, String>> = emptyList()
+    val lastDoses: List<Pair<String, String>> = emptyList(),
+    /** When the IOB is gone: "23:40 · 3 h 10 min left", or empty when there is none */
+    val actsUntilText: String = ""
 )
 
 @Immutable

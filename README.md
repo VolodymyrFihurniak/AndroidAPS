@@ -144,8 +144,10 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
     so the dose is never given twice. Then another dose with +/−, *Record only*, the calculator.
   - *Carbs*: COB with a bar, the last meal, an entry with +/−, the time (now or ± minutes), the
     *Hypo* target switch, the calculator.
-  - *IOB*: bolus and basal IOB, the activity now, the IOB curve for the next 4 hours, the last doses,
-    a link to the IOB details.
+  - *IOB*: bolus and basal IOB, the activity now, until what time the insulin acts (when the IOB
+    curve of the algorithm stays under 0.05 U), the IOB curve for the next 4 hours, the last 5 doses
+    of the last 6 hours, newest first (boluses, SMBs and the temp basals of the loop), a link to the
+    IOB details.
   - *Basal*: the profile rate and the running temp basal with a bar and *Cancel*, an own temp basal
     (percent and time), a link to the basal of the day.
   - *Loop*: the running mode as segmented buttons, *Pause* and *Pump off* with a time, the last run,

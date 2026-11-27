@@ -342,6 +342,7 @@ internal fun IobSheetBody(state: IobSheetState, onDetails: () -> Unit) {
             SheetValue(stringResource(UiStrings.sheet_iob_bolus), state.bolusIobText, insulinColor)
             SheetValue(stringResource(UiStrings.sheet_iob_basal), state.basalIobText, AapsTheme.elementColors.tempBasal)
             SheetValue(stringResource(UiStrings.sheet_iob_activity_now), state.activityText)
+            if (state.actsUntilText.isNotEmpty()) SheetValue(stringResource(UiStrings.sheet_iob_until), state.actsUntilText)
         }
         if (state.curve.size > 1)
             SheetCard {

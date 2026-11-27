@@ -56,6 +56,7 @@ import app.aaps.ui.UiStrings
 import app.aaps.ui.compose.navigation.ElementAvailability
 import app.aaps.ui.compose.tempTarget.toTTPresetsWithDisplayName
 import dev.zacsweers.metro.Inject
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.time.TimeSource
 import kotlinx.coroutines.CoroutineScope
@@ -234,9 +235,22 @@ class TileSheetSource(
         val total = bolusIob.iob + basalIob.basaliob
         // IOB of the next hours, every 5 minutes: the array the algorithm uses, from now on
         val curve = profileFunction.getProfile()?.let { profile -> iobCobCalculator.calculateIobArrayInDia(profile).map { it.iob } }.orEmpty()
-        val doses = persistenceLayer.getBolusesFromTime(now - T.hours(6).msecs(), false).take(LAST_DOSES).map { bolus ->
+        // The DAO gives the boluses by id, so sort them here. The temp basals are the other half of what the algorithm gives.
+        val from = now - T.hours(LAST_DOSES_HOURS).msecs()
+        val boluses = persistenceLayer.getBolusesFromTime(from, false).map { bolus ->
             val name = if (bolus.type == BS.Type.SMB) rh.gs(UiStrings.sheet_smb, insulin(bolus.amount)) else rh.gs(UiStrings.sheet_bolus, insulin(bolus.amount))
-            name to dateUtil.minAgo(rh, bolus.timestamp)
+            bolus.timestamp to name
+        }
+        val tempBasals = persistenceLayer.getTemporaryBasalsStartingFromTime(from, false).map { tb ->
+            val name = if (tb.isAbsolute) rh.gs(UiStrings.sheet_tbr_rate, rh.gs(CoreUiStrings.pump_base_basal_rate, tb.rate)) else rh.gs(UiStrings.sheet_tbr_percent, tb.rate.roundToInt())
+            tb.timestamp to name
+        }
+        val doses = (boluses + tempBasals).sortedByDescending { it.first }.take(LAST_DOSES).map { (time, name) -> name to dateUtil.minAgo(rh, time) }
+        // The insulin acts until the IOB of the curve stays near zero (the curve runs DIA + 30 min, a point every 5 minutes)
+        val lastActive = curve.indexOfLast { abs(it) >= IOB_ZERO }
+        val actsUntilText = if (lastActive < 0 || lastActive == curve.lastIndex) ""
+        else (now + T.mins(((lastActive + 1) * CURVE_STEP_MINUTES).toLong()).msecs()).let { end ->
+            twoParts(dateUtil.timeString(end), rh.gs(UiStrings.sheet_left, dateUtil.untilString(end, rh, withParentheses = false)))
         }
         return IobSheetState(
             totalText = insulin(total),
@@ -245,7 +259,8 @@ class TileSheetSource(
             activityText = rh.gs(UiStrings.sheet_iob_activity, decimalFormatter.to3Decimal(bolusIob.activity + basalIob.activity)),
             curve = curve.take(CURVE_POINTS),
             inTwoHoursText = curve.getOrNull(TWO_HOURS_POINT)?.let { insulin(it) }.orEmpty(),
-            lastDoses = doses
+            lastDoses = doses,
+            actsUntilText = actsUntilText
         )
     }
 
@@ -477,7 +492,12 @@ class TileSheetSource(
 
     private companion object {
 
-        const val LAST_DOSES = 3
+        const val LAST_DOSES = 5
+        const val LAST_DOSES_HOURS = 6L
+
+        /** IOB below this counts as gone, U */
+        const val IOB_ZERO = 0.05
+        const val CURVE_STEP_MINUTES = 5
 
         /** 4 hours of the IOB curve, a point every 5 minutes */
         const val CURVE_POINTS = 49

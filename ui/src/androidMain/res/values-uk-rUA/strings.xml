@@ -546,6 +546,7 @@
     <string name="sheet_iob_activity">%1$s Од/хв</string>
     <string name="sheet_iob_curve">Як IOB зменшиться далі</string>
     <string name="sheet_iob_in_2h">через 2 год ≈ %1$s</string>
+    <string name="sheet_iob_until">Інсулін діє до</string>
     <string name="sheet_iob_last">Останні дози</string>
     <string name="sheet_iob_details">Деталі IOB</string>
     <string name="sheet_smb">SMB %1$s</string>

@@ -130,7 +130,8 @@ class TileSheetsScreenshotTest {
             IobSheetState(
                 "1.20 U", "1.45 U", "-0.25 U", "0.021 U/min",
                 (0..48).map { 1.2 * kotlin.math.exp(-it / 20.0) }, "0.36 U",
-                listOf("SMB 0.30 U" to "12 min ago", "SMB 0.20 U" to "27 min ago", "Bolus 3.00 U" to "2 h ago")
+                listOf("SMB 0.30 U" to "12 min ago", "TBR 110 %" to "12 min ago", "SMB 0.20 U" to "27 min ago", "TBR 0 %" to "52 min ago", "Bolus 3.00 U" to "2 h ago"),
+                "23:40 · 3 h 10 min left"
             ),
             {}
         )

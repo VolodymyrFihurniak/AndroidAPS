@@ -578,6 +578,7 @@
     <string name="sheet_iob_activity" comment="%1$s=insulin activity. Example: 0.021 U/min">%1$s U/min</string>
     <string name="sheet_iob_curve">How IOB goes down</string>
     <string name="sheet_iob_in_2h" comment="%1$s=insulin with unit. Example: in 2 h ≈ 0.4 U">in 2 h ≈ %1$s</string>
+    <string name="sheet_iob_until">Insulin acts until</string>
     <string name="sheet_iob_last">Last doses</string>
     <string name="sheet_iob_details">IOB details</string>
     <string name="sheet_smb" comment="%1$s=insulin with unit. Example: SMB 0.3 U">SMB %1$s</string>
