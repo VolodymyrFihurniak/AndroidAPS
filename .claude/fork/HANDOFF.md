@@ -27,6 +27,10 @@ the repo on 2026-11-27, because the notes of the earlier session were never comm
 
 ## Open work
 
+- **Overview in landscape and on a tablet** (2026-11-27): the same cards as in portrait
+  (`OverviewMainCards`) and a Pump button in the status card. Merged without a local build (no
+  Android SDK in that cloud chat); the owner builds it with AAPS CI. Not tested on a phone.
+
 - **Phone test of the rc build.** Open loop first, compared with the owner's autoISF 3.2.x build on
   AAPS 3.4 (README "Updating from autoISF 3.2.x").
 - **Personal prediction on the real phone.** v1 on the phone learned an ISF of about 30 % of the
