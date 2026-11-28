@@ -13,9 +13,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,7 +29,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import app.aaps.core.data.model.GlucoseUnit
-import app.aaps.core.data.model.RM
 import app.aaps.core.interfaces.InterfacesStrings
 import app.aaps.core.interfaces.navigation.ElementType
 import app.aaps.core.interfaces.overview.graph.BgInfoData
@@ -56,7 +52,6 @@ import app.aaps.ui.compose.overview.chips.BolusRecommendation
 import app.aaps.ui.compose.overview.chips.BolusRecommendationKind
 import app.aaps.ui.compose.overview.chips.isWarning
 import app.aaps.ui.compose.overview.chips.toColor
-import app.aaps.ui.compose.overview.chips.toIcon
 import app.aaps.ui.compose.overview.statusLights.StatusItem
 import app.aaps.ui.compose.overview.statusLights.StatusUiState
 import app.aaps.ui.compose.overview.toColor
@@ -85,8 +80,6 @@ internal fun <T> LoadingSheet(load: suspend () -> T, onDismiss: () -> Unit, body
 private val PERCENT_CHOICES = listOf(0, 50, 80, 120, 150)
 private const val PERCENT_DEFAULT = 2
 private val TBR_MINUTES = listOf(30, 60, 120, 240)
-private val PAUSE_MINUTES = listOf(60, 120, 180)
-private val DISCONNECT_MINUTES = listOf(15, 30, 60)
 private val PROFILE_PERCENT = listOf(80, 90, 100, 110, 120)
 private val PROFILE_MINUTES = listOf(0, 60, 120, 240)
 private val CARB_STEPS = listOf(5, 10, 20, 50)
@@ -446,71 +439,6 @@ private fun BasalSum(label: String, value: String, color: Color?, modifier: Modi
 
 /** The fill behind the share of the profile. */
 private const val BADGE_ALPHA = 0.16f
-
-// ----- Loop
-
-@Composable
-private fun RM.Mode.label(): String = when (this) {
-    RM.Mode.CLOSED_LOOP       -> stringResource(CoreUiStrings.closedloop)
-    RM.Mode.OPEN_LOOP         -> stringResource(CoreUiStrings.openloop)
-    RM.Mode.CLOSED_LOOP_LGS   -> stringResource(CoreUiStrings.lowglucosesuspend)
-    RM.Mode.DISCONNECTED_PUMP -> stringResource(InterfacesStrings.pump_disconnected)
-    RM.Mode.SUSPENDED_BY_USER -> stringResource(InterfacesStrings.loopsuspended)
-    else                      -> name
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun LoopSheetBody(
-    state: LoopSheetState,
-    autosensText: String,
-    commandsAllowed: Boolean,
-    onMode: (RM.Mode, Int) -> Unit,
-    onRunNow: () -> Unit,
-    onDetails: () -> Unit
-) {
-    TileSheetBody(
-        icon = state.mode?.toIcon() ?: ElementType.RUNNING_MODE.icon(),
-        iconColor = state.mode?.toColor() ?: MaterialTheme.colorScheme.outline,
-        title = stringResource(CoreUiStrings.loop),
-        status = if (state.lastRunText.isNotEmpty()) stringResource(UiStrings.sheet_loop_run, state.lastRunText) else state.mode?.label().orEmpty()
-    ) {
-        if (state.loopModes.isNotEmpty())
-            SheetCard {
-                SheetTitle(stringResource(UiStrings.sheet_loop_mode))
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    state.loopModes.forEachIndexed { i, mode ->
-                        SegmentedButton(
-                            selected = mode == state.mode,
-                            onClick = { if (mode != state.mode) onMode(mode, 0) },
-                            enabled = commandsAllowed,
-                            shape = SegmentedButtonDefaults.itemShape(i, state.loopModes.size),
-                            label = { Text(mode.label(), maxLines = 1) }
-                        )
-                    }
-                }
-            }
-        if (state.canSuspend || state.canDisconnect || state.canResume)
-            SheetCard {
-                SheetTitle(stringResource(UiStrings.sheet_loop_pause))
-                if (state.canResume)
-                    Button(onClick = { onMode(RM.Mode.RESUME, 0) }, enabled = commandsAllowed, modifier = Modifier.fillMaxWidth()) { Text(stringResource(CoreUiStrings.resumeloop)) }
-                if (state.canSuspend)
-                    SheetChips(PAUSE_MINUTES.map { stringResource(UiStrings.sheet_loop_suspend, durationText(it)) }, -1, commandsAllowed) { onMode(RM.Mode.SUSPENDED_BY_USER, PAUSE_MINUTES[it]) }
-                if (state.canDisconnect)
-                    SheetChips(DISCONNECT_MINUTES.map { stringResource(UiStrings.sheet_loop_disconnect, durationText(it)) }, -1, commandsAllowed) { onMode(RM.Mode.DISCONNECTED_PUMP, DISCONNECT_MINUTES[it]) }
-            }
-        if (state.decisionText.isNotEmpty() || state.canRunNow)
-            SheetCard {
-                SheetCaption(stringResource(UiStrings.sheet_loop_last))
-                if (state.decisionText.isNotEmpty()) SheetValue(stringResource(UiStrings.sheet_loop_decision), state.decisionText)
-                if (autosensText.isNotEmpty()) SheetValue(stringResource(UiStrings.sheet_loop_autosens), autosensText)
-                if (state.canRunNow)
-                    OutlinedButton(onClick = onRunNow, enabled = commandsAllowed, modifier = Modifier.fillMaxWidth()) { Text(stringResource(UiStrings.sheet_loop_run_now)) }
-            }
-        SheetLink(stringResource(if (state.apsClassName != null) UiStrings.sheet_loop_details else UiStrings.sheet_loop_modes), onDetails)
-    }
-}
 
 // ----- Sensor and supplies
 

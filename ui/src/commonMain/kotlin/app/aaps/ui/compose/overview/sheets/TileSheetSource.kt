@@ -380,26 +380,60 @@ class TileSheetSource(
     }
 
     override suspend fun loopSheet(): LoopSheetState {
-        val mode = loop.runningMode()
+        val now = dateUtil.now()
+        val record = loop.runningModeRecord()
+        val mode = record.mode
         val allowed = loop.allowedNextModes()
+        val profile = profileFunction.getProfile()
         val run = loop.lastRun
         val result = run?.constraintsProcessed ?: run?.request
-        val lastRun = if (config.AAPSCLIENT) null else run?.lastAPSRun
-        val decision = result?.let {
-            val parts = buildList {
-                if (it.isTempBasalRequested) add(if (it.usePercent) rh.gs(UiStrings.sheet_tbr_percent, it.percent) else rh.gs(UiStrings.sheet_tbr_rate, rh.gs(CoreUiStrings.pump_base_basal_rate, it.rate)))
-                if (it.smb > 0.0) add(rh.gs(UiStrings.sheet_smb, insulin(it.smb)))
+        val lastRunTime = if (config.AAPSCLIENT) null else run?.lastAPSRun
+        val lastRun = if (config.AAPSCLIENT) null else result?.let {
+            val share = requestedPercent(it, profile?.getBasal(now))
+            LoopLastRun(
+                timeText = lastRunTime?.let { time -> dateUtil.timeString(time) }.orEmpty(),
+                tbrText = if (!it.isTempBasalRequested) "" else {
+                    val amount = if (it.usePercent) rh.gs(UiStrings.sheet_percent, it.percent) else rh.gs(CoreUiStrings.pump_base_basal_rate, it.rate)
+                    if (it.duration > 0) twoParts(amount, minutes(it.duration)) else amount
+                },
+                tbrAboveProfile = share?.let { s -> if (s > 100) true else if (s < 100) false else null },
+                smbText = if (it.smb > 0.0) insulin(it.smb) else ""
+            )
+        }
+        val inEffect = when {
+            mode.isLoopRunning()          -> null
+            record.isTemporary()          -> {
+                val end = record.timestamp + record.duration
+                LoopInEffect(
+                    detailText = twoParts(rh.gs(UiStrings.sheet_left, dateUtil.untilString(end, rh, withParentheses = false)), rh.gs(UiStrings.sheet_loop_until, dateUtil.timeString(end))),
+                    leftFraction = ((end - now).toFloat() / record.duration).coerceIn(0f, 1f)
+                )
             }
-            if (parts.isEmpty()) rh.gs(UiStrings.sheet_no_change) else parts.joinToString(rh.gs(UiStrings.sheet_separator))
-        }.orEmpty()
+
+            mode == RM.Mode.DISABLED_LOOP -> LoopInEffect(detailText = rh.gs(UiStrings.sheet_loop_off_sub))
+            else                          -> LoopInEffect()
+        }
+        val stripStart = now - RUN_STRIP_MINUTES * 60_000L
+        val runStrip = if (config.AAPSCLIENT) LoopRunStrip() else buildRunStrip(
+            // Older runs too: a temp basal asked for before the strip starts can still run in it
+            results = persistenceLayer.getApsResults(stripStart - T.hours(1).msecs(), now),
+            now = now,
+            basalAt = { time -> profile?.getBasal(time) },
+            hours = hourTicks(stripStart, now, 1) { time -> ((time - stripStart) / 60_000L).toInt() },
+            startText = dateUtil.timeString(stripStart),
+            endText = dateUtil.timeString(now)
+        )
         return LoopSheetState(
             mode = mode,
-            lastRunText = lastRun?.let { dateUtil.minAgo(rh, it) }.orEmpty(),
+            lastRunText = lastRunTime?.let { dateUtil.minAgo(rh, it) }.orEmpty(),
             loopModes = listOf(RM.Mode.CLOSED_LOOP, RM.Mode.OPEN_LOOP, RM.Mode.CLOSED_LOOP_LGS).filter { it == mode || it in allowed },
             canSuspend = RM.Mode.SUSPENDED_BY_USER in allowed,
             canDisconnect = RM.Mode.DISCONNECTED_PUMP in allowed,
+            canStop = RM.Mode.DISABLED_LOOP in allowed,
             canResume = RM.Mode.RESUME in allowed,
-            decisionText = decision,
+            inEffect = inEffect,
+            lastRun = lastRun,
+            runStrip = runStrip,
             canRunNow = !config.AAPSCLIENT && mode.isLoopRunning(),
             apsClassName = if (config.AAPSCLIENT) null else activePlugin.activeAPS?.let { it::class.simpleName }
         )

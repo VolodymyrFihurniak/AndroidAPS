@@ -308,7 +308,7 @@ internal fun SheetBasalChart(chart: BasalChart, color: Color) {
 
 /** Labels under a chart, each centred on its place (0..1 of the width) and kept inside the row; a label that would overlap the one before is left out. */
 @Composable
-private fun SheetTimeLabels(labels: List<Pair<Float, String>>) {
+internal fun SheetTimeLabels(labels: List<Pair<Float, String>>) {
     val shown = labels.filter { it.second.isNotEmpty() }
     Layout(
         content = { shown.forEach { (_, text) -> Text(text = text, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) } },

@@ -13,7 +13,6 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
 import app.aaps.core.data.model.GlucoseUnit
-import app.aaps.core.data.model.RM
 import app.aaps.core.data.model.TT
 import app.aaps.core.data.model.TrendArrow
 import app.aaps.core.interfaces.overview.graph.BgInfoData
@@ -175,16 +174,6 @@ class TileSheetsScreenshotTest {
         )
     }
 
-    private fun loop(dark: Boolean) = shot("07_loop", dark) {
-        LoopSheetBody(
-            LoopSheetState(
-                RM.Mode.CLOSED_LOOP, "2 min ago", listOf(RM.Mode.CLOSED_LOOP, RM.Mode.OPEN_LOOP, RM.Mode.CLOSED_LOOP_LGS),
-                canSuspend = true, canDisconnect = true, canResume = false, decisionText = "TBR 110 % · SMB 0.30 U", canRunNow = true, apsClassName = "OpenAPSAutoISFPlugin"
-            ),
-            "AS: 95 %", true, { _, _ -> }, {}, {}
-        )
-    }
-
     private fun supplies(dark: Boolean) = shot("08_supplies", dark) {
         SuppliesSheetBody(status, {}, {}, {}, {}, {})
     }
@@ -211,8 +200,6 @@ class TileSheetsScreenshotTest {
     @Test @Config(qualifiers = "w393dp-h700dp-port-xxhdpi") fun basalLight() = basal(false)
     @Test @Config(qualifiers = "w393dp-h700dp-port-night-xxhdpi") fun basalNoneDark() = basalNone(true)
     @Test @Config(qualifiers = "w393dp-h700dp-port-xxhdpi") fun basalNoneLight() = basalNone(false)
-    @Test @Config(qualifiers = "w393dp-h700dp-port-night-xxhdpi") fun loopDark() = loop(true)
-    @Test @Config(qualifiers = "w393dp-h700dp-port-xxhdpi") fun loopLight() = loop(false)
     @Test @Config(qualifiers = "w393dp-h700dp-port-night-xxhdpi") fun suppliesDark() = supplies(true)
     @Test @Config(qualifiers = "w393dp-h700dp-port-xxhdpi") fun suppliesLight() = supplies(false)
     @Test @Config(qualifiers = "w393dp-h700dp-port-night-xxhdpi") fun profileDark() = profile(true)

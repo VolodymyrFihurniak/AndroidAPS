@@ -147,17 +147,64 @@ data class LoopSheetState(
     val lastRunText: String = "",
     /** The loop modes the user may switch to (closed, open, LGS), the running one included */
     val loopModes: List<RM.Mode> = emptyList(),
+    /** A pause may start (or, when one runs, be made longer) */
     val canSuspend: Boolean = false,
     val canDisconnect: Boolean = false,
+    /** The loop may be turned off with no end: it stays off until the user turns it on */
+    val canStop: Boolean = false,
     /** Suspended or disconnected now: the sheet offers to resume */
     val canResume: Boolean = false,
-    /** What the last run decided, e.g. "TBR 110 % · SMB 0.3 U" */
-    val decisionText: String = "",
+    /** What a mode that is not a running loop (pause, pump off, loop off) says; null while the loop runs */
+    val inEffect: LoopInEffect? = null,
+    /** The last run, null when there is none or on a client */
+    val lastRun: LoopLastRun? = null,
+    /** The last hour of runs, empty without runs */
+    val runStrip: LoopRunStrip = LoopRunStrip(),
     /** Only on the phone that runs the loop */
     val canRunNow: Boolean = false,
     /** The class of the active APS plugin, for its screen; null on a client */
     val apsClassName: String? = null
 )
+
+/** The card of a mode that is in effect now instead of the loop. */
+@Immutable
+data class LoopInEffect(
+    /** "42 min left · until 15:14", or "No end: it will not turn on by itself"; empty when there is nothing to add */
+    val detailText: String = "",
+    /** The share of a pause or a pump off that is still to run, 0..1; null when it has no end */
+    val leftFraction: Float? = null
+)
+
+/** What the last run of the algorithm asked for, ready to show. */
+@Immutable
+data class LoopLastRun(
+    /** The clock time of the run, e.g. "14:32" */
+    val timeText: String,
+    /** "110 % · 30 min", empty when the run asked for no temp basal */
+    val tbrText: String = "",
+    /** The temp basal is above (true) or below (false) the profile; null when equal or not known */
+    val tbrAboveProfile: Boolean? = null,
+    /** "0.30 U", empty without an SMB */
+    val smbText: String = ""
+)
+
+/** The runs of the last hour in steps of 5 minutes: what the algorithm asked for, not what the pump did. */
+@Immutable
+data class LoopRunStrip(
+    /** Oldest first: the share of the profile basal the algorithm asked for (100 = the profile); null where there was no run */
+    val percent: List<Int?> = emptyList(),
+    /** The SMB asked for in each step, U */
+    val smb: List<Double> = emptyList(),
+    /** The minutes the strip covers */
+    val spanMinutes: Int = 60,
+    /** The clock time of the first and the last step */
+    val startText: String = "",
+    val endText: String = "",
+    /** The full hours inside; the index is the minute from the start */
+    val hours: List<SheetTimeTick> = emptyList()
+) {
+    val isEmpty: Boolean get() = percent.all { it == null } && smb.all { it <= 0.0 }
+}
 
 @Immutable
 data class ProfileSheetState(
