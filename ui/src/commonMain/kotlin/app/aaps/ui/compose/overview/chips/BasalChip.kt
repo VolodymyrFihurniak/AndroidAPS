@@ -42,7 +42,7 @@ import app.aaps.ui.UiStrings
  *
  * The rate in U/h is the main value. The smaller line under it holds the percent of the profile and the status
  * (by profile, TBR with the time left, profile switch, loop request not set yet), or why the rate is not known.
- * That line scrolls when it does not fit, like the COB text. Tap opens the details (`BasalDetailsSheet`).
+ * That line scrolls when it does not fit, like the COB text. Tap opens the basal sheet.
  *
  * It replaced the icon-only temp basal chip, whose three icons it still shows.
  *

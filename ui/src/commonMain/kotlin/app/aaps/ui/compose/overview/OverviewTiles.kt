@@ -85,7 +85,6 @@ import app.aaps.core.ui.extensions.directionToIcon
 import app.aaps.ui.UiStrings
 import app.aaps.ui.compose.components.bgSpokenDescription
 import app.aaps.ui.compose.main.TempTargetChipState
-import app.aaps.ui.compose.overview.chips.BasalDetailsSheet
 import app.aaps.ui.compose.overview.chips.BasalUiState
 import app.aaps.ui.compose.overview.chips.BolusRecommendation
 import app.aaps.ui.compose.overview.chips.BolusRecommendationKind
@@ -166,7 +165,6 @@ fun OverviewTiles(
     var sheet by remember { mutableStateOf<TileSheetKind?>(null) }
     var showStatusLights by remember { mutableStateOf(false) }
     var showSensitivityDialog by remember { mutableStateOf(false) }
-    var showBasalDetails by remember { mutableStateOf(false) }
     var showActivitySheet by rememberSaveable { mutableStateOf(false) }
     val warning = AapsTheme.generalColors.statusWarning
 
@@ -212,12 +210,9 @@ fun OverviewTiles(
                     onClick = { sheet = TileSheetKind.BASAL }, onLongClick = open(ElementType.TEMP_BASAL), modifier = Modifier.weight(1f)
                 ) {
                     TileValue(basalUiState.rateText, AapsTheme.elementColors.tempBasal)
-                    // The tile opens the temp basal; its second line opens the basal details, as the basal card did
-                    TileLine(
-                        basalUiState.statusText,
-                        if (basalUiState.isWarning) warning else null,
-                        modifier = Modifier.clickable { showBasalDetails = true }
-                    )
+                    // The whole tile opens the basal sheet, also this line: a line of its own that opens something else
+                    // showed the old details sheet instead of the new one
+                    TileLine(basalUiState.statusText, if (basalUiState.isWarning) warning else null)
                 }
             }
             Tile(
@@ -283,7 +278,6 @@ fun OverviewTiles(
         commandsAllowed = { element -> allowed(element) },
         onNavigate = onNavigate,
         onIobDetails = onIobClick,
-        onBasalDay = { showBasalDetails = true },
         onStatusLights = { showStatusLights = true },
         onDismiss = { sheet = null }
     )
@@ -297,13 +291,6 @@ fun OverviewTiles(
             onCancelTarget = { showActivitySheet = false; onCancelTempTarget() },
             onOpenTargets = { showActivitySheet = false; onNavigate(NavigationRequest.Element(ElementType.TEMP_TARGET_MANAGEMENT)) },
             onDismiss = { showActivitySheet = false }
-        )
-    }
-    if (showBasalDetails) {
-        BasalDetailsSheet(
-            state = basalUiState,
-            onOpenProfiles = { onNavigate(NavigationRequest.Element(ElementType.PROFILE_MANAGEMENT)) },
-            onDismiss = { showBasalDetails = false }
         )
     }
     if (showSensitivityDialog) {

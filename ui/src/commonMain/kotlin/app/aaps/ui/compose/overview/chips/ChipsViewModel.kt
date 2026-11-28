@@ -18,7 +18,6 @@ import app.aaps.core.interfaces.nsclient.ProcessedDeviceStatusData
 import app.aaps.core.interfaces.overview.SensitivityOverview
 import app.aaps.core.interfaces.overview.graph.OverviewDataCache
 import app.aaps.core.interfaces.plugin.ActivePlugin
-import app.aaps.core.interfaces.profile.Profile
 import app.aaps.core.interfaces.profile.ProfileFunction
 import app.aaps.core.interfaces.profile.ProfileUtil
 import app.aaps.core.interfaces.resources.TextResolver
@@ -29,6 +28,7 @@ import app.aaps.core.interfaces.utils.DateUtil
 import app.aaps.core.interfaces.utils.DecimalFormatter
 import app.aaps.core.interfaces.widget.WidgetUpdater
 import app.aaps.core.keys.BooleanKey
+import app.aaps.core.keys.IntKey
 import app.aaps.core.keys.UnitDoubleKey
 import app.aaps.core.keys.interfaces.Preferences
 import app.aaps.core.objects.extensions.convertedToAbsolute
@@ -194,11 +194,12 @@ class ChipsViewModel(
                 profileSwitchTimeshiftHours = profile?.timeshift ?: 0,
                 runningMode = persistenceLayer.getRunningModeActiveAtOrNull(now)?.mode,
                 pumpDataTime = pumpDataTime,
+                maxDataAgeMs = basalDataMaxAgeMs(preferences.get(IntKey.AlertsPumpUnreachableThreshold)),
                 requestedRate = requestedRate,
                 requestedAt = lastRun?.lastAPSRun ?: 0L
             )
         )
-        return basalUiState(card, profile?.let { profileFunction.getProfileName() } ?: "", tbr, profile)
+        return basalUiState(card)
     }
 
     private companion object {
@@ -208,7 +209,7 @@ class ChipsViewModel(
 
     private fun rateText(rate: Double): String = rh.gs(CoreUiStrings.pump_base_basal_rate, rate)
 
-    private fun basalUiState(card: BasalCardState, profileName: String, tbr: BasalTbr?, profile: Profile?): BasalUiState {
+    private fun basalUiState(card: BasalCardState): BasalUiState {
         val unknown = rh.gs(UiStrings.basal_unknown)
         val percentText = card.percentOfProfile?.let { rh.gs(UiStrings.basal_percent_of_profile, it) } ?: unknown
         val stateText = when (card.status) {
@@ -225,41 +226,12 @@ class ChipsViewModel(
             else                                 -> stateText
         }
         card.profileSwitchPercentage?.let { statusText = rh.gs(UiStrings.basal_status_join, statusText, rh.gs(UiStrings.basal_profile_switch_short, it)) }
-
-        val details = buildList {
-            if (profileName.isNotEmpty()) add(rh.gs(CoreUiStrings.profile) to profileName)
-            add(rh.gs(UiStrings.basal_details_profile_basal) to (card.profileBasal?.let { rateText(it) } ?: unknown))
-            add(rh.gs(UiStrings.basal_details_rate) to (card.rate?.let { rateText(it) } ?: unknown))
-            add(rh.gs(UiStrings.basal_details_percent) to (card.percentOfProfile?.let { rh.gs(UiStrings.basal_percent_of_profile, it) } ?: unknown))
-            add(
-                rh.gs(UiStrings.basal_details_profile_switch) to
-                    if (card.profileSwitchPercentage != null || card.profileSwitchTimeshiftHours != null)
-                        rh.gs(UiStrings.basal_details_profile_switch_value, card.profileSwitchPercentage ?: 100, card.profileSwitchTimeshiftHours ?: 0)
-                    else rh.gs(UiStrings.basal_details_none)
-            )
-            val runningTbr = tbr?.takeIf { card.status == BasalStatus.TBR }
-            add(
-                rh.gs(UiStrings.basal_details_tbr) to
-                    (runningTbr?.let { rh.gs(UiStrings.basal_details_tbr_value, rateText(it.rate), (it.durationMs / 60_000L).toInt()) } ?: rh.gs(UiStrings.basal_details_none))
-            )
-            card.tbrRemainingMinutes?.let { add(rh.gs(UiStrings.basal_details_remaining) to rh.gs(CoreUiStrings.format_mins, it)) }
-            card.pendingRate?.let { add(rh.gs(UiStrings.basal_details_requested) to rateText(it)) }
-            val pumpState = when (card.status) {
-                BasalStatus.SUSPENDED_BY_PUMP -> rh.gs(UiStrings.basal_suspended_by_pump)
-                BasalStatus.PUMP_DISCONNECTED -> rh.gs(UiStrings.basal_pump_disconnected)
-                else                          -> card.dataAgeMinutes?.let { rh.gs(UiStrings.basal_details_pump_data, it.toInt()) } ?: rh.gs(UiStrings.basal_details_pump_never)
-            }
-            add(rh.gs(CoreUiStrings.pump) to pumpState)
-        }
         return BasalUiState(
             visible = true,
             rateText = card.rate?.let { rateText(it) } ?: unknown,
             statusText = statusText,
             direction = card.direction,
-            isWarning = card.status != BasalStatus.PROFILE && card.status != BasalStatus.TBR,
-            profileName = profileName,
-            details = details,
-            profile = profile
+            isWarning = card.status != BasalStatus.PROFILE && card.status != BasalStatus.TBR
         )
     }
 

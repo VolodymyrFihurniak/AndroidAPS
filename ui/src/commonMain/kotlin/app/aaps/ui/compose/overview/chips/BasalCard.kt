@@ -13,8 +13,15 @@ import kotlin.math.roundToInt
  * temp basal (TBR), the running mode and when the pump last answered.
  */
 
-/** Pump data older than this is not shown as the basal running now: three loop runs. */
-const val BASAL_DATA_MAX_AGE_MS = 15 * 60_000L
+/**
+ * Pump data older than this is not shown as the basal running now. The loop does not call the pump when it changes
+ * nothing, and the keep alive check reads the pump only after 15 minutes without a connection, so 15 to 20 minutes of
+ * silence is normal. AAPS says "pump unreachable" after 30 minutes at the earliest, and so does this card.
+ */
+const val BASAL_DATA_MAX_AGE_MS = 30 * 60_000L
+
+/** How old pump data may be to count as the basal now, for the "pump unreachable" time of the settings in minutes. */
+fun basalDataMaxAgeMs(unreachableThresholdMinutes: Int): Long = maxOf(BASAL_DATA_MAX_AGE_MS, unreachableThresholdMinutes * 60_000L)
 
 /** A loop request is shown as not done yet only while it is this new. */
 const val BASAL_REQUEST_MAX_AGE_MS = 15 * 60_000L
@@ -44,6 +51,8 @@ data class BasalSnapshot(
     val runningMode: RM.Mode? = null,
     /** When the pump (on a client: the pump of the master) last gave data. 0 when never. */
     val pumpDataTime: Long,
+    /** Older pump data is not known to be the basal now: the "pump unreachable" time of the settings. */
+    val maxDataAgeMs: Long = BASAL_DATA_MAX_AGE_MS,
     /** A TBR the loop asked for and the pump has not set yet, in U/h. */
     val requestedRate: Double? = null,
     val requestedAt: Long = 0L
@@ -63,7 +72,7 @@ enum class BasalStatus {
     /** The user disconnected the pump: AAPS gives a zero temp basal. */
     PUMP_DISCONNECTED,
 
-    /** The pump did not give data for [BASAL_DATA_MAX_AGE_MS]: the rate is not known. */
+    /** The pump did not give data for `BasalSnapshot.maxDataAgeMs`: the rate is not known. */
     NO_RECENT_DATA,
 
     /** No active profile: nothing to compare with. */
@@ -96,7 +105,7 @@ data class BasalCardState(
 
 fun basalCardState(s: BasalSnapshot): BasalCardState {
     val dataAgeMinutes = if (s.pumpDataTime > 0) ((s.now - s.pumpDataTime).coerceAtLeast(0L) / 60_000L) else null
-    val fresh = s.pumpDataTime > 0 && s.now - s.pumpDataTime <= BASAL_DATA_MAX_AGE_MS
+    val fresh = s.pumpDataTime > 0 && s.now - s.pumpDataTime <= s.maxDataAgeMs
     val profileBasal = s.profileBasal
     val tbrRemaining = s.tbr?.let { ceil((it.start + it.durationMs - s.now).coerceAtLeast(0L) / 60_000.0).toInt() }
     val psPercentage = s.profileSwitchPercentage.takeIf { it != 100 }

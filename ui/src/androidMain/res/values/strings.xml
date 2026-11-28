@@ -398,20 +398,7 @@
     <string name="basal_no_recent_data">No recent pump data</string>
     <string name="basal_no_profile">No profile</string>
     <string name="basal_status_join" comment="Joins two short statuses of the basal card. %1$s and %2$s are statuses. Example: 150% of profile · TBR · 12 min left">%1$s · %2$s</string>
-    <string name="basal_details_profile_basal">Profile basal now</string>
-    <string name="basal_details_rate">Basal given now</string>
-    <string name="basal_details_percent">Percent of profile</string>
-    <string name="basal_details_profile_switch">Profile switch</string>
-    <string name="basal_details_profile_switch_value" comment="%1$d=percentage, %2$d=time shift in hours. Example: 110%, time shift 2 h">%1$d%%, time shift %2$d h</string>
-    <string name="basal_details_tbr">Temp basal</string>
-    <string name="basal_details_tbr_value" comment="%1$s=rate with unit, %2$d=minutes it runs in total. Example: 0.75 U/h for 30 min">%1$s for %2$d min</string>
-    <string name="basal_details_remaining">Time left</string>
-    <string name="basal_details_none">None</string>
-    <string name="basal_details_requested" comment="Label of a temp basal the loop asked for and the pump has not set yet">Asked by the loop, not set yet</string>
-    <string name="basal_details_pump_data" comment="State of the pump with the age of its newest data. %1$d=minutes. Example: Data 2 min old">Data %1$d min old</string>
     <string name="basal_details_pump_never">No data from the pump yet</string>
-    <string name="basal_details_daily_profile">Basal of the profile over the day</string>
-    <string name="basal_details_open_profiles">Profiles</string>
     <string name="basal_inspect_with_profile" comment="Basal on the graph at the chosen time. %1$s=basal given with unit, %2$s=basal of the profile with unit. Example: 0.75 U/h (profile 0.50 U/h)">%1$s (profile %2$s)</string>
     <string name="today_stats_title">Today</string>
     <string name="today_tir_short" comment="Short name of time in range on the overview statistics">TIR</string>
@@ -603,7 +590,8 @@
     <string name="sheet_basal_own">Own temp basal</string>
     <string name="sheet_basal_own_sub">In closed loop the loop may change it</string>
     <string name="sheet_for" comment="Before a choice of durations">For</string>
-    <string name="sheet_basal_day">Basal of the day</string>
+    <string name="sheet_basal_profile_link">Basal rates of the profile</string>
+    <string name="sheet_basal_pump_old" comment="%1$d=minutes since the pump last answered. Example: Last data from the pump 35 min ago">Last data from the pump %1$d min ago</string>
     <string name="sheet_basal_tbr" comment="%1$s=basal rate with unit. Example: 0.94 U/h (temp basal)">%1$s (temp basal)</string>
     <string name="sheet_tbr_percent" comment="%1$d=percent. Example: TBR 110 %">TBR %1$d %%</string>
     <string name="sheet_tbr_rate" comment="%1$s=basal rate with unit. Example: TBR 0.50 U/h">TBR %1$s</string>

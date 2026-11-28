@@ -117,7 +117,7 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
     with its time left and the colour of its reason, or the profile target the loop corrects toward
     when no temp target runs; it opens the temp targets. The BG tile has no title line.
   - *Bolus* (the advice of the loop, see below), *Carbs* and *IOB* (opens the IOB details).
-  - *Basal* (the temp basal; opens the temp basal dialog; its status line opens the basal details), *Loop*
+  - *Basal* (the temp basal; opens the basal sheet, also from its status line), *Loop*
     (opens the running modes; shows when the loop last ran, in the warning colour after 15 minutes,
     the running mode and the autosens ratio, which opens the sensitivity details) and *Sensor* (opens
     a sheet with the status: sensor, insulin, cannula, battery).
@@ -134,7 +134,8 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
     as the algorithm: c / (c + target − 99), c = half basal exercise target − 99) and the steps and
     heart rate of the last hour when a watch sends them.
   **Tile sheets.** Each sheet has the icon, the title and the state of its tile at the top, then
-  cards with the quick actions and links:
+  cards with the quick actions and links. An open sheet reads its data again every 10 seconds, so the
+  numbers, the ages and the time left follow the clock:
   - *BG*: the last hour as a small line with the time in range, a meter BG entry with +/− (save as a
     BG check, or calibrate when the CGM can), a link to the BG history.
   - *Target*: the running temp target with *Cancel*, the presets (a tap starts one), *Custom…*, the
@@ -153,7 +154,11 @@ state exists, AutoISF uses it instead of the overnight hours to stop the inactiv
     basal with *Cancel* (or, without one, when the profile rate changes next), a chart of the last
     6 hours and the next 3 (given basal filled, profile dashed, a line for now), the basal given
     today against the profile and the difference, the last temp basals, an own temp basal (0 to
-    150 %, 30 min to 4 h; the button says the rate it gives), a link to the basal of the day.
+    150 %, 30 min to 4 h; the button says the rate it gives), a link to the basal rates of the profile.
+    A line in the warning colour says when the rate may not be what the pump gives: the pump sent no data
+    for longer than the *pump unreachable* time of the settings (at least 30 minutes; the loop does not
+    call the pump when it changes nothing, so 15 to 20 minutes of silence is normal), it is suspended, or
+    it is disconnected.
   - *Loop*: the running mode as segmented buttons, *Pause* and *Pump off* with a time, the last run,
     its decision and autosens, *Run now*, a link to the algorithm.
   - *Sensor*: sensor, insulin, cannula and battery with their age and a *Change* button where it

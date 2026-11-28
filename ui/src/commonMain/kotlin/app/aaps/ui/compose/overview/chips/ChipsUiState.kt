@@ -3,7 +3,6 @@ package app.aaps.ui.compose.overview.chips
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import app.aaps.core.interfaces.overview.IsfStep
-import app.aaps.core.interfaces.profile.Profile
 
 /**
  * What the overview chips show.
@@ -105,10 +104,5 @@ data class BasalUiState(
     val rateText: String = "",
     val statusText: String = "",
     val direction: BasalDirection = BasalDirection.SAME,
-    val isWarning: Boolean = false,
-    val profileName: String = "",
-    /** Label and value of each line of the details. */
-    val details: List<Pair<String, String>> = emptyList(),
-    /** For the day graph of the details, null without a profile. */
-    val profile: Profile? = null
+    val isWarning: Boolean = false
 )

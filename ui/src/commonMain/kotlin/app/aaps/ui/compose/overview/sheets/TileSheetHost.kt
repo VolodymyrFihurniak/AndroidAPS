@@ -36,7 +36,6 @@ internal fun TileSheetHost(
     commandsAllowed: (ElementType) -> Boolean,
     onNavigate: (NavigationRequest) -> Unit,
     onIobDetails: () -> Unit,
-    onBasalDay: () -> Unit,
     onStatusLights: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -91,7 +90,7 @@ internal fun TileSheetHost(
                 basalIcon, state, commandsAllowed(ElementType.TEMP_BASAL),
                 onStart = { percent, minutes -> onDismiss(); tileSheets.startTempBasal(percent, minutes) },
                 onCancel = then { tileSheets.cancelTempBasal() },
-                onDay = then(onBasalDay)
+                onProfile = go(ElementType.PROFILE_MANAGEMENT)
             )
         }
 

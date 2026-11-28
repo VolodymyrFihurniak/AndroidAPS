@@ -24,6 +24,7 @@ import app.aaps.core.interfaces.db.PersistenceLayer
 import app.aaps.core.interfaces.db.ProcessedTbrEbData
 import app.aaps.core.interfaces.insulin.ConcentrationHelper
 import app.aaps.core.interfaces.iob.IobCobCalculator
+import app.aaps.core.interfaces.nsclient.ProcessedDeviceStatusData
 import app.aaps.core.interfaces.navigation.ElementType
 import app.aaps.core.interfaces.plugin.ActivePlugin
 import app.aaps.core.interfaces.profile.ProfileFunction
@@ -56,6 +57,10 @@ import app.aaps.core.ui.compose.icons.IcProfile
 import app.aaps.core.ui.compose.navigation.icon
 import app.aaps.ui.UiStrings
 import app.aaps.ui.compose.navigation.ElementAvailability
+import app.aaps.ui.compose.overview.chips.BasalSnapshot
+import app.aaps.ui.compose.overview.chips.BasalStatus
+import app.aaps.ui.compose.overview.chips.basalCardState
+import app.aaps.ui.compose.overview.chips.basalDataMaxAgeMs
 import app.aaps.ui.compose.tempTarget.toTTPresetsWithDisplayName
 import dev.zacsweers.metro.Inject
 import kotlin.math.abs
@@ -65,8 +70,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 /**
- * autoISF build: what the sheets of the overview tiles read and do. A sheet reads its state when it opens and calls an
- * action when the user presses a button.
+ * autoISF build: what the sheets of the overview tiles read and do. A sheet reads its state when it opens and again every
+ * few seconds while it is open, and calls an action when the user presses a button.
  *
  * Every action that changes therapy (a dose, carbs, a temp target or temp basal, a profile switch, a running mode)
  * goes the way the dialogs go: the protection of the element first (the PIN, when one is set), then the master
@@ -122,6 +127,7 @@ class TileSheetSource(
     private val elementAvailability: ElementAvailability,
     private val ch: ConcentrationHelper,
     private val automation: Automation,
+    private val processedDeviceStatusData: ProcessedDeviceStatusData,
     // Unqualified, as in ChipsViewModel: the graph binds the application scope under this name too
     private val appScope: CoroutineScope
 ) : TileSheetActions {
@@ -352,6 +358,23 @@ class TileSheetSource(
             if (abs(profile.getBasal(t) - rateNow) > 0.001) next = t
             t += step
         }
+        // The same rules as the basal tile: the pump may be suspended, disconnected, or silent for too long
+        val card = basalCardState(
+            BasalSnapshot(
+                now = now,
+                profileBasal = rateNow,
+                tbr = null,
+                runningMode = persistenceLayer.getRunningModeActiveAtOrNull(now)?.mode,
+                pumpDataTime = if (config.AAPSCLIENT) processedDeviceStatusData.pumpData?.clock ?: 0L else pump.lastDataTime.value,
+                maxDataAgeMs = basalDataMaxAgeMs(preferences.get(IntKey.AlertsPumpUnreachableThreshold))
+            )
+        )
+        val warning = when (card.status) {
+            BasalStatus.SUSPENDED_BY_PUMP -> rh.gs(UiStrings.basal_suspended_by_pump)
+            BasalStatus.PUMP_DISCONNECTED -> rh.gs(UiStrings.basal_pump_disconnected)
+            BasalStatus.NO_RECENT_DATA    -> card.dataAgeMinutes?.let { rh.gs(UiStrings.sheet_basal_pump_old, it.toInt()) } ?: rh.gs(UiStrings.basal_details_pump_never)
+            else                          -> ""
+        }
         val leftMin = tbr?.let { ((it.timestamp + it.duration - now) / 60_000L).toInt().coerceAtLeast(0) } ?: 0
         val totalMin = tbr?.let { (it.duration / 60_000L).toInt() } ?: 0
         val changes = tbrs.filter { it.timestamp >= chartStart }.sortedByDescending { it.timestamp }.take(LAST_CHANGES).map { tb ->
@@ -359,10 +382,11 @@ class TileSheetSource(
         }
         return BasalSheetState(
             profileBasalText = rh.gs(CoreUiStrings.pump_base_basal_rate, rateNow),
-            rateText = decimalFormatter.to2Decimal(tbr?.convertedToAbsolute(now, profile) ?: rateNow),
+            rateText = decimalFormatter.to2Decimal(if (card.status == BasalStatus.SUSPENDED_BY_PUMP) 0.0 else tbr?.convertedToAbsolute(now, profile) ?: rateNow),
             percentText = tbr?.let { rh.gs(UiStrings.sheet_percent, it.convertedToPercent(now, profile)) }.orEmpty(),
             detailText = if (tbr != null) twoParts(rh.gs(UiStrings.sheet_basal_temp), rh.gs(UiStrings.sheet_minutes_left_of, leftMin, totalMin))
             else rh.gs(UiStrings.sheet_basal_profile_only),
+            warningText = warning,
             runningProgress = if (tbr != null && totalMin > 0) 1f - leftMin.toFloat() / totalMin else null,
             nextChangeText = if (tbr == null) next?.let { rh.gs(UiStrings.sheet_basal_next, dateUtil.timeString(it), rh.gs(CoreUiStrings.pump_base_basal_rate, profile.getBasal(it))) }.orEmpty() else "",
             profileRate = rateNow,

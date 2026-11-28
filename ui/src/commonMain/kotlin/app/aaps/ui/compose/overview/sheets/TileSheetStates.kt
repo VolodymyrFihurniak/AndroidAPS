@@ -6,8 +6,9 @@ import app.aaps.core.data.model.RM
 import app.aaps.core.data.model.TT
 
 /*
- * autoISF build: what the sheets of the overview tiles show. Each sheet reads its state once when it opens (see
- * TileSheetSource); the texts are ready to show, already in the units of the user.
+ * autoISF build: what the sheets of the overview tiles show. Each sheet reads its state when it opens and again every
+ * few seconds while it is open (see TileSheetSource and LoadingSheet); the texts are ready to show, already in the
+ * units of the user.
  */
 
 /** The BG sheet: the last hour and the entry of a meter BG. */
@@ -98,6 +99,8 @@ data class BasalSheetState(
     val percentText: String = "",
     /** "Temp basal · 22 of 30 min left", or "Profile · no temp basal" */
     val detailText: String = "",
+    /** Why the rate may not be what the pump gives: old pump data, suspended, disconnected. Empty when all is well. */
+    val warningText: String = "",
     /** Share of the running temp basal that is done, 0..1, or null when none runs */
     val runningProgress: Float? = null,
     /** When no temp basal runs: the next change of the profile, e.g. "at 22:00 → 0.90 U/h" */

@@ -8,6 +8,7 @@ import app.aaps.ui.compose.overview.chips.BasalSnapshot
 import app.aaps.ui.compose.overview.chips.BasalStatus
 import app.aaps.ui.compose.overview.chips.BasalTbr
 import app.aaps.ui.compose.overview.chips.basalCardState
+import app.aaps.ui.compose.overview.chips.basalDataMaxAgeMs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -25,12 +26,13 @@ class BasalCardTest {
         timeshift: Int = 0,
         mode: RM.Mode? = RM.Mode.CLOSED_LOOP,
         pumpDataTime: Long = now - minute,
+        maxDataAgeMs: Long = BASAL_DATA_MAX_AGE_MS,
         requestedRate: Double? = null,
         requestedAt: Long = now - minute
     ): BasalCardState = basalCardState(
         BasalSnapshot(
             now = now, profileBasal = profileBasal, tbr = tbr, profileSwitchPercentage = ps, profileSwitchTimeshiftHours = timeshift,
-            runningMode = mode, pumpDataTime = pumpDataTime, requestedRate = requestedRate, requestedAt = requestedAt
+            runningMode = mode, pumpDataTime = pumpDataTime, maxDataAgeMs = maxDataAgeMs, requestedRate = requestedRate, requestedAt = requestedAt
         )
     )
 
@@ -119,7 +121,27 @@ class BasalCardTest {
         assertEquals(BasalStatus.NO_RECENT_DATA, s.status)
         assertNull(s.rate)
         assertNull(s.percentOfProfile)
-        assertEquals(15L, s.dataAgeMinutes)
+        assertEquals(BASAL_DATA_MAX_AGE_MS / minute, s.dataAgeMinutes)
+    }
+
+    @Test
+    fun aQuietPumpIsNotOldData() {
+        // The loop does not call the pump when it changes nothing, and the keep alive reads it after 15 minutes
+        val tbr = BasalTbr(rate = 0.75, start = now - 5 * minute, durationMs = 30 * minute)
+        for (age in listOf(16L, 20L, 29L)) {
+            val s = state(pumpDataTime = now - age * minute, tbr = tbr)
+            assertEquals(BasalStatus.TBR, s.status, "pump data $age min old")
+            assertEquals(0.75, s.rate)
+        }
+    }
+
+    @Test
+    fun theUnreachableTimeOfTheSettingsMovesTheLimit() {
+        // 60 minutes in the settings: 45 minutes of silence is still the basal now
+        assertEquals(BasalStatus.PROFILE, state(pumpDataTime = now - 45 * minute, maxDataAgeMs = basalDataMaxAgeMs(60)).status)
+        assertEquals(BasalStatus.NO_RECENT_DATA, state(pumpDataTime = now - 61 * minute, maxDataAgeMs = basalDataMaxAgeMs(60)).status)
+        // A short time in the settings never goes below the built in limit
+        assertEquals(BASAL_DATA_MAX_AGE_MS, basalDataMaxAgeMs(5))
     }
 
     @Test

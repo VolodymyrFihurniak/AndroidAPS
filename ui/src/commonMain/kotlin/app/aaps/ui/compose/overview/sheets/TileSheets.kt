@@ -55,7 +55,9 @@ import app.aaps.ui.compose.overview.chips.toColor
 import app.aaps.ui.compose.overview.statusLights.StatusItem
 import app.aaps.ui.compose.overview.statusLights.StatusUiState
 import app.aaps.ui.compose.overview.toColor
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 
 /*
  * autoISF build: the sheets the overview tiles open (the design the user approved for every tile). Each sheet has a
@@ -64,9 +66,26 @@ import kotlin.math.roundToInt
  * the PIN and the confirmation (see TileSheetSource).
  */
 
-/** Reads a sheet state once, when the sheet opens. */
+/** How often an open sheet reads its state again, so the numbers, the ages and the time left follow the clock. */
+internal const val SHEET_REFRESH_MS = 10_000L
+
+/**
+ * Reads a sheet state when the sheet opens and again every [SHEET_REFRESH_MS] while it stays open. A read that fails
+ * keeps the last state on the screen, and the next read tries again.
+ */
 @Composable
-private fun <T> loaded(load: suspend () -> T): T? = produceState<T?>(null) { value = load() }.value
+private fun <T> loaded(load: suspend () -> T): T? = produceState<T?>(null) {
+    while (true) {
+        try {
+            value = load()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // The last state stays
+        }
+        delay(SHEET_REFRESH_MS)
+    }
+}.value
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -132,7 +151,7 @@ internal fun BgSheetBody(
     onHistory: () -> Unit
 ) {
     val color = bgInfo?.bgRange?.toColor() ?: MaterialTheme.colorScheme.outline
-    var value by remember(state) { mutableDoubleStateOf(state.startValue) }
+    var value by remember(state.units, state.step) { mutableDoubleStateOf(state.startValue) }
     val unit = stringResource(if (state.units == GlucoseUnit.MGDL) CoreUiStrings.mgdl else CoreUiStrings.mmol)
     TileSheetBody(
         icon = bgInfo?.trendArrow?.directionToIcon() ?: ElementType.BG_CHECK.icon(),
@@ -228,7 +247,7 @@ internal fun BolusSheetBody(
     onGive: (Double, Boolean) -> Unit,
     onCalculator: () -> Unit
 ) {
-    var amount by remember(state) { mutableDoubleStateOf(0.0) }
+    var amount by remember(state.step) { mutableDoubleStateOf(0.0) }
     var recordOnly by remember { mutableStateOf(false) }
     val warning = AapsTheme.generalColors.statusWarning
     TileSheetBody(
@@ -284,7 +303,7 @@ internal fun BolusSheetBody(
 
 @Composable
 internal fun CarbsSheetBody(state: CarbsSheetState, commandsAllowed: Boolean, onEnter: (Int, Int, Boolean) -> Unit, onCalculator: () -> Unit) {
-    var grams by remember(state) { mutableIntStateOf(0) }
+    var grams by remember(state.maxCarbs) { mutableIntStateOf(0) }
     var offset by remember { mutableIntStateOf(0) }
     var hypo by remember { mutableStateOf(false) }
     val carbsColor = ElementType.CARBS.color()
@@ -359,7 +378,7 @@ internal fun IobSheetBody(state: IobSheetState, onDetails: () -> Unit) {
 // ----- Basal
 
 @Composable
-internal fun BasalSheetBody(icon: ImageVector, state: BasalSheetState, commandsAllowed: Boolean, onStart: (Int, Int) -> Unit, onCancel: () -> Unit, onDay: () -> Unit) {
+internal fun BasalSheetBody(icon: ImageVector, state: BasalSheetState, commandsAllowed: Boolean, onStart: (Int, Int) -> Unit, onCancel: () -> Unit, onProfile: () -> Unit) {
     var percent by remember { mutableIntStateOf(PERCENT_DEFAULT) }
     var minutes by remember { mutableIntStateOf(1) }
     val basalColor = AapsTheme.elementColors.tempBasal
@@ -383,6 +402,7 @@ internal fun BasalSheetBody(icon: ImageVector, state: BasalSheetState, commandsA
                             }
                     }
                     SheetCaption(state.detailText)
+                    if (state.warningText.isNotEmpty()) SheetCaption(state.warningText, AapsTheme.generalColors.statusWarning)
                 }
                 if (running) OutlinedButton(onClick = onCancel, enabled = commandsAllowed) { Text(stringResource(CoreUiStrings.cancel)) }
                 else SheetCaption(state.nextChangeText)
@@ -425,7 +445,7 @@ internal fun BasalSheetBody(icon: ImageVector, state: BasalSheetState, commandsA
                     )
                 }
             }
-        SheetLink(stringResource(UiStrings.sheet_basal_day), onDay)
+        SheetLink(stringResource(UiStrings.sheet_basal_profile_link), onProfile)
     }
 }
 
@@ -495,8 +515,8 @@ private fun SupplyCard(item: StatusItem, icon: ImageVector, onChange: (() -> Uni
 
 @Composable
 internal fun ProfileSheetBody(state: ProfileSheetState, commandsAllowed: Boolean, onSwitch: (String, Int, Int) -> Unit, onView: () -> Unit) {
-    var name by remember(state) { mutableStateOf(state.activeName) }
-    var percent by remember(state) { mutableIntStateOf(PROFILE_PERCENT.indexOf(state.percentage).takeIf { it >= 0 } ?: PROFILE_PERCENT.indexOf(100)) }
+    var name by remember(state.names) { mutableStateOf(state.activeName) }
+    var percent by remember(state.names) { mutableIntStateOf(PROFILE_PERCENT.indexOf(state.percentage).takeIf { it >= 0 } ?: PROFILE_PERCENT.indexOf(100)) }
     var minutes by remember { mutableIntStateOf(0) }
     TileSheetBody(
         icon = ElementType.PROFILE_MANAGEMENT.icon(),

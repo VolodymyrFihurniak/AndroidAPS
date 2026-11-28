@@ -29,10 +29,12 @@ import app.aaps.ui.compose.overview.chips.BolusRecommendationKind
 import app.aaps.ui.compose.overview.statusLights.StatusItem
 import app.aaps.ui.compose.overview.statusLights.StatusUiState
 import app.aaps.ui.compose.testing.AapsScreenFixture
+import app.aaps.ui.compose.testing.TileSheetSourceFixture
 import app.aaps.ui.compose.testing.setAapsContent
 import java.io.File
 import kotlin.math.exp
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -142,37 +144,20 @@ class TileSheetsScreenshotTest {
         )
     }
 
-    private fun basal(dark: Boolean) = shot("06_basal", dark) {
-        BasalSheetBody(IcTbrHigh, basalState(true), true, { _, _ -> }, {}, {})
+    /** The basal sheet from what the app works out of stored data (see TileSheetSourceFixture), not from typed numbers */
+    private fun basalReal(name: String, dark: Boolean, prepare: TileSheetSourceFixture.() -> Unit = {}) {
+        val fixture = TileSheetSourceFixture(screen).apply(prepare)
+        val state = runBlocking { fixture.source().basalSheet() }
+        shot(name, dark) { BasalSheetBody(IcTbrHigh, state, true, { _, _ -> }, {}, {}) }
     }
 
-    private fun basalNone(dark: Boolean) = shot("06b_basal_none", dark) {
-        BasalSheetBody(IcTbrHigh, basalState(false), true, { _, _ -> }, {}, {})
-    }
+    private fun basal(dark: Boolean) = basalReal("06_basal", dark)
 
-    private fun basalState(running: Boolean): BasalSheetState {
-        // 6 h before now and 3 h after, every 5 minutes
-        val profile = (0..108).map { if (it < 48) 0.8 else if (it < 96) 0.85 else 0.9 }
-        val given = (0..108).map { i ->
-            when {
-                i > 72 + (if (running) 4 else 0) -> null
-                i in 18..23                      -> 0.0
-                i in 36..41                      -> 1.2
-                running && i in 54..59           -> 0.0
-                running && i >= 66               -> 0.94
-                else                             -> profile[i]
-            }
-        }
-        return BasalSheetState(
-            profileBasalText = "0.85 U/h", rateText = if (running) "0.94" else "0.85", percentText = if (running) "110 %" else "",
-            detailText = if (running) "Temp basal · 22 of 30 min left" else "By profile · no temp basal",
-            runningProgress = if (running) 0.27f else null, nextChangeText = if (running) "" else "at 22:00 → 0.90 U/h", profileRate = 0.85,
-            chart = BasalChart(given, profile, 72, listOf(SheetTimeTick(4, "15:00"), SheetTimeTick(40, "18:00"), SheetTimeTick(76, "21:00"))),
-            todayGivenText = "9.40 U", todayProfileText = "10.10 U", todayDifferenceText = "-0.70 U",
-            changes = listOf("18:42 · TBR 110 %" to "30 min", "18:12 · TBR 0 %" to "30 min", "16:30 · TBR 140 %" to "30 min"),
-            loopMayChange = true, canSetTempBasal = true
-        )
-    }
+    private fun basalNone(dark: Boolean) = basalReal("06b_basal_none", dark) { noTbrNow() }
+
+    private fun basalOld(dark: Boolean) = basalReal("06c_basal_old_data", dark) { pumpAnswered(minutesAgo = 45) }
+
+    private fun basalBig(dark: Boolean) = basalReal("06d_basal_font15", dark)
 
     private fun supplies(dark: Boolean) = shot("08_supplies", dark) {
         SuppliesSheetBody(status, {}, {}, {}, {}, {})
@@ -186,24 +171,28 @@ class TileSheetsScreenshotTest {
         PumpSheetBody("Dana-i", null, status, PumpSheetState("connected 1 min ago", "0.94 U/h (temp basal)", "3.00 U · 2 h ago", true, true), true, {}, {}, {}, {})
     }
 
-    @Test @Config(qualifiers = "w393dp-h700dp-port-night-xxhdpi") fun bgDark() = bg(true)
-    @Test @Config(qualifiers = "w393dp-h700dp-port-xxhdpi") fun bgLight() = bg(false)
-    @Test @Config(qualifiers = "w393dp-h700dp-port-night-xxhdpi") fun targetDark() = target(true)
-    @Test @Config(qualifiers = "w393dp-h700dp-port-xxhdpi") fun targetLight() = target(false)
-    @Test @Config(qualifiers = "w393dp-h700dp-port-night-xxhdpi") fun bolusDark() = bolus(true)
-    @Test @Config(qualifiers = "w393dp-h700dp-port-xxhdpi") fun bolusLight() = bolus(false)
-    @Test @Config(qualifiers = "w393dp-h700dp-port-night-xxhdpi") fun carbsDark() = carbs(true)
-    @Test @Config(qualifiers = "w393dp-h700dp-port-xxhdpi") fun carbsLight() = carbs(false)
-    @Test @Config(qualifiers = "w393dp-h700dp-port-night-xxhdpi") fun iobDark() = iob(true)
-    @Test @Config(qualifiers = "w393dp-h700dp-port-xxhdpi") fun iobLight() = iob(false)
-    @Test @Config(qualifiers = "w393dp-h700dp-port-night-xxhdpi") fun basalDark() = basal(true)
-    @Test @Config(qualifiers = "w393dp-h700dp-port-xxhdpi") fun basalLight() = basal(false)
-    @Test @Config(qualifiers = "w393dp-h700dp-port-night-xxhdpi") fun basalNoneDark() = basalNone(true)
-    @Test @Config(qualifiers = "w393dp-h700dp-port-xxhdpi") fun basalNoneLight() = basalNone(false)
-    @Test @Config(qualifiers = "w393dp-h700dp-port-night-xxhdpi") fun suppliesDark() = supplies(true)
-    @Test @Config(qualifiers = "w393dp-h700dp-port-xxhdpi") fun suppliesLight() = supplies(false)
-    @Test @Config(qualifiers = "w393dp-h700dp-port-night-xxhdpi") fun profileDark() = profile(true)
-    @Test @Config(qualifiers = "w393dp-h700dp-port-xxhdpi") fun profileLight() = profile(false)
-    @Test @Config(qualifiers = "w393dp-h700dp-port-night-xxhdpi") fun pumpDark() = pump(true)
-    @Test @Config(qualifiers = "w393dp-h700dp-port-xxhdpi") fun pumpLight() = pump(false)
+    @Test @Config(qualifiers = "w393dp-h1000dp-port-night-xxhdpi") fun bgDark() = bg(true)
+    @Test @Config(qualifiers = "w393dp-h1000dp-port-xxhdpi") fun bgLight() = bg(false)
+    @Test @Config(qualifiers = "w393dp-h1000dp-port-night-xxhdpi") fun targetDark() = target(true)
+    @Test @Config(qualifiers = "w393dp-h1000dp-port-xxhdpi") fun targetLight() = target(false)
+    @Test @Config(qualifiers = "w393dp-h1000dp-port-night-xxhdpi") fun bolusDark() = bolus(true)
+    @Test @Config(qualifiers = "w393dp-h1000dp-port-xxhdpi") fun bolusLight() = bolus(false)
+    @Test @Config(qualifiers = "w393dp-h1000dp-port-night-xxhdpi") fun carbsDark() = carbs(true)
+    @Test @Config(qualifiers = "w393dp-h1000dp-port-xxhdpi") fun carbsLight() = carbs(false)
+    @Test @Config(qualifiers = "w393dp-h1000dp-port-night-xxhdpi") fun iobDark() = iob(true)
+    @Test @Config(qualifiers = "w393dp-h1000dp-port-xxhdpi") fun iobLight() = iob(false)
+    @Test @Config(qualifiers = "w393dp-h1000dp-port-night-xxhdpi") fun basalDark() = basal(true)
+    @Test @Config(qualifiers = "w393dp-h1000dp-port-xxhdpi") fun basalLight() = basal(false)
+    @Test @Config(qualifiers = "w393dp-h1000dp-port-night-xxhdpi") fun basalNoneDark() = basalNone(true)
+    @Test @Config(qualifiers = "w393dp-h1000dp-port-xxhdpi") fun basalNoneLight() = basalNone(false)
+    @Test @Config(qualifiers = "w393dp-h1000dp-port-night-xxhdpi") fun basalOldDark() = basalOld(true)
+    @Test @Config(qualifiers = "w393dp-h1000dp-port-xxhdpi") fun basalOldLight() = basalOld(false)
+    @Test @Config(qualifiers = "w393dp-h1300dp-port-night-xxhdpi", fontScale = 1.5f) fun basalBigDark() = basalBig(true)
+    @Test @Config(qualifiers = "w393dp-h1300dp-port-xxhdpi", fontScale = 1.5f) fun basalBigLight() = basalBig(false)
+    @Test @Config(qualifiers = "w393dp-h1000dp-port-night-xxhdpi") fun suppliesDark() = supplies(true)
+    @Test @Config(qualifiers = "w393dp-h1000dp-port-xxhdpi") fun suppliesLight() = supplies(false)
+    @Test @Config(qualifiers = "w393dp-h1000dp-port-night-xxhdpi") fun profileDark() = profile(true)
+    @Test @Config(qualifiers = "w393dp-h1000dp-port-xxhdpi") fun profileLight() = profile(false)
+    @Test @Config(qualifiers = "w393dp-h1000dp-port-night-xxhdpi") fun pumpDark() = pump(true)
+    @Test @Config(qualifiers = "w393dp-h1000dp-port-xxhdpi") fun pumpLight() = pump(false)
 }
